@@ -25,7 +25,6 @@ export const topics: Topic[] = [
             { name: "Engineering", icon: <Code /> },
             { name: "Statistics", icon: <School /> },
             { name: "Astronomy", icon: <Science /> },
-            { name: "Environmental Science", icon: <Science /> },
         ],
     },
     {
