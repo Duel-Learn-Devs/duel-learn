@@ -21,9 +21,11 @@ import { useUser } from "../../contexts/UserContext";
 import useValidation from "../../hooks/validation.hooks/useValidation";
 import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
+import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 
 const SignUp = () => {
   const { setUser } = useUser();
+  const { signUpApi } = useSignUpApi();
   const { error, handleLoginError } = useHandleError();
   const [formData, setFormData] = useState({
     username: "",
@@ -100,25 +102,47 @@ const SignUp = () => {
       const additionalUserInfo = getAdditionalInfo(result);
       const userData = {
         firebaseToken: token,
-        displayName: result.user.displayName,
+        firebase_uid : result.user.uid,
+        username: result.user.displayName,
         email: result.user.email,
-        photoURL: result.user.photoURL,
-        uid: result.user.uid,
-        isNew: additionalUserInfo,
+        display_picture: result.user.photoURL,
+        isNew: additionalUserInfo?.isNewUser,
+        full_name: "",
+        email_verified: result.user.emailVerified,
+        isSSO: true,
+        account_type: "free" as 'free' | 'premium',
       };
 
-      await setDoc(doc(db, "users", userData.uid), {
-        username: userData.displayName,
+      await setDoc(doc(db, "users", userData.firebase_uid), {
+        firebase_uid: userData.firebase_uid || "",
+        username: userData.username,
         email: userData.email,
-        dateCreated: serverTimestamp(),
+        password_hash: "N/A", // Store the hashed password if needed
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        display_picture: userData.display_picture || "",
+        full_name: "",
+        email_verified: userData.email_verified,
+        isSSO: userData.isSSO,
+        account_type: userData.account_type,
       });
 
       setUser(userData);
       localStorage.setItem("userToken", token);
 
+      // Call the API
+      await signUpApi(
+        userData.firebase_uid,
+        userData.username ?? "Anonymous",
+        userData.email||
+        "",
+        "",
+        true,
+        result.user.emailVerified
+      );
       setTimeout(() => {
         if (userData.isNew) {
-          navigate("/dashboard/welcome");
+          navigate("/onboarding/welcome");
         } else {
           navigate("/dashboard/home");
         }

@@ -101,7 +101,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   }, [searchQuery, filter]);
 
   const handleMaterialSelect = (material: any) => {
-    navigate("/dashboard/welcome-game-mode", { state: { mode, material } });
+    navigate("/onboarding/welcome-game-mode", { state: { mode, material } });
   };
 
   return (

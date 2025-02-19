@@ -122,7 +122,7 @@ const SignUp = () => {
       );
       setTimeout(() => {
         if (userData.isNew) {
-          navigate("/dashboard/welcome");
+          navigate("/onboarding/welcome");
         } else {
           navigate("/dashboard/home");
         }
@@ -181,7 +181,7 @@ const SignUp = () => {
       );
       setTimeout(() => {
         if (userData.isNew) {
-          navigate("/dashboard/welcome");
+          navigate("/onboarding/welcome");
         } else {
           navigate("/dashboard/home");
         }

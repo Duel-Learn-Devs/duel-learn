@@ -34,13 +34,13 @@ export default function TutorialSix() {
       setAnimate(false);
       setTimeout(() => setAnimate(true), 100);
     } else {
-      navigate("/dashboard/tutorial/last-step");
+      navigate("/onboarding/tutorial/last-step");
     }
   };
 
   const handleSkipTutorial = (event: React.MouseEvent) => {
     event.stopPropagation();
-    navigate("/dashboard/tutorial/last-step");
+    navigate("/onboarding/tutorial/last-step");
   };
 
   return (

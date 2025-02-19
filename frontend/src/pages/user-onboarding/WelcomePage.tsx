@@ -17,7 +17,7 @@ const WelcomePage = () => {
   // Handle click or key press event to navigate to /dashboard/home
   const handleNavigate = () => {
     console.log("Navigating to /tutorial/step-one...");
-    navigate("/dashboard/tutorial/step-one");
+    navigate("/onboarding/tutorial/step-one");
   };
 
   useEffect(() => {

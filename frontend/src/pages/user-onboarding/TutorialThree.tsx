@@ -19,7 +19,7 @@ export default function TutorialThree() {
 
   const handleSkipTutorial = (event: React.MouseEvent) => {
     event.stopPropagation();
-    navigate("/dashboard/tutorial/last-step");
+    navigate("/onboarding/tutoriall/last-step");
   };
 
   const handleScreenClick = () => {
@@ -29,7 +29,7 @@ export default function TutorialThree() {
       console.log("First click detected");
     } else if (clickCount === 1) {
       console.log("Second click detected, navigating...");
-      navigate("/dashboard/tutorial/step-four");
+      navigate("/onboarding/tutorial/step-four");
     }
   };
 

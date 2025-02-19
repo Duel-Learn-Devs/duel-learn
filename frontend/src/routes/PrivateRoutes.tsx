@@ -10,15 +10,6 @@ import BuyPremium from "../components/BuyPremium";
 import CreateStudyMaterial from "../pages/dashboard/study-material/material-create/CreateStudyMaterial";
 import ViewStudyMaterial from "../pages/dashboard/study-material/view-study-material/ViewStudyMaterial";
 import SetUpQuestionType from "../pages/dashboard/play-battleground/SetUpQuestionType";
-import WelcomePage from "../pages/user-onboarding/WelcomePage";
-import TutorialOnePage from "../pages/user-onboarding/TutorialOne";
-import TutorialTwo from "../pages/user-onboarding/TutorialTwo";
-import Personalization from "../pages/user-onboarding/Personalization";
-import TutorialThree from "../pages/user-onboarding/TutorialThree";
-import TutorialFour from "../pages/user-onboarding/TutorialFour";
-import TutorialFive from "../pages/user-onboarding/TutorialFive";
-import TutorialSix from "../pages/user-onboarding/TutorialSix";
-import TutorialLast from "../pages/user-onboarding/TutorialLast";
 import WelcomeGameMode from "../pages/dashboard/play-battleground/WelcomeGameMode";
 import SetUpTimeQuestion from "../pages/dashboard/play-battleground/time-pressured/SetUptTimeQuestion";
 
@@ -26,6 +17,8 @@ import PVPLobby from "../pages/dashboard/play-battleground/multiplayer-mode/PVPL
 import { useState } from "react"; // Import useState
 import VerifyEmail from "../pages/user-account/VerifyEmail";
 import CheckYourMail from "../pages/user-account/CheckYourMail";
+import UserOnboardingRoutes from "./UserOnboardingRoutes"; // Import UserOnboardingRoutes
+import DashboardRoutes from "./DashboardRoutes"; // Import DashboardRoutes
 
 const PrivateRoutes = () => {
   const { user } = useUser();
@@ -40,34 +33,12 @@ const PrivateRoutes = () => {
   return (
     <Routes>
       {/* Onboarding and Tutorial Routes */}
-      <Route path="welcome" element={<WelcomePage />} />
-      <Route path="tutorial/step-one" element={<TutorialOnePage />} />
-      <Route path="tutorial/step-two" element={<TutorialTwo />} />
-      <Route path="tutorial/step-three" element={<TutorialThree />} />
-      <Route path="tutorial/step-four" element={<TutorialFour />} />
-      <Route path="tutorial/step-five" element={<TutorialFive />} />
-      <Route path="tutorial/step-six" element={<TutorialSix />} />
-      <Route path="tutorial/last-step" element={<TutorialLast />} />
-
-      <Route path="my-preferences" element={<Personalization />} />
+      <Route path="onboarding/*" element={<UserOnboardingRoutes />} /> {/* Add UserOnboardingRoutes */}
 
       {/* Routes for the main dashboard after onboarding */}
-      <Route element={<DashboardLayout />}>
-        <Route
-          path="home"
-          element={<Home setSelectedIndex={setSelectedIndex} />}
-        />
-        <Route path="explore" element={<Explore />} />
-        <Route path="my-library" element={<YourLibrary />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="shop" element={<Shop />} />
-        <Route path="study-material/create" element={<CreateStudyMaterial />} />
-        <Route
-          path="study-material/preview/:studyMaterialId"
-          element={<ViewStudyMaterial />}
-        />
-      </Route>
-      <Route path ="verify-email" element={<VerifyEmail />} />
+      <Route path="/*" element={<DashboardRoutes setSelectedIndex={setSelectedIndex} />} /> {/* Add DashboardRoutes */}
+      
+      <Route path="verify-email" element={<VerifyEmail />} />
       <Route path="/check-your-mail" element={<CheckYourMail />} />
 
       {/* Route for buying premium account */}

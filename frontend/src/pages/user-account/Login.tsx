@@ -74,7 +74,7 @@ const Login = () => {
 
         setTimeout(() => {
           if (userData.isNew) {
-            navigate("/dashboard/welcome");
+            navigate("/onboarding/welcome");
           } else {
             navigate("/dashboard/home");
           }
@@ -135,7 +135,7 @@ const Login = () => {
 
         setTimeout(() => {
           if (userData.isNew) {
-            navigate("/dashboard/welcome");
+            navigate("/onboarding/welcome");
           } else {
             navigate("/dashboard/home");
           }

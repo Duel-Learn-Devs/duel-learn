@@ -13,18 +13,11 @@ import ConfirmationAccount from "../pages/user-account/ConfirmationAccount";
 import NotFoundPage from "../pages/user-account/NotFoundPage";
 import ResetPassword from "../pages/user-account/ResetPassword";
 import SuccessReset from "../pages/user-account/SuccessReset";
-import Personalization from "../pages/user-onboarding/Personalization";
-import TutorialLast from "../pages/user-onboarding/TutorialLast";
-import TutorialSix from "../pages/user-onboarding/TutorialSix";
-import TutorialFive from "../pages/user-onboarding/TutorialFive";
-import TutorialThree from "../pages/user-onboarding/TutorialThree";
-import TutorialFour from "../pages/user-onboarding/TutorialFour";
-import TutorialTwo from "../pages/user-onboarding/TutorialTwo";
-import TutorialOnePage from "../pages/user-onboarding/TutorialOne";
-import WelcomePage from "../pages/user-onboarding/WelcomePage";
+
 import EmailActionHandler from "../pages/user-account/EmailActionHandler"; // Import EmailActionHandler
 import EmailVerified from "../pages/user-account/EmailVerified"; // Import EmailVerified
 import LoadingScreen from "../components/LoadingScreen";
+import UserOnboardingRoutes from "./UserOnboardingRoutes"; // Import UserOnboardingRoutes
 
 const AppRoutes: React.FC = () => {
   const location = useLocation();
@@ -51,6 +44,7 @@ const AppRoutes: React.FC = () => {
         <Route path="*" element={<NotFoundPage />} />
         <Route path="/loading" element={<LoadingScreen />} />
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
+        <Route path="/onboarding/*" element={<UserOnboardingRoutes />} /> {/* Add UserOnboardingRoutes */}
       </Routes>
     </AnimatePresence>
   );

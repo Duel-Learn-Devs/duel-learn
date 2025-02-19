@@ -39,13 +39,13 @@ export default function TutorialTwo() {
         setKey(prevKey => prevKey + 1); // Restart Typewriter
       }, 100);
     } else {
-      navigate("/dashboard/tutorial/step-three");
+      navigate("/onboarding/tutorial/step-three");
     }
   };
 
   const handleSkipTutorial = (event: React.MouseEvent) => {
     event.stopPropagation();
-    navigate("/dashboard/tutorial/last-step");
+    navigate("/onboarding/tutorial/last-step");
   };
 
   return (

@@ -40,7 +40,7 @@ const Personalization: React.FC = () => {
 
   const handleClickDone = () => {
     alert(`Selected topics: ${selectedSubjects.join(", ")}`);
-    navigate("/dashboard/tutorial/step-two");
+    navigate("/onboarding/tutorial/step-two");
   };
 
   const handleSubjectClick = (subject: string) => {
@@ -94,7 +94,7 @@ const Personalization: React.FC = () => {
             }}
             onClick={() => {
               setSelectedSubjects([]);
-              navigate("/dashboard/tutorial/step-two");
+              navigate("/onboarding/tutorial/step-two");
             }}
           >
             Skip
