@@ -27,22 +27,37 @@ const Leaderboards = () => {
         style={{ borderColor: "#3B354C", borderWidth: "3px" }}
       >
         <div className="px-8 pt-8 ">
-          <div className="flex flex-row items-center mb-5">
-            <div className="bg-white w-9 h-9 rounded mr-3"></div>
-            <h2 className="text-xl text-[#FFFFFF] font-semibold">Leaderboards</h2>
+          <div className="flex flex-row items-center mb-5 gap-4">
+            <img
+              src="/leaderboard.png"
+              className="w-[34px] h-[35px] ml-2"
+              alt="icon"
+            />
+            <h2 className="text-xl text-[#FFFFFF] font-semibold">
+              Leaderboards
+            </h2>
           </div>
           <hr className="border-t-1 border-[#ffffff] mb-7" />
           {covenHierarchy.slice(0, 4).map((member, index) => (
-            <div key={member.id} className="flex items-center justify-between mb-5">
+            <div
+              key={member.id}
+              className="flex items-center justify-between mb-5"
+            >
               <div className="flex items-center">
-                {index >= 3 && <p className="text-lg font-semibold mr-3">{index + 1}</p>}
+                {index >= 3 && (
+                  <p className="text-lg font-semibold mr-3">{index + 1}</p>
+                )}
                 <div
-                  className={`relative ${index >= 3 ? "w-10 h-10" : "w-12 h-12"} mr-3`}
+                  className={`relative ${
+                    index >= 3 ? "w-10 h-10" : "w-12 h-12"
+                  } mr-3`}
                 >
                   <img
                     src={member.avatar}
                     alt="Avatar"
-                    className={`w-full h-full rounded-[5px] ${index >= 3 ? "object-contain" : ""}`}
+                    className={`w-full h-full rounded-[5px] ${
+                      index >= 3 ? "object-contain" : ""
+                    }`}
                   />
                 </div>
                 <p className="font-medium">{member.name}</p>
@@ -72,7 +87,9 @@ const Leaderboards = () => {
           >
             <div className="flex items-center justify-center">
               <div className="bg-white w-8 h-8 rounded mr-4"></div>
-              <h2 className="text-xl text-[#FFFFFF] font-semibold">Top 10 Leaderboards</h2>
+              <h2 className="text-xl text-[#FFFFFF] font-semibold">
+                Top 10 Leaderboards
+              </h2>
             </div>
             {/* Add a horizontal rule here */}
             <hr className="border-t-2 border-[#363D46] w-full mb-6" />
@@ -80,9 +97,14 @@ const Leaderboards = () => {
             {/* Scrollable content area with custom scrollbar */}
             <div className="overflow-y-auto h-[450px] w-full scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-7 flex-grow">
               {covenHierarchy.map((member, index) => (
-                <div key={member.id} className="flex items-center justify-between px-7">
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between px-7"
+                >
                   <div className="flex items-center space-x-4">
-                    <p className="text-lg font-semibold text-[#FFFFFF]">{index + 1}</p>
+                    <p className="text-lg font-semibold text-[#FFFFFF]">
+                      {index + 1}
+                    </p>
                     <div className={`relative w-12 h-12`}>
                       <img
                         src={member.avatar}
@@ -99,11 +121,6 @@ const Leaderboards = () => {
           </div>
         </div>
       )}
-
-
-
-
-
     </div>
   );
 };

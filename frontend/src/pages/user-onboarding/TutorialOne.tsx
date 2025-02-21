@@ -40,7 +40,7 @@ const TutorialOnePage: React.FC = () => {
         setKey(prevKey => prevKey + 1); // Restart Typewriter
       }, 100);
     } else {
-      navigate("/dashboard/tutorial/step-two");
+      navigate("/dashboard/my-preferences");
     }
   };
 
@@ -52,11 +52,11 @@ const TutorialOnePage: React.FC = () => {
       >
         {/* Sparkles Container */}
         <div id="sparkles-container"></div>
-        
+
         {/* Magic Wand Cursor */}
         <div className="wand-cursor"></div>
 
-       {/* Animated Background Glow */}
+        {/* Animated Background Glow */}
         <div className="absolute w-[500px] h-[500px] bg-[#6B21A8] blur-[250px] rounded-full opacity-40 animate-pulse"></div>
 
         {/* Dialogue Box Container */}

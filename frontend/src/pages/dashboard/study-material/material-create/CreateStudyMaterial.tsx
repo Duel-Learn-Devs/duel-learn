@@ -10,11 +10,13 @@ import {
   TextField,
   Chip,
 } from "@mui/material";
+import { nanoid } from "nanoid";
 import ItemComponent from "./ItemComponent";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
-import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the path if needed
+import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
+// path if needed
 
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
@@ -29,6 +31,7 @@ const CreateStudyMaterial = () => {
       id: number;
       term: string;
       definition: string;
+      image?: File | null;
     }[]
   >([]);
 
@@ -57,8 +60,11 @@ const CreateStudyMaterial = () => {
     setItems(items.filter((item) => item.id !== id));
   };
 
-  const handleUpdateItem = (id: number, field: string, value: string) => {
-    // Update the corresponding item in the state
+  const handleUpdateItem = (
+    id: number,
+    field: string,
+    value: string | File | null
+  ) => {
     setItems(
       items.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
@@ -84,28 +90,33 @@ const CreateStudyMaterial = () => {
       return;
     }
 
+    // Convert images to Base64
+    const itemsWithBase64 = await Promise.all(
+      items.map(async (item) => {
+        if (item.image) {
+          const base64Image = await convertFileToBase64(item.image);
+          return { ...item, image: base64Image };
+        }
+        return item;
+      })
+    );
+
     const studyMaterial = {
-      studyMaterialId: crypto.randomUUID(),
+      studyMaterialId: nanoid(),
       title,
       tags,
       totalItems: items.length,
-      terms: items.map((item) => item.term),
-      definitions: items.map((item) => item.definition),
-      images: [],
       visibility: 0,
       createdBy: user.displayName,
+      items: itemsWithBase64, // Send modified items
     };
-
-    console.log("Attempting to save:", studyMaterial);
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/studyMaterial/save-study-material",
+        "http://localhost:5000/api/study-material/save",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(studyMaterial),
         }
       );
@@ -117,16 +128,20 @@ const CreateStudyMaterial = () => {
       }
 
       const data = await response.json();
-      console.log("Study material saved:", data);
-
-      if (data.studyMaterialId) {
-        navigate(`/dashboard/study-material/preview/${data.studyMaterialId}`);
-      } else {
-        console.error("Missing studyMaterialId in response:", data);
-      }
+      navigate(`/dashboard/study-material/preview/${data.studyMaterialId}`);
     } catch (error) {
       console.error("Failed to save study material:", error);
     }
+  };
+
+  // Function to convert a File to Base64
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
   };
 
   const handleUploadFile = () => {
@@ -146,7 +161,7 @@ const CreateStudyMaterial = () => {
     <>
       <PageTransition>
         <Box className="h-screen w-full px-8">
-          <DocumentHead title="Create Study Material" />
+          <DocumentHead title={title || "Create Study Material"} />
           <Stack spacing={2.5}>
             {/* Title Input */}
             <Box className="sticky top-4 z-10">
@@ -254,7 +269,7 @@ const CreateStudyMaterial = () => {
                     value={currentTag}
                     onChange={(e) => setCurrentTag(e.target.value)}
                     onKeyDown={handleAddTag}
-                    placeholder="Add a tag"
+                    placeholder="Press enter"
                     style={{
                       border: "none",
                       outline: "none",

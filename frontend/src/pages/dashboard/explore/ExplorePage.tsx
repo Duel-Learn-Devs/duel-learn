@@ -2,33 +2,68 @@ import { Box, Stack, Button, Typography } from "@mui/material";
 import { useState, useEffect } from "react";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
-
 import ExploreCards from "./ExploreCards";
+import { useUser } from "../../../contexts/UserContext";
 
-type CardData = {
+interface Item {
+  term: string;
+  definition: string;
+  image?: string | null; // Update to string for Base64 images
+}
+
+interface StudyMaterial {
   title: string;
-  totalItems: number;
   tags: string[];
-  creator: string;
-  clicked: number;
-  mutual?: string;
-};
+  images: string[];
+  total_items: number;
+  created_by: string;
+  total_views: number;
+  visibility: number;
+  created_at: string;
+  study_material_id: string;
+
+  items: Item[]; // Expecting an array of terms and definitions
+}
 
 const ExplorePage = () => {
-  const [selected, setSelected] = useState<number | null>(null);
-  const [cards, setCards] = useState<CardData[]>([]);
-  const [filteredCards, setFilteredCards] = useState<CardData[]>([]);
+  const { user } = useUser();
+  const [selected, setSelected] = useState<number>(0);
+  const [cards, setCards] = useState<StudyMaterial[]>([]);
+  const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
 
-  // Fetch cards data on component mount
   useEffect(() => {
-    fetch("/mock-data/StudyMaterialDetails.json")
+    if (user?.displayName) {
+      const encodedUser = encodeURIComponent(user.displayName);
+      fetch(
+        `http://localhost:5000/api/study-material/get-recommended-for-you/${encodedUser}`
+      )
+        .then((response) => response.json())
+        .then((data: StudyMaterial[]) => {
+          if (Array.isArray(data)) {
+            setCards(data);
+            setFilteredCards(data);
+          } else {
+            console.error("Unexpected response format:", data);
+          }
+        })
+        .catch((error) =>
+          console.error("Error fetching recommended cards:", error)
+        );
+    }
+  }, [user]);
+
+  const fetchTopPicks = () => {
+    fetch("http://localhost:5000/api/study-material/get-top-picks")
       .then((response) => response.json())
-      .then((data: CardData[]) => {
-        setCards(data);
-        setFilteredCards(data);
+      .then((data: StudyMaterial[]) => {
+        if (Array.isArray(data)) {
+          setFilteredCards(data);
+        } else {
+          console.error("Unexpected response format:", data);
+        }
       })
-      .catch((error) => console.error("Error fetching cards data:", error));
-  }, []);
+      .catch((error) => console.error("Error fetching top picks:", error));
+  };
 
   const handleClick = (index: number) => {
     setSelected(index);
@@ -37,15 +72,15 @@ const ExplorePage = () => {
     // Apply filter based on the selected breadcrumb
     switch (index) {
       case 0: // "Recommended for you"
-        setFilteredCards(cards); // Show all cards
+        setFilteredCards(cards);
         break;
-      case 1: // "Top picks" - Show top 3 most clicked cards
-        setFilteredCards(
-          [...cards].sort((a, b) => b.clicked - a.clicked).slice(0, 3)
-        ); // Top 3 most clicked
+      case 1: // "Top picks" - Get top 3 unique total_views
+        fetchTopPicks();
         break;
       case 2: // "Made by friends" - Show cards with mutual set to "true"
-        setFilteredCards(cards.filter((card) => card.mutual === "true"));
+        setFilteredCards(
+          cards.filter((card) => card.created_by === user?.displayName)
+        );
         break;
       default:
         setFilteredCards(cards);

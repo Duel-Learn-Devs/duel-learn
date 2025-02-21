@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import axios from "axios";
+import { toast } from "react-hot-toast";
 import {
   auth,
   googleProvider,
@@ -35,6 +37,7 @@ const SignUp = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
   const { signUpApi } = useSignUpApi();
   const { apiError, handleApiError } = useApiError();
   useEffect(() => {
@@ -70,11 +73,13 @@ const SignUp = () => {
         email,
         password
       );
+
       const token = await result.user.getIdToken();
       const additionalUserInfo = getAdditionalInfo(result);
       const userData = {
         firebaseToken: token,
         firebase_uid : result.user.uid,
+
         username: username,
         email: email,
         display_picture: null,
@@ -99,7 +104,6 @@ const SignUp = () => {
         account_type: userData.account_type,
       });
       
-
       // Call the API
       await signUpApi(
         userData.firebase_uid, 
@@ -110,6 +114,7 @@ const SignUp = () => {
         false);
 
       console.log("signUpApi", signUpApi);
+
       setFormData({
         username: "",
         password: "",
@@ -179,6 +184,7 @@ const SignUp = () => {
         true,
         result.user.emailVerified
       );
+
       setTimeout(() => {
         if (userData.isNew) {
           navigate("/dashboard/welcome");
@@ -212,11 +218,13 @@ const SignUp = () => {
               {successMessage}
             </div>
           )}
+
           {apiError && (
             <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
               {apiError}
             </div>
           )}
+
           <form onSubmit={handleSubmit}>
             <div className="relative mb-4">
               <input
@@ -248,6 +256,7 @@ const SignUp = () => {
                   setFormData({ ...formData, password: e.target.value });
                   validate("password", e.target.value);
                 }}
+
                 onCopy={(e) => e.preventDefault()} // Disable copy
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
@@ -277,6 +286,7 @@ const SignUp = () => {
                   setFormData({ ...formData, confirmPassword: e.target.value });
                   validate("confirmPassword", e.target.value, formData);
                 }}
+
                 onPaste={(e) => e.preventDefault()} // Disable paste
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
@@ -316,12 +326,14 @@ const SignUp = () => {
                 }}
               />
               <label htmlFor="terms" className="ml-2 text-[#9F9BAE] text-sm">
+
                 I agree to {""}
                 <Link to="/terms-and-conditions" target="_blank"
                 className="text-[#4D18E8] underline hover:text-[#4D18E8]"
                 >
                 Terms and Conditions
                 </Link>
+
               </label>
             </div>
             {errors.terms && (

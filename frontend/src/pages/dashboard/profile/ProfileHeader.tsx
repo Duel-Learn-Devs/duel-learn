@@ -46,15 +46,15 @@ const ProfileHeader = () => {
       {/* Profile Info */}
       <div className="flex-1">
         <div className="flex items-center">
-          <h2 className="text-[22px] font-bold mr-3">{profileData.username}</h2>
+          <h2 className="text-[30px] font-bold mr-3">{profileData.username}</h2>
           <img
             src={PremiumLabel}
             alt="Profile Premium Icon"
-            className="w-[13px] h-[13px] rounded-sm mr-6"
+            className="w-[15px] h-[auto] rounded-sm mr-6"
           />
         </div>
         <div className="flex items-center justify-between">
-          <p className="text-[#6F658D] text-[13px] mt-1">
+          <p className="text-[#6F658D] text-[18px] mt-1">
             LVL {profileData.level}
           </p>
           <p className="text-[#6F658D] text-[13px] mt-1">
@@ -70,7 +70,7 @@ const ProfileHeader = () => {
           ></div>
         </div>
         {/* Friends */}
-        <p className="text-[#4D18E8] text-sm mt-2">
+        <p className="text-[#6F658D] text-[18px] mt-2">
           {profileData.friendsCount} Friends
         </p>
       </div>

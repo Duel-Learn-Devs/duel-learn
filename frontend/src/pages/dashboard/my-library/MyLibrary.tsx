@@ -2,72 +2,63 @@ import { useState, useEffect } from "react";
 import { Box, Typography, Stack } from "@mui/material";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
-
 import MyLibraryCards from "./MyLibraryCards";
 import Filter from "./Filter";
 import { useUser } from "../../../contexts/UserContext";
 
-// Define your card data types as before
+// Define StudyMaterial interface
+interface Item {
+  term: string;
+  definition: string;
+  image?: string | null; // Update to string for Base64 images
+}
+
 interface StudyMaterial {
   title: string;
   tags: string[];
+  images: string[];
   total_items: number;
   created_by: string;
-  visibility: number; // 0 = private, 1 = public
+  visibility: number;
   created_at: string;
   total_views: number;
   study_material_id: string;
+  items: Item[]; // Expecting an array of terms and definitions
 }
 
 const MyLibraryPage = () => {
   const { user } = useUser();
-  const created_by = user?.displayName; // Placeholder for the current user
+  const created_by = user?.displayName;
   const [cards, setCards] = useState<StudyMaterial[]>([]);
   const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
   const [count, setCount] = useState<number>(0);
   const [filter, setFilter] = useState<string | number>("all");
   const [sort, setSort] = useState<string | number>("most recent");
 
+  // Fetch study materials created by the user
   useEffect(() => {
-    if (!created_by) return;
+    const fetchStudyMaterials = async () => {
+      if (!created_by) return;
 
-    fetch(
-      `http://localhost:5000/api/studyMaterial/view-your-study-material/${created_by}`
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("API Response:", data);
-
-        if (
-          data.message === "Study materials fetched successfully" &&
-          Array.isArray(data.data)
-        ) {
-          const parsedData = data.data.map((item: any) => ({
-            ...item,
-            // Handle the 'tags' field correctly
-            tags:
-              typeof item.tags === "string" ? item.tags.split(",") : item.tags,
-          }));
-
-          setCards(parsedData);
-        } else {
-          console.error("Unexpected API response format:", data);
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/study-material/get-by-user/${created_by}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch study materials");
         }
-      })
+        const data = await response.json();
+        setCards(data);
+      } catch (error) {
+        console.error("Error fetching study materials:", error);
+      }
+    };
 
-      .catch((error) => console.error("Error fetching study material:", error));
+    fetchStudyMaterials();
   }, [created_by]);
 
-  const handleFilterChange = (newFilter: string | number) => {
-    setFilter(newFilter);
-  };
-
-  const handleSortChange = (newSort: string | number) => {
-    setSort(newSort);
-  };
-
   useEffect(() => {
-    let filteredData = cards.filter((card) => card.created_by === created_by);
+    let filteredData = cards;
 
     // Apply visibility filter
     if (filter !== "all") {
@@ -126,7 +117,7 @@ const MyLibraryPage = () => {
                   { value: "archive", label: "Archive" },
                 ]}
                 value={filter}
-                onChange={handleFilterChange}
+                onChange={setFilter}
               />
               <Filter
                 menuItems={[
@@ -136,7 +127,7 @@ const MyLibraryPage = () => {
                   { value: "Z-A", label: "Z-A" },
                 ]}
                 value={sort}
-                onChange={handleSortChange}
+                onChange={setSort}
               />
             </Stack>
           </Stack>

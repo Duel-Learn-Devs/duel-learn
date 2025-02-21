@@ -49,6 +49,33 @@ const Personalization: React.FC = () => {
     );
   };
 
+  const handleScroll = (topicIndex: number, direction: "left" | "right") => {
+    setVisibleIndices((prev) => {
+      const newIndices = [...prev];
+      const totalSubjects = topics[topicIndex].subjects.length;
+      const maxIndex = Math.max(0, totalSubjects - 5);
+
+      if (direction === "left" && newIndices[topicIndex] > 0) {
+        newIndices[topicIndex] -= 1;
+      }
+      if (direction === "right" && newIndices[topicIndex] < maxIndex) {
+        newIndices[topicIndex] += 1;
+      }
+
+      return newIndices;
+    });
+  };
+
+  if (!isLoaded) {
+    return (
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen w-full bg-[#080511]">
+          <div className="border-8 border-white border-opacity-20 border-t-white rounded-full w-12 h-12 animate-spin"></div>
+        </div>
+      </PageTransition>
+    );
+  };
+
   const handleScrollAnimated = (topicIndex: number, direction: "left" | "right") => {
     setVisibleIndices((prev) => {
       const newIndices = [...prev];
@@ -75,14 +102,12 @@ const Personalization: React.FC = () => {
           alt="Personalization Background"
           className="absolute top-0 left-1/2 transform -translate-x-1/2 w-full h-auto z-[-1]"
         />
-  
         {/* Purple Gem Icon */}
         <img
           src={PurpleGem}
           alt="Purple Gem"
           className="absolute top-[110px] left-1/2 transform -translate-x-1/2 w-[100px] h-[100px]"
         />
-  
         {/* Skip and Done Buttons */}
         <div className="mt-8 mr-20 flex justify-end w-full gap-4">
           <Button
@@ -99,7 +124,6 @@ const Personalization: React.FC = () => {
           >
             Skip
           </Button>
-
           {selectedSubjects.length > 0 && (
             <Button
               sx={{
@@ -115,13 +139,13 @@ const Personalization: React.FC = () => {
             </Button>
           )}
         </div>
-  
+
         {/* Title */}
         <h1 className="text-3xl font-bold mb-5 mt-36">Your Magical Journey Starts Here!</h1>
         <p className="text-lg mb-20 text-center text-[#786d99]">
           Select topics to open the gates to a world of personalized discovery.
         </p>
-  
+
         {/* Categories and Subjects */}
         <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
           {topics.map((category, topicIndex) => {

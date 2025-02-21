@@ -23,11 +23,6 @@ const Profile = () => {
 
         {/* Leaderboards Section */}
         <Leaderboards />
-
-        {/* Footer */}
-        <div className="mb-11">
-          <Footer />
-        </div>
       </div>
     </PageTransition>
   );

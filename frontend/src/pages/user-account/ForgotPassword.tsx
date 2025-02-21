@@ -149,6 +149,7 @@ const ForgotPassword = () => {
           </form>
         </div>
       </div>
+
       <Modal
         open={isSSOModalOpen}
         onClose={() => setIsSSOModalOpen(false)}

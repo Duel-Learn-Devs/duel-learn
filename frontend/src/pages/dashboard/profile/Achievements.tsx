@@ -67,7 +67,7 @@ const Achievements = () => {
 
   return (
     <div>
-      <h3 className="text-white text-2xl font-bold mb-5">
+      <h3 className="text-white text-2xl font-semibold mb-5">
         Achievements ({achievements.filter((a) => a.progress === 100).length}/
         {achievements.length})
       </h3>

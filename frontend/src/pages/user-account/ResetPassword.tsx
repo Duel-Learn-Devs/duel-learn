@@ -53,6 +53,7 @@ const ResetPassword = () => {
     confirmPassword: "", // New field for confirming password
   });
 
+
   const { errors, validatePassword, validatePasswordForm } = usePasswordValidation();
 
   const [loading, setLoading] = useState(false); // Loading state for the submit button
@@ -113,6 +114,7 @@ const ResetPassword = () => {
 
   const handleInputChange = (field: string, value: string) => {
     // Update the input value
+
     setFormData((prevData) => {
       const updatedData = { ...prevData, [field]: value };
       // Validate the field on change
@@ -238,6 +240,7 @@ const ResetPassword = () => {
               )}
             </div>
 
+
             {/* Submit Button */}
             <button
               type="submit"
@@ -253,6 +256,7 @@ const ResetPassword = () => {
           </form>
         </div>
       </div>
+
       <Modal
         open={isInvalidModalOpen}
         onClose={() => setIsInvalidModalOpen(false)}

@@ -9,27 +9,39 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/system";
 
+interface Item {
+  term: string;
+  definition: string;
+  image?: string | null; // Update to string for Base64 images
+}
+
 interface CardComponentProps {
   title: string;
-  totalItems: number;
   tags: string[];
-  creator: string;
-  clicked?: number;
-  mutual?: string;
-  date?: string;
-  filter?: string;
-  createdBy?: string;
+  images: string[];
+  totalItems: number;
+  createdBy: string;
+  totalViews: number;
+  createdAt: string;
+  visibility: number;
+  items: Item[];
   onClick?: () => void; // Optional onClick prop to handle card clicks
 }
 
 const CardComponent: React.FC<CardComponentProps> = ({
   title,
-  totalItems,
   tags,
-  creator,
-  clicked,
+  images,
+  totalItems,
+  createdBy,
+  totalViews,
+  createdAt,
+  visibility,
+  items,
   onClick, // Destructured onClick handler
 }) => {
+  const safeTags = Array.isArray(tags) ? tags : []; // Ensure it's always an array
+
   const ModeCard = styled(Card)(() => ({
     display: "flex",
     flexDirection: "column",
@@ -87,17 +99,15 @@ const CardComponent: React.FC<CardComponentProps> = ({
               >
                 &#x2022;
               </Typography>
-              {clicked && (
-                <Typography
-                  sx={{
-                    color: "#000000",
-                    fontSize: "0.7rem",
-                    fontWeight: "600",
-                  }}
-                >
-                  {clicked} Views
-                </Typography>
-              )}
+              <Typography
+                sx={{
+                  color: "#000000",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                }}
+              >
+                {totalViews} Views
+              </Typography>
             </Stack>{" "}
             <Typography
               variant="h6"
@@ -107,7 +117,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
               {title}
             </Typography>
             <Stack direction="row" spacing={1} className="w-auto mb-3">
-              {tags.map((tag, index) => (
+              {safeTags.map((tag, index) => (
                 <Chip
                   key={index}
                   label={tag}
@@ -132,7 +142,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
                 paddingLeft: "1px",
               }}
             >
-              Made by <strong>{creator}</strong>
+              Made by <strong>{createdBy}</strong>
             </Typography>
           </Stack>
         </Box>

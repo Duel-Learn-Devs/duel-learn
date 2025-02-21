@@ -3,26 +3,59 @@ import { Box, Fab } from "@mui/material";
 import CardComponent from "../../../components/CardComponent";
 import NextIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
+import { useUser } from "../../../contexts/UserContext";
+import { useNavigate } from "react-router-dom";
 
-type CardData = {
+interface Item {
+  term: string;
+  definition: string;
+  image?: string | null; // Update to string for Base64 images
+}
+
+interface StudyMaterial {
   title: string;
-  totalItems: number;
   tags: string[];
-  creator: string;
-};
+  images: string[];
+  total_items: number;
+  created_by: string;
+  total_views: number;
+  visibility: number;
+  created_at: string;
+  study_material_id: string;
+  items: Item[]; // Expecting an array of terms and definitions
+}
 
 const DiscoverMore = () => {
-  const [cards, setCards] = useState<CardData[]>([]);
+  const { user } = useUser();
+  const navigate = useNavigate();
+  const [cards, setCards] = useState<StudyMaterial[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardsToShow = 3; // Number of cards to display at once
   const cardWidth = 100 / cardsToShow; // Each card takes a fraction of the total width
 
   useEffect(() => {
-    fetch("/mock-data/StudyMaterialDetails.json")
-      .then((response) => response.json())
-      .then((data: CardData[]) => setCards(data))
-      .catch((error) => console.error("Error fetching cards data:", error));
-  }, []);
+    if (user?.displayName) {
+      fetch(
+        `http://localhost:5000/api/study-material/non-matching-tags/${user.displayName}`
+      )
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data: StudyMaterial[]) => setCards(data))
+        .catch((error) => {
+          console.error("Error fetching cards data:", error);
+          // Log the response text for debugging
+          fetch(
+            `http://localhost:5000/api/study-material/non-matching-tags/${user.displayName}`
+          )
+            .then((response) => response.text())
+            .then((text) => console.log("Response text:", text));
+        });
+    }
+  }, [user]);
 
   const handleNext = () => {
     if (currentIndex + cardsToShow < cards.length) {
@@ -33,6 +66,23 @@ const DiscoverMore = () => {
   const handlePrev = () => {
     if (currentIndex > 0) {
       setCurrentIndex((prevIndex) => prevIndex - 1);
+    }
+  };
+
+  const handleCardClick = async (studyMaterialId: string, title: string) => {
+    try {
+      await fetch(
+        `http://localhost:5000/api/study-material/increment-views/${studyMaterialId}`,
+        {
+          method: "POST",
+        }
+      );
+
+      navigate(`/dashboard/study-material/preview/${studyMaterialId}`, {
+        state: { title },
+      });
+    } catch (error) {
+      console.error("Error updating total views:", error);
     }
   };
 
@@ -66,9 +116,17 @@ const DiscoverMore = () => {
           >
             <CardComponent
               title={item.title}
-              totalItems={item.totalItems}
               tags={item.tags}
-              creator={item.creator}
+              images={item.images}
+              totalItems={item.total_items}
+              createdBy={item.created_by}
+              totalViews={item.total_views}
+              createdAt={item.created_at}
+              visibility={item.visibility}
+              items={item.items}
+              onClick={() =>
+                handleCardClick(item.study_material_id, item.title)
+              }
             />
           </Box>
         ))}

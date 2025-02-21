@@ -68,7 +68,7 @@ const RecentlyOpened = () => {
               title={item.title}
               totalItems={item.totalItems}
               tags={item.tags}
-              creator={item.creator}
+              createdBy={item.creator}
             />
           </Box>
         ))}

@@ -10,7 +10,7 @@ const Statictics = () => {
 
   return (
     <div>
-      <h3 className="text-white text-2xl font-bold mb-5">Statistics</h3>
+      <h3 className="text-white text-2xl font-semibold mb-5">Statistics</h3>
       <div
         className="rounded-sm px-5 py-8 mb-10"
         style={{ border: "1px solid #6F658D" }}

@@ -155,8 +155,6 @@ const Shop = () => {
           handleIncrement={handleIncrement}
           handleDecrement={handleDecrement}
         />
-
-        <Footer />
       </div>
     </PageTransition>
   );

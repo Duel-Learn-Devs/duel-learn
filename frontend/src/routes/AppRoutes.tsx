@@ -41,13 +41,23 @@ const AppRoutes: React.FC = () => {
         <Route path="/check-your-mail" element={<CheckYourMail />} />
         <Route path="/loading-screen" element={<LoadingScreen />} />
         <Route path="/password-changed-successfully" element={<PasswordChangedSuccessfully />} />
-
-      
+        
+        {/* User onboarding routes */}
+        <Route path="/welcome" element={<WelcomePage />} />
+        <Route path="/tutorial/step-one" element={<TutorialOnePage />} />
+        <Route path="/tutorial/step-two" element={<TutorialTwo />} />
+        <Route path="/tutorial/step-three" element={<TutorialThree />} />
+        <Route path="/tutorial/step-four" element={<TutorialFour />} />
+        <Route path="/tutorial/step-five" element={<TutorialFive />} />
+        <Route path="/tutorial/step-six" element={<TutorialSix />} />
+        <Route path="/tutorial/step-seven" element={<TutorialLast />} />
+        <Route path="/my-preferences" element={<Personalization />} />
+        
         <Route path="/confirmation-account" element={<ConfirmationAccount />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/success-reset" element={<SuccessReset />} />
-        <Route path="/email-action" element={<EmailActionHandler />} />
-        <Route path="/email-verified" element={<EmailVerified />} />
+        <Route path="/email-action" element={<EmailActionHandler />} />{" "}
+        <Route path="/email-verified" element={<EmailVerified />} />{" "}
         <Route path="*" element={<NotFoundPage />} />
         <Route path="/loading" element={<LoadingScreen />} />
         <Route path="/dashboard/*" element={<PrivateRoutes />} />

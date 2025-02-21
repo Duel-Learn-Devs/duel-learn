@@ -33,8 +33,8 @@ const FriendList: React.FC = () => {
         style={{ borderColor: "#3B354C", borderWidth: "3px" }}
       >
         <div className="px-8 pt-8 pb-5">
-          <div className="flex flex-row items-center mb-5">
-            <div className="bg-white w-9 h-8 rounded mr-3"></div>
+          <div className="flex flex-row items-center mb-5 gap-4">
+            <img src="/bunny.png" className="w-[41px] h-[35px]" alt="icon" />
             <h2 className="text-xl text-[#FFFFFF] font-semibold">
               Friend List
             </h2>
