@@ -26,7 +26,9 @@ import PVPLobby from "../pages/dashboard/play-battleground/multiplayer-mode/PVPL
 import { useState } from "react"; // Import useState
 import VerifyEmail from "../pages/user-account/VerifyEmail";
 import CheckYourMail from "../pages/user-account/CheckYourMail";
-
+import LoadingScreen from "../pages/dashboard/play-battleground/LoadingScreen";
+import MainFlashCardLayout from "../pages/dashboard/play-battleground/Peaceful-mode/MainFlashCardLayout";
+import SessionReport from "../pages/dashboard/play-battleground/SessionReport";
 const PrivateRoutes = () => {
   const { user } = useUser();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(1); // Define state
@@ -79,6 +81,11 @@ const PrivateRoutes = () => {
       <Route path="/setup/questions" element={<SetUpQuestionType />} />
       <Route path="/setup/timer" element={<SetUpTimeQuestion />} />
       <Route path="/pvp-lobby" element={<PVPLobby />} />
+      <Route path="/loading-screen" element={<LoadingScreen />} />
+      <Route path="/study/session-summary" element={<SessionReport />} />
+      
+      {/* Route for peaceful mode*/}
+      <Route path="/study/peaceful-mode/flashcards" element={<MainFlashCardLayout />} />
     </Routes>
   );
 };

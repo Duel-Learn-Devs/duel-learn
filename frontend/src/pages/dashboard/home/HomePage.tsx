@@ -6,7 +6,6 @@ import PageTransition from "../../../styles/PageTransition";
 import ChooseYourChallenge from "../../../components/ChooseYourChallenge";
 import DiscoverMore from "./DiscoverMore";
 import RecentlyOpened from "./RecentlyOpened";
-import PremiumAdsBG from "../../../assets/shop-picture/premium-ads-bg.png";
 
 
 const HomePage = ({
@@ -31,18 +30,18 @@ const HomePage = ({
             background: "linear-gradient(90deg, #9F87E5 0%, #6F58D9 100%)",
           }}
         >
-            <h1
-              className="text-white text-xl md:text-[29px] font-medium mb-2"
-              style={{ letterSpacing: "0.01em", lineHeight: "1.1" }}
-            >
-              Those gaps in your <br /> materials? Let’s fill ‘em up!
-            </h1>
+          <h1
+            className="text-white text-xl md:text-[29px] font-medium mb-2"
+            style={{ letterSpacing: "0.01em", lineHeight: "1.1" }}
+          >
+            Those gaps in your <br /> materials? Let’s fill ‘em up!
+          </h1>
           <p className="text-white text-sm md:text-[15px] mt-1 opacity-80">
             AI cross-referencing available in Duel-Learn Premium!
           </p>
           <button
             className="mt-4 px-6 py-2 text-sm md:text-base bg-white text-[#9F87E5] rounded-full font-bold"
-            onClick={() => navigate("/dashboard/buy-premium-account")}
+            onClick={() => navigate("/dashboard/shop")}
           >
             Learn More
           </button>

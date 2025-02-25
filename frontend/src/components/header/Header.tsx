@@ -38,9 +38,9 @@ export default function Header() {
         </IconButton>
       )}
       {/* Search Field */}
-      <div className="flex-1 max-w-xl pl-16">
+      <Box className="flex-1 sm:pl-4 lg:pl-10">
         <SearchField />
-      </div>
+      </Box>
       {/* Icon Section */}
       <div className="flex items-center space-x-2 sm:space-x-6 sm:pr-4">
         <StatsNProfile />

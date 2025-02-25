@@ -69,6 +69,11 @@ const RecentlyOpened = () => {
               totalItems={item.totalItems}
               tags={item.tags}
               createdBy={item.creator}
+              images={[]} // Provide appropriate value
+              totalViews={0} // Provide appropriate value
+              createdAt={new Date().toISOString()} // Provide appropriate value
+              visibility={1} // Provide appropriate value
+              items={[]} // Provide appropriate value
             />
           </Box>
         ))}

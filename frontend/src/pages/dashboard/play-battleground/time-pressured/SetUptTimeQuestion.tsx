@@ -21,7 +21,7 @@ const SetUpTimeQuestion: React.FC = () => {
   );
 
   const [timeLimit, setTimeLimit] = useState(10);
-  const [manaPoints, setManaPoints] = useState(0); // Example starting mana points
+  const [manaPoints, setManaPoints] = useState(10); // Example starting mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
 
   const handleSliderChange = (_event: Event, newValue: number | number[]) => {
@@ -44,8 +44,15 @@ const SetUpTimeQuestion: React.FC = () => {
       setOpenManaAlert(true); // Show the alert if mana points are below 10
     } else {
       console.log("Starting learning with time limit:", timeLimit, "seconds.");
-      // Add your logic for starting the learning process
-      // Navigate to the next step or execute relevant code
+      // Navigate to loading screen with all parameters
+      navigate("/dashboard/loading-screen", {
+        state: {
+          mode: "Time Pressured",
+          material,
+          selectedTypes,
+          timeLimit: timeLimit // Convert seconds to minutes
+        },
+      });
     }
   };
 

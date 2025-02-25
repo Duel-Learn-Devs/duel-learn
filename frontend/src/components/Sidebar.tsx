@@ -276,6 +276,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                         color: "#4D18E8",
                         transform: "scale(1.05)",
                       },
+                      "&.Mui-selected": {
+                        color: "#FFFFFF",
+                        fontWeight: "bold",
+                      },
                       transition: "all 0.3s ease",
                       justifyContent: collapsed ? "center" : "center",
                       padding: "0.6rem 1.6rem",

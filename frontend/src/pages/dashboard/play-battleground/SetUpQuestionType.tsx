@@ -15,10 +15,18 @@ const SetUpQuestionType: React.FC = () => {
   const { mode, material } = location.state || {};
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [questionTypes] = useState([
-    "Identification",
-    "Multiple Choice",
-    "True or False",
-    "Matching Type",
+    {
+      display: "Identification",
+      value: "identification"
+    },
+    {
+      display: "Multiple Choice",
+      value: "multiple-choice"
+    },
+    {
+      display: "True or False",
+      value: "true-false"
+    }
   ]);
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
   const [manaPoints, setManaPoints] = useState(10); // State for dynamic mana points
@@ -59,6 +67,17 @@ const SetUpQuestionType: React.FC = () => {
           mode,
           material,
           selectedTypes,
+        },
+      });
+    }
+    // If the mode is "Peaceful", navigate to LoadingScreen
+    else if (mode === "Peaceful") {
+      navigate("/dashboard/loading-screen", {
+        state: {
+          mode,
+          material,
+          selectedTypes,
+          timeLimit: null
         },
       });
     }
@@ -188,38 +207,35 @@ const SetUpQuestionType: React.FC = () => {
                 <div className="mt-5 space-y-2">
                   {questionTypes.map((type) => (
                     <div
-                      key={type}
+                      key={type.value}
                       className="flex justify-between items-center text-black py-2 sm:py-3 px-8 sm:px-10 md:px-14"
                     >
                       <span className="font-bold text-[14px] sm:text-[16px]">
-                        {type}
+                        {type.display}
                       </span>
 
                       {/* Toggle Button */}
                       <div
-                        onClick={() => toggleSelection(type)}
-                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${
-                          selectedTypes.includes(type) ? "bg-black" : "bg-black"
-                        }`}
+                        onClick={() => toggleSelection(type.value)}
+                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${selectedTypes.includes(type.value) ? "bg-black" : "bg-black"
+                          }`}
                       >
                         {/* Check Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${
-                            selectedTypes.includes(type)
-                              ? "bg-black text-[#461ABD]"
-                              : "bg-white text-[#461ABD]"
-                          } `}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${selectedTypes.includes(type.value)
+                            ? "bg-black text-[#461ABD]"
+                            : "bg-white text-[#461ABD]"
+                            } `}
                         >
                           <CloseIcon />
                         </div>
 
                         {/* Uncheck Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${
-                            selectedTypes.includes(type)
-                              ? "bg-white text-[#461ABD]"
-                              : "bg-black text-[#461ABD]"
-                          }`}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${selectedTypes.includes(type.value)
+                            ? "bg-white text-[#461ABD]"
+                            : "bg-black text-[#461ABD]"
+                            }`}
                         >
                           <CheckIcon />
                         </div>
