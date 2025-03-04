@@ -9,23 +9,6 @@ import {
   getAdditionalInfo,
   db,
 } from "../../services/firebase";
-<<<<<<< HEAD
-import { signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
-import { setDoc, doc, serverTimestamp } from "firebase/firestore";
-import "../../index.css";
-import { useUser } from "../../contexts/UserContext";
-import useValidation from "../../hooks/validation.hooks/useValidation";
-import useHandleError from "../../hooks/validation.hooks/useHandleError";
-import PageTransition from "../../styles/PageTransition";
-import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
-import useApiError from "../../hooks/api.hooks/useApiError";
-import LoadingScreen from "../../components/LoadingScreen";
-import bcrypt from "bcryptjs";
-
-const SignUp = () => {
-  const { setUser, user } = useUser();
-  const { handleLoginError } = useHandleError();
-=======
 import { signInWithPopup, createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
 import { setDoc, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import "../../index.css";
@@ -36,12 +19,10 @@ import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErrorHandler";
 import LoadingScreen from "../../components/LoadingScreen";
 import bcrypt from "bcryptjs";
-import useGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
 
-const SignUp = () => {
+const AdminSignUp = () => {
   const { setUser, user } = useUser();
   const { handleError, combinedError } = useCombinedErrorHandler();
->>>>>>> origin/beta-branch
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -55,13 +36,7 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const { signUpApi } = useSignUpApi();
-<<<<<<< HEAD
-  const { apiError, handleApiError } = useApiError();
   const [loading, setLoading] = useState(false);
-=======
-  const [loading, setLoading] = useState(false);
-  const { handleGoogleSignIn } = useGoogleSignIn();
->>>>>>> origin/beta-branch
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -82,10 +57,7 @@ const SignUp = () => {
         terms: terms.toString(),
       }))
     ) {
-<<<<<<< HEAD
-=======
       setLoading(false);
->>>>>>> origin/beta-branch
       return;
     }
 
@@ -110,7 +82,7 @@ const SignUp = () => {
         full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: false,
-        account_type: "free" as "free" | "premium",
+        account_type: "admin" as "free" | "premium" | "admin",
       };
 
       await setDoc(doc(db, "users", userData.firebase_uid), {
@@ -128,16 +100,6 @@ const SignUp = () => {
       });
 
       // Call the API
-<<<<<<< HEAD
-      await signUpApi(
-        userData.firebase_uid,
-        username,
-        email,
-        password,
-        false,
-        false
-      );
-=======
       try {
         await signUpApi(
           userData.firebase_uid,
@@ -153,7 +115,6 @@ const SignUp = () => {
         setLoading(false);
         return; // Exit the function if API call fails
       }
->>>>>>> origin/beta-branch
 
       console.log("signUpApi", signUpApi);
 
@@ -168,30 +129,17 @@ const SignUp = () => {
         "Account successfully created! Redirecting to login..."
       );
       setTimeout(() => {
-<<<<<<< HEAD
-        if (userData.isNew) {
-          navigate("/dashboard/welcome");
-        } else {
-=======
-        if (userData.isNew && userData.email_verified) {
-          navigate("/dashboard/welcome");
-        } 
-        else if(userData.isNew && userData.email_verified === false){
-          navigate("/dashboard/verify-email");
-        }
-        else if(userData.email_verified === false){
-          navigate("/dashboard/verify-email");
+        if (userData.account_type === "admin") {
+            navigate("/admin/admin-dashboard");
         }
         else {
->>>>>>> origin/beta-branch
           navigate("/dashboard/home");
         }
       }, 2000);
     } catch (error) {
       console.error("Registration error:", error);
-<<<<<<< HEAD
-      handleApiError(error);
-      setFormData((prev) => ({ ...prev, emailError: (error as any).message }));
+      handleError(error);
+      setLoading(false);
     }
   };
 
@@ -210,7 +158,7 @@ const SignUp = () => {
         full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: true,
-        account_type: "free" as "free" | "premium",
+        account_type: "admin" as "free" | "premium"| "admin",
       };
 
       await setDoc(doc(db, "users", userData.firebase_uid), {
@@ -241,29 +189,22 @@ const SignUp = () => {
       );
 
       setTimeout(() => {
-        if (userData.isNew) {
+        if (userData.isNew && userData.email_verified) {
           navigate("/dashboard/welcome");
-        } else {
+        } 
+        else if(userData.isNew && userData.email_verified === false){
+          navigate("/dashboard/verify-email");
+        }
+        else if(userData.email_verified === false){
+          navigate("/dashboard/verify-email");
+        }
+        else {
           navigate("/dashboard/home");
         }
       }, 2000);
     } catch (error: any) {
       setLoading(false);
-      handleLoginError(error);
-    }
-  };
-
-  if (loading) {
-    return (
-      <PageTransition>
-        <LoadingScreen />
-      </PageTransition>
-    ); // Show the loading screen
-  }
-
-=======
       handleError(error);
-      setLoading(false);
     }
   };
 
@@ -275,7 +216,6 @@ const SignUp = () => {
     ); // Show the loading screen
   }
 
->>>>>>> origin/beta-branch
   return (
     <PageTransition>
       <div className="font-aribau min-h-screen flex items-center justify-center">
@@ -287,7 +227,7 @@ const SignUp = () => {
         </header>
         <div className="p-8 rounded-lg shadow-md w-full max-w-md">
           <h1 className="text-3xl font-bold mb-2 text-center text-[#E2DDF3]">
-            Create an Account
+            Create an Admin Account
           </h1>
           <p className="text-lg mb-8 text-center text-[#9F9BAE]">
             Please enter your details to sign up.
@@ -298,15 +238,9 @@ const SignUp = () => {
             </div>
           )}
 
-<<<<<<< HEAD
-          {apiError && (
-            <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
-              {apiError}
-=======
           {combinedError && (
             <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
               {combinedError}
->>>>>>> origin/beta-branch
             </div>
           )}
 
@@ -479,4 +413,4 @@ const SignUp = () => {
   );
 };
 
-export default SignUp;
+export default AdminSignUp;

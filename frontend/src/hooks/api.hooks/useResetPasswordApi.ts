@@ -5,7 +5,8 @@ const useResetPasswordApi = () => {
 
   const resetPasswordApi = async (
     firebase_uid: string,
-    newPassword: string
+    password_hash: string,
+    updated_at: string
   ) => {
     try {
       const response = await fetch(
@@ -15,7 +16,7 @@ const useResetPasswordApi = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ firebase_uid, newPassword }),
+          body: JSON.stringify({ firebase_uid, password_hash, updated_at }),
         }
       );
 

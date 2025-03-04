@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useEffect } from "react";
+=======
+import React, { useState } from "react";
+>>>>>>> origin/beta-branch
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Button,
@@ -6,14 +10,18 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+<<<<<<< HEAD
   Snackbar,
   Alert,
+=======
+>>>>>>> origin/beta-branch
 } from "@mui/material";
 import { motion } from "framer-motion"; // Import motion from framer-motion
 import "./../../styles/setupques.css";
 import ManaIcon from "../../../../../assets/ManaIcon.png";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+<<<<<<< HEAD
 import { ContentCopy, CheckCircle, Add } from "@mui/icons-material";
 import CachedIcon from '@mui/icons-material/Cached';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -29,6 +37,9 @@ interface Player {
   name: string;
   level: number;
 }
+=======
+import { ContentCopy, CheckCircle } from "@mui/icons-material";
+>>>>>>> origin/beta-branch
 
 const PVPLobby: React.FC = () => {
   const location = useLocation();
@@ -43,16 +54,20 @@ const PVPLobby: React.FC = () => {
     selectedTypes
   );
 
+<<<<<<< HEAD
   const questionTypes = [
     { display: "Identification", value: "identification" },
     { display: "Multiple Choice", value: "multiple-choice" },
     { display: "True or False", value: "true-false" },
   ];
 
+=======
+>>>>>>> origin/beta-branch
   const [manaPoints, setManaPoints] = useState(0); // Example starting mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
   const [openDialog, setOpenDialog] = useState(false); // State to control the modal
   const [copySuccess, setCopySuccess] = useState(false); // To track if the text was copied
+<<<<<<< HEAD
   const [modalOpenChangeModeMaterial, setModalOpenChangeModeMaterial] = useState(false); // State for the ChoosePvPModeModal
   const [modalOpenChangeQuestionType, setModalOpenChangeQuestionType] = useState(false); // State for the ChoosePvPModeModal
   const [selectedTypesFinal, setSelectedTypesFinal] = useState<string[]>(selectedTypes);
@@ -94,6 +109,8 @@ const PVPLobby: React.FC = () => {
 
     fetchPlayerData();
   }, []);
+=======
+>>>>>>> origin/beta-branch
 
   const handleCopy = () => {
     navigator.clipboard
@@ -135,6 +152,7 @@ const PVPLobby: React.FC = () => {
     }
   };
 
+<<<<<<< HEAD
   // Function to open the ChoosePvPModeModal
   const handleChangeMode = () => {
     setModalOpenChangeModeMaterial(true);
@@ -162,6 +180,8 @@ const PVPLobby: React.FC = () => {
     );
   };
 
+=======
+>>>>>>> origin/beta-branch
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
       {/* Full-Width Fixed Header */}
@@ -187,6 +207,7 @@ const PVPLobby: React.FC = () => {
 
           <div>
             <h2 className="text-[16px] sm:text-[18px] md:text-[20px] lg:text-[22px] font-semibold mb-1">
+<<<<<<< HEAD
               {selectedMode} Mode
             </h2>
             <h6>{selectedTypesFinal} QuestionTypes </h6>
@@ -216,11 +237,19 @@ const PVPLobby: React.FC = () => {
                   }}
                 />
               </span>
+=======
+              {mode} Mode
+            </h2>
+            <p className="text-[12px] sm:text-[14px] text-gray-400">
+              Chosen Study Material:{" "}
+              <span className="font-bold text-white">{material?.title}</span>
+>>>>>>> origin/beta-branch
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
+<<<<<<< HEAD
           <Button
             variant="contained"
             className="bg-[#3d374d] text-white"
@@ -239,6 +268,12 @@ const PVPLobby: React.FC = () => {
             src={ManaIcon}
             alt="Mana"
             className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1 ml-6"
+=======
+          <img
+            src={ManaIcon}
+            alt="Mana"
+            className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1"
+>>>>>>> origin/beta-branch
           />
           <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
             {manaPoints}
@@ -260,6 +295,7 @@ const PVPLobby: React.FC = () => {
           {/* Players Section */}
           <div className="flex mt-24 w-full justify-between items-center">
             {/* Player 1 */}
+<<<<<<< HEAD
             {players[0] && (
               <motion.div
                 className="flex flex-col ml-[-250px] mr-[210px] items-center"
@@ -272,6 +308,18 @@ const PVPLobby: React.FC = () => {
                 <p className="text-xs sm:text-sm text-gray-400">LVL {players[0].level}</p>
               </motion.div>
             )}
+=======
+            <motion.div
+              className="flex flex-col ml-[-250px] mr-[210px] items-center"
+              initial={{ x: -1000 }}
+              animate={{ x: 0 }}
+              transition={{ type: "spring", stiffness: 100, damping: 20 }}
+            >
+              <div className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 bg-white rounded-md"></div>
+              <p className="text-sm sm:text-base font-semibold mt-5">JING009</p>
+              <p className="text-xs sm:text-sm text-gray-400">LVL 6</p>
+            </motion.div>
+>>>>>>> origin/beta-branch
 
             {/* VS Text with Double Impact Animation */}
             <motion.span
@@ -291,6 +339,7 @@ const PVPLobby: React.FC = () => {
             </motion.span>
 
             {/* Player 2 */}
+<<<<<<< HEAD
             {players[1] ? (
               <motion.div
                 className="flex flex-col mr-[-250px] ml-[210px] items-center"
@@ -327,6 +376,22 @@ const PVPLobby: React.FC = () => {
             setActiveTab={() => { }}
           />
 
+=======
+            <motion.div
+              className="flex flex-col mr-[-250px] ml-[210px] items-center"
+              initial={{ x: 1000 }}
+              animate={{ x: 0 }}
+              transition={{ type: "spring", stiffness: 100, damping: 20 }}
+            >
+              <div className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 bg-white rounded-md flex items-center justify-center"></div>
+              <p className="text-sm sm:text-base font-semibold mt-5">
+                SamisPRO
+              </p>
+              <p className="text-xs sm:text-sm text-gray-400">LVL 10</p>
+            </motion.div>
+          </div>
+
+>>>>>>> origin/beta-branch
           {/* Lobby Code Section */}
           <motion.div
             className="flex flex-row mt-24 items-center"
@@ -442,6 +507,7 @@ const PVPLobby: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+<<<<<<< HEAD
 
       {/* ChoosePvPModeModal for PvP */}
       <ChoosePvPModeModal
@@ -472,6 +538,8 @@ const PVPLobby: React.FC = () => {
           setModalOpenChangeQuestionType(false);
         }}
       />
+=======
+>>>>>>> origin/beta-branch
     </div>
   );
 };

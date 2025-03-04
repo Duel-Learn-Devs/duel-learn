@@ -12,6 +12,10 @@ import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
 import moment from "moment"; // Add this import
 import { setDoc, doc, getDoc } from "firebase/firestore";
 import bcrypt from "bcryptjs"; // Add this import
+<<<<<<< HEAD
+=======
+import { socket } from "../../services/socket";
+>>>>>>> origin/beta-branch
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -74,6 +78,7 @@ const ResetPassword = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const { newpassword, confirmPassword } = formData;
+<<<<<<< HEAD
     const updated_at = moment().format("YYYY-MM-DD HH:mm:ss"); // Use moment to format the timestamp
     const formIsValid = validatePasswordForm(
       {
@@ -82,17 +87,32 @@ const ResetPassword = () => {
       },
       "newpassword"
     );
+=======
+    const updated_at = new Date().toISOString()
+
+    const formIsValid = validatePasswordForm({
+      newpassword,
+      confirmPassword,
+    }, "newpassword");
+>>>>>>> origin/beta-branch
 
     if (!formIsValid) {
       return;
     }
 
+<<<<<<< HEAD
     setLoading(true); // Start loading spinner
+=======
+    setLoading(true);
+>>>>>>> origin/beta-branch
 
     const queryParams = new URLSearchParams(location.search);
     const oobCode = queryParams.get("oobCode");
     const firebase_uid = queryParams.get("firebase_uid") || "";
+<<<<<<< HEAD
     // Hash the new password using bcrypt
+=======
+>>>>>>> origin/beta-branch
     const password_hash = await bcrypt.hash(newpassword, 10);
 
     if (!oobCode) {
@@ -102,11 +122,14 @@ const ResetPassword = () => {
       return;
     }
 
+<<<<<<< HEAD
     console.log(
       "firebase_uid received from location SecurityCode:",
       firebase_uid
     );
 
+=======
+>>>>>>> origin/beta-branch
     try {
       const userDoc = await getDoc(doc(db, "users", firebase_uid));
       if (userDoc.exists()) {
@@ -129,12 +152,18 @@ const ResetPassword = () => {
         { updated_at, password_hash },
         { merge: true }
       );
+<<<<<<< HEAD
       console.log(firebase_uid, newpassword); // Call the backend API to update the password hash
       alert("Password successfully reset!");
 
       // Send message to other tabs using BroadcastChannel
       const bc = new BroadcastChannel("password-reset");
       bc.postMessage("reset_password_success");
+=======
+
+      // Emit socket event instead of using BroadcastChannel
+      socket.emit("passwordResetSuccess");
+>>>>>>> origin/beta-branch
 
       navigate("/password-changed-successfully");
     } catch (err) {

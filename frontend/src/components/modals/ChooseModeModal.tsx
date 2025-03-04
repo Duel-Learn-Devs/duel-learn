@@ -23,7 +23,10 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [modalOpen, setModalOpen] = useState<boolean>(false);
     const [selectedMode, setSelectedMode] = useState<string | null>(null);
+<<<<<<< HEAD
     const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+=======
+>>>>>>> origin/beta-branch
 
     const buttonData = [
         {
@@ -55,6 +58,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
         },
     ];
 
+<<<<<<< HEAD
     const handleMaterialSelect = (material: any) => {
         // Handle the material selection logic here
     };
@@ -62,6 +66,8 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
     const handleModeSelect = (mode: string) => {
         // Handle the mode selection logic here
     };
+=======
+>>>>>>> origin/beta-branch
 
     return (
         <>
@@ -283,10 +289,14 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
             <SelectStudyMaterialModal
                 open={modalOpen}
                 handleClose={() => setModalOpen(false)} // This closes the study material modal
+<<<<<<< HEAD
                 mode={selectedMode} // Pass the selected mode
                 onMaterialSelect={handleMaterialSelect} // Pass the selection handler
                 onModeSelect={handleModeSelect} // Pass the mode selection handler
                 selectedTypes={selectedTypes} // Pass selectedTypes to the modal
+=======
+                mode={selectedMode} // Pass selected mode to SelectStudyMaterialModal
+>>>>>>> origin/beta-branch
             />
         </>
     );

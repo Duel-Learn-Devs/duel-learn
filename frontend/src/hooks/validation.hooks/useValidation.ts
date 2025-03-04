@@ -31,7 +31,14 @@ const termsValidation = (value: string) => {
   return "";
 };
 
+<<<<<<< HEAD
 const checkUsernameUnique = async (username: string) => {
+=======
+const checkUsernameUnique = async (username: string, currentUsername: string = "") => {
+  if (username === currentUsername) {
+    return true; // No changes needed if the username is the same
+  }
+>>>>>>> origin/beta-branch
   const db = getFirestore();
   const usersRef = collection(db, "users");
   const q = query(usersRef, where("username", "==", username));
@@ -51,14 +58,22 @@ const useValidation = (formData: any) => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { validatePassword } = usePasswordValidation();
 
+<<<<<<< HEAD
   const validate = async (field: string, value: string, formData: any = {}, passwordField: string = "password") => {
+=======
+  const validate = async (field: string, value: string, formData: any = {}, passwordField: string = "password", currentUsername: string = "") => {
+>>>>>>> origin/beta-branch
     let error = "";
 
     switch (field) {
       case "username":
         error = usernameValidation(value);
         if (!error) {
+<<<<<<< HEAD
           const isUnique = await checkUsernameUnique(value);
+=======
+          const isUnique = await checkUsernameUnique(value, currentUsername);
+>>>>>>> origin/beta-branch
           if (!isUnique) {
             error = "Username is taken.";
           }
@@ -89,10 +104,17 @@ const useValidation = (formData: any) => {
     return error;
   };
 
+<<<<<<< HEAD
   const validateForm = async (fields: { [key: string]: string }, passwordField: string = "password") => {
     let valid = true;
     for (const field in fields) {
       const error = await validate(field, fields[field], fields, passwordField);
+=======
+  const validateForm = async (fields: { [key: string]: string }, passwordField: string = "password", currentUsername: string = "") => {
+    let valid = true;
+    for (const field in fields) {
+      const error = await validate(field, fields[field], fields, passwordField, currentUsername);
+>>>>>>> origin/beta-branch
       if (error) valid = false;
     }
     return valid;

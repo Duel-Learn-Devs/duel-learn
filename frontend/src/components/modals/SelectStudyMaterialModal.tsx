@@ -24,20 +24,26 @@ interface SelectStudyMaterialModalProps {
   open: boolean;
   handleClose: () => void;
   mode: string | null;
+<<<<<<< HEAD
   isLobby?: boolean;
   onMaterialSelect: (material: any) => void;
   onModeSelect: (mode: string) => void;
   selectedTypes: string[];
+=======
+>>>>>>> origin/beta-branch
 }
 
 const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   open,
   handleClose,
   mode,
+<<<<<<< HEAD
   isLobby = false,
   onMaterialSelect,
   onModeSelect,
   selectedTypes,
+=======
+>>>>>>> origin/beta-branch
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("Recent");
@@ -109,6 +115,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   }, [searchQuery, filter]);
 
   const handleMaterialSelect = (material: any) => {
+<<<<<<< HEAD
     if (isLobby) {
       onMaterialSelect(material);
       onModeSelect(mode || '');
@@ -120,6 +127,12 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
     }
   };
 
+=======
+    const formattedMode = mode === "Peaceful Mode" ? "Peaceful" : mode;
+    navigate("/dashboard/welcome-game-mode", { state: { mode: formattedMode, material } });
+  };
+  
+>>>>>>> origin/beta-branch
 
   return (
     <Modal

@@ -8,20 +8,38 @@ import {
   query,
   where,
   getDocs,
+<<<<<<< HEAD
 } from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
+=======
+  doc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import PageTransition from "../../styles/PageTransition";
+import { auth, sendResetEmail } from "../../services/firebase";
+import useEmailTimestamp from "../../hooks/useEmailTimestamp";
+>>>>>>> origin/beta-branch
 
 const ConfirmationAccount = () => {
   const navigate = useNavigate();
   const location = useLocation();
+<<<<<<< HEAD
   const { email } = location.state || {};
+=======
+  const { email, type } = location.state || {};
+>>>>>>> origin/beta-branch
   const [username, setUsername] = useState("");
   const [profilePic, setProfilePic] = useState("");
   const [loading, setLoading] = useState(true);
   const [buttonLoading, setButtonLoading] = useState(false);
   const [error, setError] = useState("");
   const [isPhone, setIsPhone] = useState(false);
+<<<<<<< HEAD
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+=======
+  const { timeRemaining, isButtonDisabled, checkTimestamp } = useEmailTimestamp(email);
+>>>>>>> origin/beta-branch
 
   useEffect(() => {
     if (!email) {
@@ -84,6 +102,15 @@ const ConfirmationAccount = () => {
   const handleContinueClick = async () => {
     setButtonLoading(true);
     try {
+<<<<<<< HEAD
+=======
+      const canSendEmail = await checkTimestamp();
+      if (!canSendEmail) {
+        setButtonLoading(false);
+        return;
+      }
+
+>>>>>>> origin/beta-branch
       const db = getFirestore();
       const usersRef = collection(db, "users");
       const q = query(
@@ -96,12 +123,54 @@ const ConfirmationAccount = () => {
         const userDoc = querySnapshot.docs[0];
         const firebase_uid = userDoc.id;
 
+<<<<<<< HEAD
         navigate("/check-your-mail", { state: { email, firebase_uid } });
+=======
+        if (type === "reset") {
+          // For password reset flow
+          const actionCodeSettings = {
+            url: `${import.meta.env.VITE_FRONTEND_URL}/email-action-handler?mode=verifyEmail&firebase_uid=${firebase_uid}&email=${email}`,
+            handleCodeInApp: true,
+          };
+
+          await sendResetEmail(auth, email, actionCodeSettings);
+          
+          // Update email timestamp in Firestore
+          await setDoc(doc(db, "users", userDoc.id), {
+            emailTimestamp: serverTimestamp(),
+          }, { merge: true });
+
+          // Update local timestamp
+          const now = new Date();
+          localStorage.setItem("emailTimestamp", now.toISOString());
+
+          navigate("/check-your-mail", { 
+            state: { 
+              email, 
+              firebase_uid, 
+              type: "reset" 
+            } 
+          });
+        } else {
+          // For email verification flow
+          navigate("/check-your-mail", { 
+            state: { 
+              email, 
+              firebase_uid,
+              type: "verification"
+            } 
+          });
+        }
+>>>>>>> origin/beta-branch
       } else {
         setError("User not found");
       }
     } catch (err) {
       console.error("Error navigating to check your mail:", err);
+<<<<<<< HEAD
+=======
+      setError("Failed to process request");
+>>>>>>> origin/beta-branch
     } finally {
       setButtonLoading(false);
     }
@@ -155,17 +224,27 @@ const ConfirmationAccount = () => {
             Is this you?
           </h1>
           <p className="text-lg text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
+<<<<<<< HEAD
             Confirm this is you and we’ll send a code to your{" "}
             {isPhone ? "phone" : "email"} to recover your account.
+=======
+            {type === "reset" 
+              ? "Confirm this is you and we'll send a code to reset your password."
+              : "Confirm this is you and we'll send a code to recover your account."}
+>>>>>>> origin/beta-branch
           </p>
 
           <button
             type="submit"
             className={`w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors flex justify-center items-center`}
             onClick={handleContinueClick}
+<<<<<<< HEAD
             disabled={
               buttonLoading || (timeRemaining !== null && timeRemaining > 0)
             }
+=======
+            disabled={buttonLoading || isButtonDisabled}
+>>>>>>> origin/beta-branch
           >
             {buttonLoading ? (
               <div className="relative">

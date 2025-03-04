@@ -32,7 +32,7 @@ const useGoogleSignIn = () => {
         full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: true,
-        account_type: "free" as "free" | "premium",
+        account_type: "free" as "free" | "premium" |"admin",
       };
 
       const userDoc = await getDoc(doc(db, "users", userData.firebase_uid));
@@ -70,8 +70,14 @@ const useGoogleSignIn = () => {
       localStorage.setItem("userToken", token);
 
       setTimeout(() => {
-        if (isNewUser) {
+        if (userData.account_type === "admin") {
+          navigate("/admin/admin-dashboard");
+        } else if (isNewUser && userData.email_verified) {
           navigate("/dashboard/welcome");
+        } else if (isNewUser && userData.email_verified === false) {
+          navigate("/dashboard/verify-email");
+        } else if (userData.email_verified === false) {
+          navigate("/dashboard/verify-email");
         } else {
           navigate("/dashboard/home");
         }

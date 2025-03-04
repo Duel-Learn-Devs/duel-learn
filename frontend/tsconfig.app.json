@@ -2,7 +2,7 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "incremental": true,
-    "target": "ESNext", // Updated target to ESNext for better compatibility
+    "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": [
       "ES2020",

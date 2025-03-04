@@ -198,6 +198,56 @@ const setupSocket = (server) => {
             }
         });
 
+        // Handle email action results
+        socket.on("emailActionResult", (data) => {
+            try {
+                if (!data || !data.mode) {
+                    throw new Error("Invalid email action result data");
+                }
+
+                console.log("📧 Email action result:", data);
+                
+                // Broadcast to all connected clients
+                io.emit("emailActionResult", data);
+            } catch (error) {
+                console.error("Error handling email action result:", error);
+                socket.emit("error", {
+                    type: "emailAction",
+                    message: "Failed to process email action result",
+                    details: error.message
+                });
+            }
+        });
+
+        // Handle password reset success
+        socket.on("passwordResetSuccess", () => {
+            try {
+                console.log("🔑 Password reset success");
+                io.emit("passwordResetSuccess");
+            } catch (error) {
+                console.error("Error handling password reset success:", error);
+                socket.emit("error", {
+                    type: "passwordReset",
+                    message: "Failed to process password reset success",
+                    details: error.message
+                });
+            }
+        });
+
+        // Handle email verification success
+        socket.on("emailVerifiedSuccess", () => {
+            try {
+                console.log("✅ Email verification success");
+                io.emit("emailVerifiedSuccess");
+            } catch (error) {
+                console.error("Error handling email verification success:", error);
+                socket.emit("error", {
+                    type: "emailVerification",
+                    message: "Failed to process email verification success",
+                    details: error.message
+                });
+            }
+        });
 
         // Handle disconnection
         socket.on("disconnect", (reason) => {

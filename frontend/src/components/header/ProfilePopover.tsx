@@ -60,6 +60,10 @@ export default function ProfilePopover({
         <Stack spacing={1}>
           <Button
             variant="text"
+<<<<<<< HEAD
+=======
+            onClick={() => navigate("/account-settings")}
+>>>>>>> origin/beta-branch
             sx={{
               justifyContent: "flex-start",
               textTransform: "none",
@@ -127,6 +131,7 @@ export default function ProfilePopover({
                 fontWeight: 700, // Make text bold on hover
               },
             }}
+<<<<<<< HEAD
             onClick={() => navigate("/dashboard/verify-email")}
           >
             Verify Email
@@ -142,6 +147,8 @@ export default function ProfilePopover({
                 fontWeight: 700, // Make text bold on hover
               },
             }}
+=======
+>>>>>>> origin/beta-branch
             onClick={handleLogout}
           >
             Logout

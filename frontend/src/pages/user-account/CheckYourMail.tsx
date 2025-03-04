@@ -2,23 +2,137 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import EmailSent from "../../assets/General/EmailSent.png"; // Importing the big star image
 import PageTransition from "../../styles/PageTransition"; // Importing the PageTransition component
+<<<<<<< HEAD
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { auth, sendResetEmail } from "../../services/firebase";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
+=======
+import { getFirestore, doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { auth, sendResetEmail, sendEmail } from "../../services/firebase";
+import useEmailTimestamp from "../../hooks/useEmailTimestamp";
+import firebaseEmailHandler from "../../services/firebaseEmailHandler";
+import { socket } from "../../services/socket";
+>>>>>>> origin/beta-branch
 
 export default function CheckYourMail() {
   const navigate = useNavigate();
   const location = useLocation();
+<<<<<<< HEAD
   const { email, firebase_uid } = location.state || {};
+=======
+  const [email, setEmail] = useState("");
+  const [firebase_uid, setFirebaseUid] = useState("");
+  const [type, setType] = useState("");
+>>>>>>> origin/beta-branch
   const [buttonLoading, setButtonLoading] = useState(false);
   const [error, setError] = useState("");
   const [buttonText, setButtonText] = useState("Send Email");
   const { timeRemaining, isButtonDisabled, checkTimestamp } = useEmailTimestamp(email);
+<<<<<<< HEAD
   const handleSendPasswordResetEmail = async () => {
     try {
       const actionCodeSettings = {
         url: `http://localhost:5173/Reset-Password?mode=resetPassword&firebase_uid=${firebase_uid}`,
+=======
+  const { handleEmailAction } = firebaseEmailHandler();
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const locationState = location.state || JSON.parse(localStorage.getItem("userData") || "{}");
+      setEmail(locationState.email || "");
+      setFirebaseUid(locationState.firebase_uid || "");
+      setType(locationState.type || "");
+
+      if (locationState.firebase_uid) {
+        const db = getFirestore();
+        const userDoc = await getDoc(doc(db, "users", locationState.firebase_uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.email_verified && locationState.type === "verification") {
+            navigate("/email-verified", { 
+              state: { 
+                email: locationState.email, 
+                firebase_uid: locationState.firebase_uid 
+              } 
+            });
+          }
+        }
+      }
+    };
+
+    fetchUserData();
+  }, [location.state, navigate]);
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const mode = queryParams.get("mode");
+    const oobCode = queryParams.get("oobCode");
+    const continueUrl = queryParams.get("continueUrl");
+
+    if (mode && oobCode && continueUrl) {
+      handleEmailAction(mode, oobCode, continueUrl)
+        .then(() => {
+          if (mode === "verifyEmail") {
+            navigate("/email-verified", { state: { email, firebase_uid } });
+          }
+        })
+        .catch((err) => {
+          console.error("Error handling email action:", err);
+          setError("The spell has faded — your magic link has expired.");
+        });
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    // Listen for email action results
+    const handleEmailActionResult = (result: any) => {
+      const { mode, firebase_uid, email, oobCode } = result;
+      
+      if (mode === 'verifyEmail') {
+        navigate("/email-verified", { 
+          state: { 
+            email, 
+            firebase_uid,
+            oobCode 
+          } 
+        });
+      } else if (mode === 'resetPassword') {
+        navigate(`/reset-password?oobCode=${oobCode}&firebase_uid=${firebase_uid}`);
+      }
+    };
+
+    // Listen for password reset success
+    const handlePasswordResetSuccess = () => {
+      localStorage.removeItem('emailTimestamp');
+      navigate("/password-changed-successfully");
+    };
+
+    // Listen for email verification success
+    const handleEmailVerifiedSuccess = () => {
+      localStorage.removeItem('emailTimestamp');
+      navigate("/email-verified");
+    };
+
+    // Set up socket event listeners
+    socket.on("emailActionResult", handleEmailActionResult);
+    socket.on("passwordResetSuccess", handlePasswordResetSuccess);
+    socket.on("emailVerifiedSuccess", handleEmailVerifiedSuccess);
+
+    // Cleanup listeners on unmount
+    return () => {
+      socket.off("emailActionResult", handleEmailActionResult);
+      socket.off("passwordResetSuccess", handlePasswordResetSuccess);
+      socket.off("emailVerifiedSuccess", handleEmailVerifiedSuccess);
+    };
+  }, [navigate]);
+
+  const handleSendPasswordResetEmail = async () => {
+    try {
+      const actionCodeSettings = {
+        url: `${import.meta.env.VITE_FRONTEND_URL}/email-action-handler?mode=resetPassword&firebase_uid=${firebase_uid}&email=${email}`,
+>>>>>>> origin/beta-branch
         handleCodeInApp: true,
       };
 
@@ -51,13 +165,55 @@ export default function CheckYourMail() {
 
     const canSendEmail = await checkTimestamp();
     if (canSendEmail) {
+<<<<<<< HEAD
       await handleSendPasswordResetEmail();
+=======
+      if (type === "verification") {
+        await handleSendVerificationEmail();
+      } else {
+        await handleSendPasswordResetEmail();
+      }
+>>>>>>> origin/beta-branch
     } else {
       setButtonLoading(false);
       console.log("Cannot send email yet");
     }
   };
 
+<<<<<<< HEAD
+=======
+  const handleSendVerificationEmail = async () => {
+    try {
+      const actionCodeSettings = {
+        url: `${import.meta.env.VITE_FRONTEND_URL}/email-action-handler?mode=verifyEmail&firebase_uid=${firebase_uid}&email=${email}`,
+        handleCodeInApp: true,
+      };
+
+      await sendEmail(auth.currentUser!, actionCodeSettings);
+      setButtonText("Resend Email");
+      setButtonLoading(false);
+
+      const db = getFirestore();
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        await setDoc(doc(db, "users", userDoc.id), {
+          emailTimestamp: serverTimestamp(),
+        }, { merge: true });
+      }
+
+      const now = new Date();
+      localStorage.setItem("emailTimestamp", now.toISOString());
+    } catch (err) {
+      setError("Failed to send verification email");
+      setButtonLoading(false);
+    }
+  };
+
+>>>>>>> origin/beta-branch
   const handleExitClick = () => {
     navigate("/");
   };
@@ -69,6 +225,7 @@ export default function CheckYourMail() {
       setButtonText("Send Email");
     }
   }, [timeRemaining]);
+<<<<<<< HEAD
   
   useEffect(() => {
     const bc = new BroadcastChannel('password-reset');
@@ -86,6 +243,9 @@ export default function CheckYourMail() {
       bc.close();
     };
   }, [navigate]);
+=======
+
+>>>>>>> origin/beta-branch
   return (
     <PageTransition>
       <main
@@ -129,8 +289,15 @@ export default function CheckYourMail() {
                 style={{ fontFamily: "Nunito" }}
               >
                 {/* Paragraph with margin, font size, and color */}
+<<<<<<< HEAD
                 We sent you a link for your password recovery. Check your spam
                 folder if you do not hear from us after awhile.
+=======
+                {type === "verification" ? 
+                  "We sent you a link for your email verification. Check your spam folder if you do not hear from us after awhile." :
+                  "We sent you a link for your password recovery. Check your spam folder if you do not hear from us after awhile."
+                }
+>>>>>>> origin/beta-branch
               </p>
             </div>
 

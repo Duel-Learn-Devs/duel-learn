@@ -1,0 +1,13 @@
+.sticky-col {
+  position: sticky;
+  left: 0;
+  background-color: white; /* Ensure the background color matches the table */
+  z-index: 1; /* Ensure it stays above other cells */
+}
+
+.sticky-header th {
+  position: sticky;
+  top: 0;
+  background-color: black; /* Ensure the background color matches the table */
+  z-index: 1; /* Ensure it stays above other cells */
+}

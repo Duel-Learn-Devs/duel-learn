@@ -14,6 +14,10 @@ const LandingPage = () => {
     navigate("/login"); // Navigate to the login page
   };
 
+  const handleAdmin = () => {
+    navigate("/admin/admin-dashboard"); // Navigate to the admin dashboard
+  };
+
   return (
     <PageTransition>
       <Box>
@@ -26,6 +30,12 @@ const LandingPage = () => {
           <Button variant="contained" color="primary" onClick={handleDashboard}>
             Dashboard
           </Button>
+<<<<<<< HEAD
+=======
+          <Button variant="contained" color="secondary" onClick={handleAdmin}>
+            Admin Dashboard
+          </Button>
+>>>>>>> origin/beta-branch
         </Stack>
       </Box>
     </PageTransition>

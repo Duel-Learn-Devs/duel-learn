@@ -14,6 +14,11 @@ import {
   doc,
 } from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
+<<<<<<< HEAD
+=======
+import useGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
+import LoadingScreen from "../../components/LoadingScreen";
+>>>>>>> origin/beta-branch
 
 //import axios from "axios";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
@@ -36,6 +41,14 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
   const { error, handleLoginError, setError } = useHandleError();
   const navigate = useNavigate();
+  const { handleGoogleSignIn } = useGoogleSignIn();
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard/home"); // Redirect if user is authenticated
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -93,6 +106,7 @@ const Login = () => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setLoading(true);
     const { username, password } = data;
     let email = username;
 
@@ -128,9 +142,19 @@ const Login = () => {
           full_name: userDoc.data().full_name,
           email_verified: userDoc.data().email_verified,
           isSSO: userDoc.data().isSSO,
+<<<<<<< HEAD
           account_type: userDoc.data().account_type as "free" | "premium", // Ensure the value is either 'free' or 'premium'
         };
         console.log("User Data:", userData);
+=======
+          account_type: userDoc.data().account_type as "free" | "premium" | "admin", // Ensure the value is either 'free' or 'premium'
+        };
+        console.log("User Data:", userData);
+        const isNewUser =
+        !userDoc.exists() ||
+        (userDoc.exists() &&
+          Date.now() - userDoc.data().created_at.toMillis() < 5000);
+>>>>>>> origin/beta-branch
 
         // Store user data in context
         setUser(userData);
@@ -139,8 +163,19 @@ const Login = () => {
         localStorage.setItem("userToken", token);
 
         setTimeout(() => {
+<<<<<<< HEAD
           if (userData.isNew) {
             navigate("/dashboard/welcome");
+=======
+          if (userData.account_type === "admin") {
+            navigate("/admin/admin-dashboard");
+          } else if (isNewUser && userData.email_verified) {
+            navigate("/dashboard/welcome");
+          } else if (isNewUser && userData.email_verified === false) {
+            navigate("/dashboard/verify-email");
+          } else if (userData.email_verified === false) {
+            navigate("/dashboard/verify-email");
+>>>>>>> origin/beta-branch
           } else {
             navigate("/dashboard/home");
           }
@@ -148,8 +183,21 @@ const Login = () => {
       }
     } catch (error) {
       handleLoginError(error); // Use the hook to handle login error
+<<<<<<< HEAD
+=======
+    } finally {
+      setLoading(false);
+>>>>>>> origin/beta-branch
     }
   };
+
+  if (loading) {
+    return (
+      <PageTransition>
+        <LoadingScreen />
+      </PageTransition>
+    ); // Show the loading screen
+  }
 
   return (
     <PageTransition>
