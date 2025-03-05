@@ -97,13 +97,10 @@ const CreateStudyMaterial = () => {
 
   // Update the save button handler to handle both create and update
   const handleSaveButton = async () => {
+    console.log("Starting save process...");
+    
     if (!user?.username) {
       handleShowSnackbar("User is not authenticated.");
-      return;
-    }
-
-    if (!user.firebase_uid) {
-      handleShowSnackbar("User ID is not available.");
       return;
     }
 
@@ -113,82 +110,110 @@ const CreateStudyMaterial = () => {
     }
 
     try {
-      // Transform items to include base64 images
-      const transformedItems = items.map((item) => ({
-        term: item.term,
-        definition: item.definition,
-        image: item.image || null, // image is already base64 from ItemComponent
+      // Generate summary using OpenAI
+      const summaryPayload = {
+        tags,
+        items: items.map(item => ({
+          term: item.term,
+          definition: item.definition
+        }))
+      };
+      
+      console.log("Sending summary request with payload:", summaryPayload);
+      
+      const summaryResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/ai/generate-summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(summaryPayload)
+      });
+
+      if (!summaryResponse.ok) {
+        throw new Error('Failed to generate summary');
+      }
+
+      const { summary } = await summaryResponse.json();
+      console.log("Generated summary:", summary);
+
+      // Generate AI questions for each item
+      console.log("Starting AI question generation for items...");
+      const generatedItems = await Promise.all(items.map(async (item) => {
+        const questionPayload = {
+          term: item.term,
+          definition: item.definition,
+          selectedQuestionTypes: ['multiple-choice'], // or whatever types you want
+          numberOfItems: 1
+        };
+
+        console.log("Generating questions for item:", questionPayload);
+
+        const questionResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/ai/generate-questions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(questionPayload)
+        });
+
+        if (!questionResponse.ok) {
+          throw new Error('Failed to generate questions');
+        }
+
+        const questions = await questionResponse.json();
+        console.log("Received AI-generated questions:", questions);
+
+        return {
+          ...item,
+          type: questions[0]?.type || 'multiple-choice',
+          question: questions[0]?.question || item.definition,
+          answer: questions[0]?.answer || item.term,
+          options: questions[0]?.options || null,
+          original: {
+            term: item.term,
+            definition: item.definition
+          }
+        };
       }));
 
+      console.log("All AI questions generated:", generatedItems);
+
+      // Save study material with the generated summary and AI questions
       const studyMaterial = {
         studyMaterialId: editMode ? studyMaterialId : nanoid(),
         title,
         tags,
+        summary,
         totalItems: items.length,
         visibility: 0,
         createdBy: user.username,
         createdById: user.firebase_uid,
-        items: transformedItems,
+        items: generatedItems.map((item, index) => ({
+          ...item,
+          item_number: index + 1
+        }))
       };
 
-      // Determine the endpoint based on whether we're creating or updating
-      const endpoint = editMode
-        ? `${import.meta.env.VITE_BACKEND_URL}/api/study-material/update`
-        : `${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`;
+      console.log("Saving study material with AI-generated content:", studyMaterial);
 
-      const response = await fetch(endpoint, {
+      const saveResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(studyMaterial),
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(studyMaterial)
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || `Server error: ${response.status}`
-        );
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json();
+        throw new Error(errorData.error || `Server error: ${saveResponse.status}`);
       }
 
-      const savedData = await response.json();
+      const savedData = await saveResponse.json();
+      console.log("Study material saved successfully:", savedData);
 
-      if (!savedData) {
-        throw new Error("No data received from server");
-      }
+      // Navigate to the view page
+      navigate(`/dashboard/study-material/view/${studyMaterial.studyMaterialId}`);
 
-      // Create broadcast data with consistent property naming
-      const broadcastData = {
-        study_material_id:
-          savedData.studyMaterialId || studyMaterial.studyMaterialId,
-        title: savedData.title || title,
-        tags: savedData.tags || tags,
-        total_items: savedData.totalItems || items.length,
-        created_by: savedData.createdBy || user.username,
-        created_by_id: savedData.createdById || user.firebase_uid,
-        visibility: savedData.visibility || 0,
-        created_at: savedData.created_at || new Date().toISOString(),
-        items: savedData.items || transformedItems,
-      };
-
-      // Emit the transformed data
-      console.log("Emitting new study material event:", broadcastData);
-      socket.emit("newStudyMaterial", broadcastData);
-
-      // Navigate to preview page
-      navigate(
-        `/dashboard/study-material/view/${broadcastData.study_material_id}`
-      );
     } catch (error) {
-      console.error(
-        editMode
-          ? "Failed to update study material:"
-          : "Failed to save study material:",
-        error
-      );
-      handleShowSnackbar(
-        error instanceof Error
-          ? error.message
-          : "Failed to save study material. Please try again."
-      );
+      console.error("Failed to save study material:", error);
+      handleShowSnackbar(error instanceof Error ? error.message : "Failed to save study material");
     }
   };
 

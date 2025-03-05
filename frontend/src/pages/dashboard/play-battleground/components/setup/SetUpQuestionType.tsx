@@ -9,11 +9,34 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import PageTransition from "../../../../../styles/PageTransition";
 
+interface StudyMaterialItem {
+  term: string;
+  definition: string;
+  item_number: number;
+  image?: string | null;
+  originalTerm?: string;
+  originalDefinition?: string;
+  isTransformed?: boolean;
+  type?: string;
+}
+
+interface StudyMaterial {
+  study_material_id: string;
+  title: string;
+  items: StudyMaterialItem[];
+}
+
+interface NavigationState {
+  mode: string | null;
+  material: StudyMaterial;
+  fromWelcome?: boolean;
+}
+
 const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material, fromWelcome } = location.state || {};
+  const { mode, material, fromWelcome } = (location.state || {}) as NavigationState;
   const [isComponentReady, setIsComponentReady] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [questionTypes] = useState([
@@ -32,6 +55,7 @@ const SetUpQuestionType: React.FC = () => {
   ]);
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
   const [manaPoints, setManaPoints] = useState(10); // State for dynamic mana points
+  const [snackbarMessage, setSnackbarMessage] = useState(""); // State for snackbar message
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
 
   // Signal when component is fully ready
@@ -82,49 +106,119 @@ const SetUpQuestionType: React.FC = () => {
     navigate("/dashboard/home");
   };
 
-  const handleStartLearning = () => {
-    // If no question type is selected, show the alert
+  const handleStartLearning = async () => {
+    console.log("Starting learning process...");
+    
     if (selectedTypes.length === 0) {
+      setSnackbarMessage("Please select at least one question type.");
       setOpenAlert(true);
+      return;
     }
-    // If manaPoints are below 10 and mode is not "Time Pressured", show the mana alert
-    else if (mode !== "Time Pressured" && manaPoints < 10) {
+
+    if (mode !== "Time Pressured" && manaPoints < 10) {
       setOpenManaAlert(true);
+      return;
     }
-    // If mode is "Time Pressured", navigate to Timer Setup
-    else if (mode === "Time Pressured") {
-      navigate("/dashboard/setup/timer", {
-        state: {
-          mode,
-          material,
-          selectedTypes,
+
+    try {
+      const items = material?.items || [];
+      const generatedQuestions: Array<{ question: string; answer: string }> = [];
+
+      for (const item of items) {
+        const payload = {
+          term: item.term,
+          definition: item.definition,
+          selectedQuestionTypes: selectedTypes,
+          numberOfItems: 1
+        };
+
+        try {
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/ai/generate-questions`, {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `AI Server error: ${response.status}`);
+          }
+
+          const questions = await response.json();
+          generatedQuestions.push(...questions);
+        } catch (error) {
+          console.error("Error generating questions:", error);
+          throw error;
+        }
+      }
+
+      const transformedMaterial: StudyMaterial = {
+        ...material,
+        items: material.items.map((item: StudyMaterialItem, index: number) => {
+          const generatedQuestion = generatedQuestions[index];
+          return {
+            ...item,
+            item_number: index + 1,
+            originalTerm: item.term,
+            originalDefinition: item.definition,
+            term: generatedQuestion?.answer || item.term,
+            definition: generatedQuestion?.question || item.definition,
+            isTransformed: !!generatedQuestion,
+            type: selectedTypes[0]
+          };
+        })
+      };
+
+      const updateUrl = `${import.meta.env.VITE_BACKEND_URL}/api/study-material/update/${material.study_material_id}`;
+      const updateResponse = await fetch(updateUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
         },
+        body: JSON.stringify({
+          items: transformedMaterial.items.map(item => ({
+            term: item.term,
+            definition: item.definition,
+            item_number: item.item_number,
+            image: item.image || null,
+            type: item.type,
+            original: {
+              term: item.originalTerm,
+              definition: item.originalDefinition
+            }
+          }))
+        })
       });
-    }
-    // If the mode is "Peaceful", navigate to LoadingScreen
-    else if (mode === "Peaceful") {
-      navigate("/dashboard/loading-screen", {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-          timeLimit: null
-        },
-      });
-    }
-    // If the mode is not "Time Pressured" and not "Peaceful Mode", navigate to PvP Lobby
-    else if (mode !== "Time Pressured" && mode !== "Peaceful Mode") {
-      navigate("/dashboard/pvp-lobby", {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-        },
-      });
-    }
-    // Default fallback logic
-    else {
-      console.log("Normal mode selected, staying on current flow.");
+
+      if (!updateResponse.ok) {
+        const errorData = await updateResponse.json();
+        throw new Error(errorData.message || `Update failed: ${updateResponse.status}`);
+      }
+
+      const responseData = await updateResponse.json();
+      transformedMaterial.items = responseData.items;
+
+      const navigationState = {
+        material: transformedMaterial,
+        selectedTypes,
+        questions: generatedQuestions,
+        timeLimit: mode === "Time Pressured" ? undefined : null
+      };
+
+      if (mode === "Peaceful") {
+        navigate("/dashboard/loading-screen", { state: navigationState });
+      } else if (mode === "Time Pressured") {
+        navigate("/dashboard/setup/timer", { state: navigationState });
+      } else {
+        navigate("/dashboard/pvp-lobby", { state: navigationState });
+      }
+
+    } catch (error) {
+      console.error("Error in handleStartLearning:", error);
+      setSnackbarMessage(error instanceof Error ? error.message : 'An error occurred');
+      setOpenAlert(true);
     }
   };
 
@@ -195,7 +289,7 @@ const SetUpQuestionType: React.FC = () => {
             severity="warning"
             sx={{ width: "100%" }}
           >
-            Please select a question type before proceeding.
+            {snackbarMessage}
           </Alert>
         </Snackbar>
 

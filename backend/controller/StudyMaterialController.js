@@ -12,6 +12,7 @@ const studyMaterialController = {
       const {
         title,
         tags,
+        summary,
         totalItems,
         visibility = 0,
         createdBy,
@@ -27,15 +28,16 @@ const studyMaterialController = {
 
       await connection.beginTransaction();
 
-      // Insert into study_material_info
+      // Insert into study_material_info with summary
       await connection.execute(
         `INSERT INTO study_material_info 
-                (study_material_id, title, tags, total_items, visibility, status,created_by, created_by_id, total_views, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?,?,?, ?, ?,?);`,
+                (study_material_id, title, tags, summary, total_items, visibility, status,created_by, created_by_id, total_views, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?,?,?, ?, ?, ?, ?);`,
         [
           studyMaterialId,
           title,
           JSON.stringify(tags), // Store tags as a JSON string
+          summary,
           totalItems,
           visibility,
           status,
@@ -52,16 +54,22 @@ const studyMaterialController = {
         const itemId = nanoid();
         let imageBuffer = null;
 
+        console.log('Saving item:', item); // Add logging
+
         if (item.image) {
-          // Decode Base64 to binary (Buffer)
-          const base64Data = item.image.replace(/^data:image\/\w+;base64,/, ""); // Remove Base64 header
+          const base64Data = item.image.replace(/^data:image\/\w+;base64,/, "");
           imageBuffer = Buffer.from(base64Data, "base64");
         }
 
+        // Ensure options is properly stringified
+        const optionsString = item.options ? JSON.stringify(item.options) : null;
+        console.log('Options being saved:', optionsString); // Add logging
+
         return connection.execute(
           `INSERT INTO study_material_content 
-                    (study_material_id, item_id, item_number, term, definition, image) 
-                    VALUES (?, ?, ?, ?, ?, ?);`,
+          (study_material_id, item_id, item_number, term, definition, image,
+           type, question, answer, options, original_term, original_definition) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
           [
             studyMaterialId,
             itemId,
@@ -69,6 +77,12 @@ const studyMaterialController = {
             item.term,
             item.definition,
             imageBuffer,
+            item.type || 'multiple-choice', // Default to multiple-choice
+            item.question || item.definition,
+            item.answer || item.term,
+            optionsString,
+            item.original?.term || item.term,
+            item.original?.definition || item.definition
           ]
         );
       });
@@ -101,101 +115,58 @@ const studyMaterialController = {
   },
 
   editStudyMaterial: async (req, res) => {
+    const { studyMaterialId } = req.params;
+    const { items } = req.body;
     let connection;
+
     try {
       connection = await pool.getConnection();
-      const {
-        studyMaterialId,
-        title,
-        tags,
-        totalItems,
-        visibility,
-        items,
-      } = req.body;
-
-      // Validate required fields
-      if (!studyMaterialId || !title || !items || !items.length) {
-        return res.status(400).json({ error: "Missing required fields" });
-      }
-
       await connection.beginTransaction();
 
-      // Get current timestamp for the update
-      const updatedTimestamp = manilacurrentTimestamp;
-
-      // Update study_material_info table with timestamp
-      await connection.execute(
-        `UPDATE study_material_info 
-         SET title = ?, tags = ?, total_items = ?, visibility = ?, updated_at = ?
-         WHERE study_material_id = ?`,
-        [
-          title,
-          JSON.stringify(tags), // Store tags as a JSON string
-          totalItems,
-          visibility || 0,
-          updatedTimestamp, // Add the updated timestamp
-          studyMaterialId,
-        ]
-      );
-
-      // Delete existing items for this study material
-      await connection.execute(
-        `DELETE FROM study_material_content WHERE study_material_id = ?`,
+      // Delete existing items
+      await connection.query(
+        'DELETE FROM study_material_content WHERE study_material_id = ?',
         [studyMaterialId]
       );
 
-      // Insert updated items into study_material_content
-      const insertItemPromises = items.map(async (item, index) => {
+      // Insert updated items
+      for (const item of items) {
         const itemId = nanoid();
-        let imageBuffer = null;
-
-        if (item.image) {
-          // Handle both new base64 images and existing ones
-          const base64Data = item.image.toString().replace(/^data:image\/\w+;base64,/, "");
-          imageBuffer = Buffer.from(base64Data, "base64");
-        }
-
-        return connection.execute(
+        await connection.query(
           `INSERT INTO study_material_content 
-           (study_material_id, item_id, item_number, term, definition, image) 
-           VALUES (?, ?, ?, ?, ?, ?);`,
+           (study_material_id, item_id, item_number, term, definition, image, 
+            question_type, ai_question, ai_answer, ai_options, original_term, original_definition) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             studyMaterialId,
             itemId,
-            index + 1,
+            item.item_number,
             item.term,
             item.definition,
-            imageBuffer,
+            item.image || null,
+            item.type,
+            item.definition, // ai_question
+            item.term,      // ai_answer
+            item.options ? JSON.stringify(item.options) : null,
+            item.original?.term,
+            item.original?.definition
           ]
         );
-      });
+      }
 
-      await Promise.all(insertItemPromises);
       await connection.commit();
+      res.json({ success: true, items });
 
-      res.status(200).json({
-        message: "Study material updated successfully",
-        studyMaterialId,
-        updated_at: updatedTimestamp
-      });
     } catch (error) {
-      console.error("Error editing study material:", error);
-      if (connection) {
-        try {
-          await connection.rollback();
-        } catch (rollbackError) {
-          console.error("Error rolling back transaction:", rollbackError);
-        }
-      }
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      if (connection) await connection.rollback();
+      console.error('Error updating study material:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update study material',
+        error: error.message
+      });
     } finally {
-      if (connection) {
-        try {
-          connection.release();
-        } catch (releaseError) {
-          console.error("Error releasing connection:", releaseError);
-        }
-      }
+      if (connection) connection.release();
     }
   },
 
@@ -223,15 +194,27 @@ const studyMaterialController = {
   },
 
   getStudyMaterialById: async (req, res) => {
+    const { studyMaterialId } = req.params;
     const connection = await pool.getConnection();
+    
     try {
-      const { studyMaterialId } = req.params;
-      console.log("Requested studyMaterialId:", studyMaterialId);
-
-      const [infoRows] = await connection.execute(
-        `SELECT title, tags, total_items, created_by, total_views, created_at 
-                FROM study_material_info 
-                WHERE study_material_id = ?;`,
+      // Get the main study material info
+      const [infoRows] = await connection.query(
+        `SELECT smi.*, 
+                GROUP_CONCAT(smc.term SEPARATOR '|||') as terms,
+                GROUP_CONCAT(smc.definition SEPARATOR '|||') as definitions,
+                GROUP_CONCAT(smc.image SEPARATOR '|||') as images,
+                GROUP_CONCAT(smc.item_number SEPARATOR '|||') as item_numbers,
+                GROUP_CONCAT(smc.type SEPARATOR '|||') as types,
+                GROUP_CONCAT(smc.question SEPARATOR '|||') as questions,
+                GROUP_CONCAT(smc.answer SEPARATOR '|||') as answers,
+                GROUP_CONCAT(smc.options SEPARATOR '|||') as all_options,
+                GROUP_CONCAT(smc.original_term SEPARATOR '|||') as original_terms,
+                GROUP_CONCAT(smc.original_definition SEPARATOR '|||') as original_definitions
+         FROM study_material_info smi
+         LEFT JOIN study_material_content smc ON smi.study_material_id = smc.study_material_id
+         WHERE smi.study_material_id = ?
+         GROUP BY smi.study_material_id`,
         [studyMaterialId]
       );
 
@@ -239,88 +222,140 @@ const studyMaterialController = {
         return res.status(404).json({ message: "Study material not found" });
       }
 
-      const [contentRows] = await connection.execute(
-        `SELECT term, definition, image 
-                FROM study_material_content 
-                WHERE study_material_id = ?;`,
-        [studyMaterialId]
-      );
+      const studyMaterial = infoRows[0];
+      
+      // Parse the items with new fields
+      const terms = studyMaterial.terms ? studyMaterial.terms.split('|||') : [];
+      const definitions = studyMaterial.definitions ? studyMaterial.definitions.split('|||') : [];
+      const images = studyMaterial.images ? studyMaterial.images.split('|||') : [];
+      const itemNumbers = studyMaterial.item_numbers ? studyMaterial.item_numbers.split('|||').map(Number) : [];
+      const types = studyMaterial.types ? studyMaterial.types.split('|||') : [];
+      const questions = studyMaterial.questions ? studyMaterial.questions.split('|||') : [];
+      const answers = studyMaterial.answers ? studyMaterial.answers.split('|||') : [];
+      const options = studyMaterial.all_options ? studyMaterial.all_options.split('|||').map(opt => {
+        try {
+          return opt ? JSON.parse(opt) : null;
+        } catch (e) {
+          console.error('Error parsing options:', opt);
+          return null;
+        }
+      }) : [];
+      const originalTerms = studyMaterial.original_terms ? studyMaterial.original_terms.split('|||') : [];
+      const originalDefinitions = studyMaterial.original_definitions ? studyMaterial.original_definitions.split('|||') : [];
 
-      // Ensure JSON-safe data
-      const formattedContent = contentRows.map((item) => ({
-        term: item.term,
-        definition: item.definition,
-        image: item.image ? item.image.toString("base64") : null,
-      }));
+      // Construct the response with new fields
+      const response = {
+        title: studyMaterial.title,
+        tags: JSON.parse(studyMaterial.tags || '[]'),
+        total_items: studyMaterial.total_items,
+        created_by: studyMaterial.created_by,
+        created_by_id: studyMaterial.created_by_id,
+        total_views: studyMaterial.total_views,
+        created_at: studyMaterial.created_at,
+        summary: studyMaterial.summary,
+        items: terms.map((term, index) => {
+          console.log(`Processing item ${index}:`, {
+            term,
+            type: types[index],
+            options: options[index],
+            answer: answers[index]
+          });
+          
+          return {
+            term,
+            definition: definitions[index],
+            image: images[index],
+            item_number: itemNumbers[index],
+            type: types[index] || 'multiple-choice',
+            question: questions[index] || definitions[index],
+            answer: answers[index] || term,
+            options: options[index],
+            original: {
+              term: originalTerms[index] || term,
+              definition: originalDefinitions[index] || definitions[index]
+            }
+          };
+        })
+      };
 
-      res.status(200).json({
-        title: infoRows[0].title,
-        tags: JSON.parse(infoRows[0].tags), // Parse stored JSON tags
-        total_items: infoRows[0].total_items,
-        created_by: infoRows[0].created_by,
-        total_views: infoRows[0].total_views,
-        created_at: infoRows[0].created_at,
-        items: formattedContent, // Updated to match frontend structure
-      });
+      res.json(response);
     } catch (error) {
-      console.error("Error fetching study material:", error);
-      res.status(500).json({ error: "Internal server error", details: error });
+      console.error('Error fetching study material:', error);
+      res.status(500).json({ message: "Error fetching study material" });
     } finally {
       connection.release();
     }
   },
 
   getStudyMaterialByUser: async (req, res) => {
-    const connection = await pool.getConnection();
-    try {
-      const { created_by } = req.params;
-      console.log("Fetching study materials for created_by:", created_by);
+    let connection;
+    const { created_by } = req.params;
 
-      const [infoRows] = await connection.execute(
-        `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
-                FROM study_material_info 
-                WHERE created_by = ? AND status != 'archived';`,
+    console.log('Fetching study materials for user:', created_by);
+
+    try {
+      connection = await pool.getConnection();
+      console.log('Database connection established');
+
+      // Test database connection
+      const [testResult] = await connection.query('SELECT 1');
+      console.log('Database connection test:', testResult);
+
+      // Query study materials
+      const [materials] = await connection.query(
+        `SELECT 
+          smi.*,
+          GROUP_CONCAT(smc.term) as terms,
+          GROUP_CONCAT(smc.definition) as definitions,
+          GROUP_CONCAT(smc.item_number) as item_numbers,
+          GROUP_CONCAT(smc.image) as images
+        FROM study_material_info smi
+        LEFT JOIN study_material_content smc ON smi.study_material_id = smc.study_material_id
+        WHERE smi.created_by = ?
+        GROUP BY smi.study_material_id`,
         [created_by]
       );
 
-      if (infoRows.length === 0) {
-        return res
-          .status(404)
-          .json({ message: "No study materials found for this creator" });
-      }
+      console.log('Query result:', materials);
 
-      const studyMaterials = await Promise.all(
-        infoRows.map(async (info) => {
-          const [contentRows] = await connection.execute(
-            `SELECT term, definition, image 
-                    FROM study_material_content 
-                    WHERE study_material_id = ?;`,
-            [info.study_material_id]
-          );
+      // Transform the data
+      const transformedMaterials = materials.map(material => ({
+        study_material_id: material.study_material_id,
+        title: material.title,
+        tags: material.tags ? JSON.parse(material.tags) : [],
+        summary: material.summary,
+        total_items: material.total_items || 0,
+        created_by: material.created_by,
+        created_by_id: material.created_by_id,
+        total_views: material.total_views || 0,
+        created_at: material.created_at,
+        updated_at: material.updated_at || material.created_at,
+        visibility: material.visibility,
+        items: material.terms ? material.terms.split(',').map((term, index) => ({
+          term,
+          definition: material.definitions.split(',')[index],
+          item_number: parseInt(material.item_numbers.split(',')[index]),
+          image: material.images ? material.images.split(',')[index] : null
+        })) : []
+      }));
 
-          return {
-            study_material_id: info.study_material_id,
-            title: info.title,
-            tags: JSON.parse(info.tags),
-            total_items: info.total_items,
-            created_by: info.created_by,
-            total_views: info.total_views,
-            created_at: info.created_at,
-            items: contentRows.map((item) => ({
-              term: item.term,
-              definition: item.definition,
-              image: item.image ? item.image.toString("base64") : null,
-            })),
-          };
-        })
-      );
+      console.log('Transformed materials:', transformedMaterials);
 
-      res.status(200).json(studyMaterials);
+      res.json(transformedMaterials);
+
     } catch (error) {
-      console.error("Error fetching study materials by creator:", error);
-      res.status(500).json({ error: "Internal server error", details: error });
+      console.error('Error in getStudyMaterialByUser:', error);
+      res.status(500).json({
+        error: 'Failed to fetch study materials',
+        details: error.message,
+        sqlMessage: error.sqlMessage,
+        code: error.code
+      });
     } finally {
-      connection.release();
+      if (connection) {
+        connection.release();
+        console.log('Database connection released');
+      }
     }
   },
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   Box,
   Modal,
@@ -19,13 +20,27 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
+import { useUser } from "../../contexts/UserContext";
+
+interface StudyMaterial {
+  title: string;
+  summary: string;
+  items: Array<{
+    term: string;
+    definition: string;
+    image?: string | null;
+  }>;
+  created_by: string;
+  created_at: string;
+  total_views: number;
+}
 
 interface SelectStudyMaterialModalProps {
   open: boolean;
   handleClose: () => void;
   mode: string | null;
   isLobby?: boolean;
-  onMaterialSelect: (material: any) => void;
+  onMaterialSelect: (material: StudyMaterial) => void;
   onModeSelect: (mode: string) => void;
   selectedTypes: string[];
 }
@@ -39,62 +54,51 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   onModeSelect,
   selectedTypes,
 }) => {
+  const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("Recent");
-  const [filteredMaterials, setFilteredMaterials] = useState<any[]>([]);
+  const [filteredMaterials, setFilteredMaterials] = useState<StudyMaterial[]>([]);
+  const [studyMaterials, setStudyMaterials] = useState<StudyMaterial[]>([]);
   const [openDropdown, setOpenDropdown] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  const studyMaterials = [
-    {
-      title: "Software Engineering",
-      items: 50,
-      creator: "You",
-      date: "2024-01-01",
-    },
-    {
-      title: "System Fundamentals",
-      items: 10,
-      creator: "beau.aly",
-      date: "2023-12-01",
-    },
-    {
-      title: "Networking Lesson 2",
-      items: 30,
-      creator: "kintaxx_002",
-      date: "2023-11-01",
-    },
-    {
-      title: "Software Engineering",
-      items: 50,
-      creator: "You",
-      date: "2022-01-01",
-    },
-    {
-      title: "System Fundamentals",
-      items: 10,
-      creator: "beau.aly",
-      date: "2021-06-01",
-    },
-    {
-      title: "Networking Lesson 2",
-      items: 30,
-      creator: "kintaxx_002",
-      date: "2020-03-01",
-    },
-  ];
+  useEffect(() => {
+    const fetchStudyMaterials = async () => {
+      if (!user?.username) return;
+      setIsLoading(true);
 
-  const sortMaterials = (materials: any[], filter: string) => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-by-user/${user.username}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch study materials");
+        }
+        const data = await response.json();
+        setStudyMaterials(data);
+      } catch (error) {
+        console.error("Error fetching study materials:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStudyMaterials();
+  }, [user?.username]);
+
+
+  const sortMaterials = (materials: StudyMaterial[], filter: string) => {
     switch (filter) {
       case "Recent":
-        return materials.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        return [...materials].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       case "Popular":
-        return materials.sort((a, b) => b.items - a.items);
+        return [...materials].sort((a, b) => b.total_views - a.total_views);
       case "Oldest":
-        return materials.sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        return [...materials].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
       default:
         return materials;
@@ -106,9 +110,9 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
       material.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredMaterials(sortMaterials(filtered, filter));
-  }, [searchQuery, filter]);
+  }, [searchQuery, filter, studyMaterials]);
 
-  const handleMaterialSelect = (material: any) => {
+  const handleMaterialSelect = (material: StudyMaterial) => {
     if (isLobby) {
       onMaterialSelect(material);
       onModeSelect(mode || '');
@@ -116,7 +120,19 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
       navigate("/dashboard/pvp-lobby", { state: { mode, material, selectedTypes } });
     } else {
       const formattedMode = mode === "Peaceful Mode" ? "Peaceful" : mode === "PvP Mode" ? "PvP" : mode;
-      navigate("/dashboard/welcome-game-mode", { state: { mode: formattedMode, material } });
+      navigate("/dashboard/welcome-game-mode", { 
+        state: { 
+          mode: formattedMode,
+          material: {
+            ...material,
+            items: material.items.map(item => ({
+              term: item.term,
+              definition: item.definition, 
+              image: item.image || null
+            }))
+          }
+        }
+      });
     }
   };
 
@@ -305,6 +321,8 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
             sx={{
               width: "80%",
               height: "280px",
+              justifyContent: "flex-start",
+              textAlign: "left",
               overflowY: "auto",
               marginTop: "15px",
             }}
@@ -330,24 +348,52 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
                     }}
                     onClick={() => handleMaterialSelect(material)}
                   >
-                    <Box>
+                    <Box sx={{ width: "100%" }}>
                       <Typography
                         variant="body1"
                         sx={{
                           fontWeight: "bold",
                           fontSize: "18px",
+                          textAlign: "left",
                         }}
                       >
                         {material.title}
                       </Typography>
+                      {material.summary && (
+                        <Box sx={{ mt: 1, mb: 1 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#322168",
+                              fontSize: "14px",
+                              fontWeight: "bold",
+                              textAlign: "left",
+                            }}
+                          >
+                            Summary: {material.summary}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#322168",
+                              fontSize: "12px",
+                              textAlign: "left",
+                              fontStyle: "italic",
+                            }}
+                          >
+                            {material.summary}
+                          </Typography>
+                        </Box>
+                      )}
                       <Typography
                         variant="body2"
                         sx={{
                           color: "#322168",
                           fontSize: "14px",
+                          textAlign: "left",
                         }}
                       >
-                        {material.items} items • Made by {material.creator}
+                        {material.items.length} items • Made by {material.created_by}
                       </Typography>
                     </Box>
                   </Button>
@@ -356,12 +402,12 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
                 <Typography
                   sx={{
                     color: "#9F9BAE",
-                    textAlign: "center",
+                    textAlign: "left",
                     fontSize: "16px",
                     mt: 2,
                   }}
                 >
-                  No materials found
+                  No study materials found
                 </Typography>
               )}
             </Stack>

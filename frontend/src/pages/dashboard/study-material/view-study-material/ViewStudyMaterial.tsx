@@ -12,15 +12,16 @@ import MoreIcon from "@mui/icons-material/MoreHorizRounded";
 import MoreOptionPopover from "./MoreOptionPopover";
 import { useUser } from "../../../../contexts/UserContext";
 
+
 const ViewStudyMaterial = () => {
   const { user } = useUser();
   const { studyMaterialId } = useParams();
   const navigate = useNavigate();
   const [selected, setSelected] = useState("Summary");
-  const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(
-    null
-  );
+  const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(null);
   const [loading, setLoading] = useState(true);
+  const [modifiedItems, setModifiedItems] = useState<Item[]>([]);
+  const [originalItems, setOriginalItems] = useState<Item[]>([]);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
 
@@ -32,21 +33,23 @@ const ViewStudyMaterial = () => {
     setAnchorEl(null);
   };
 
-  useEffect(() => {
-    if (!studyMaterialId) return;
+  const handleEditClick = () => {
+    navigate(`/dashboard/study-material/edit/${studyMaterialId}`);
+  };
 
+  useEffect(() => {
     const fetchStudyMaterial = async () => {
+      if (!studyMaterialId) return;
+      
       try {
         const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/study-material/get-by-study-material-id/${studyMaterialId}`
+          `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-by-study-material-id/${studyMaterialId}`
         );
         const data = await response.json();
-        console.log("API Response:", data);
+        console.log("API Response for study material:", data);
 
-        if (data && typeof data === "object" && "title" in data) {
-          let items: Item[] = data.items || [];
+        if (data && typeof data === "object") {
+          let items: Item[] = [];
           let tags: string[] = [];
 
           try {
@@ -58,25 +61,49 @@ const ViewStudyMaterial = () => {
             tags = [];
           }
 
-          setStudyMaterial({
+          if (Array.isArray(data.items)) {
+            items = data.items.map((item: any) => ({
+              term: item.term,
+              definition: item.definition,
+              image: item.image,
+              item_number: item.item_number,
+              type: item.type,
+              question: item.question,
+              answer: item.answer,
+              options: item.options,
+              original: item.original
+            }));
+          }
+
+          const material = {
             title: data.title,
             tags,
             images: data.images || [],
             total_items: data.total_items || 0,
             created_by: data.created_by || "Unknown",
-            created_by_id: data.created_by_id || "",
+            created_by_id: data.created_by_id,
             total_views: data.total_views || 0,
-            updated_at: data.updated_at || new Date().toISOString(),
-            items,
-            study_material_id: data.study_material_id || studyMaterialId || "",
-            visibility: data.visibility || 0,
-          });
+            created_at: data.created_at || new Date().toISOString(),
+            updated_at: data.updated_at || data.created_at || new Date().toISOString(),
+            items: items,
+            summary: data.summary || "No summary available yet",
+            visibility: data.visibility || "private",
+          };
+
+          setOriginalItems(items.map(item => ({
+            term: item.original?.term || item.term,
+            definition: item.original?.definition || item.definition,
+            image: item.image
+          })));
+
+          setStudyMaterial(material);
+          setModifiedItems(items);
+          setLoading(false);
         } else {
           console.error("Invalid response format:", data);
         }
       } catch (error) {
         console.error("Error fetching study material:", error);
-      } finally {
         setLoading(false);
       }
     };
@@ -88,36 +115,23 @@ const ViewStudyMaterial = () => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
-      day: "numeric",
+      day: "numeric"
     });
   };
 
-  const handleEditClick = () => {
-    if (!studyMaterial) return;
+  const originalStudyMaterial: StudyMaterial | null = studyMaterial ? {
+    ...studyMaterial,
+    items: originalItems
+  } : null;
 
-    // Transform items to match the format expected by CreateStudyMaterial
-    const transformedItems = studyMaterial.items.map((item, index) => ({
-      id: index, // Using index as id
-      term: item.term || "",
-      definition: item.definition || "",
-      image: item.image || null,
-    }));
-
-    // Navigate to create page with study material data
-    navigate("/dashboard/study-material/create", {
-      state: {
-        editMode: true,
-        studyMaterialId: studyMaterial.study_material_id,
-        title: studyMaterial.title,
-        tags: studyMaterial.tags,
-        items: transformedItems,
-      },
-    });
-  };
+  const modifiedStudyMaterial: StudyMaterial | null = studyMaterial ? {
+    ...studyMaterial,
+    items: modifiedItems
+  } : null;
 
   return (
     <PageTransition>
-      <Box className="h-screen w-full px-8">
+      <Box className="h-full w-full px-8">
         <DocumentHead title={studyMaterial?.title + " | Duel Learn"} />
         <Stack spacing={2.5}>
           <Stack direction={"row"}>
@@ -270,9 +284,22 @@ const ViewStudyMaterial = () => {
             </Stack>
             <Box mt={2}>
               {selected === "Summary" ? (
-                <SummaryPage studyMaterial={studyMaterial} />
+                <Box sx={{ p: 4, backgroundColor: "#F2EFFF", borderRadius: 2 }}>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      color: "#322168",
+                      fontWeight: "bold",
+                      mb: 4,
+                      textAlign: "center"
+                    }}
+                  >
+                    {studyMaterial?.summary || "Loading summary..."}
+                  </Typography>
+                  <SummaryPage studyMaterial={originalStudyMaterial} />
+                </Box>
               ) : (
-                <CardPage studyMaterial={studyMaterial} />
+                <CardPage studyMaterial={modifiedStudyMaterial!} />
               )}
             </Box>
           </Stack>
