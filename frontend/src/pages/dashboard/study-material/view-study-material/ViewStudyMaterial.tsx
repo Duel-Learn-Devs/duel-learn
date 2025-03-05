@@ -5,34 +5,17 @@ import SummaryPage from "./SummaryPage";
 import CardPage from "./CardPage";
 import DocumentHead from "../../../../components/DocumentHead";
 import PageTransition from "../../../../styles/PageTransition";
-
-interface Item {
-  term: string;
-  definition: string;
-  image?: string | null;
-}
-
-interface StudyMaterial {
-  title: string;
-  tags: string[];
-  images: string[];
-  total_items: number;
-  created_by: string;
-  total_views: number;
-  created_at: string;
-  items: Item[];
-  study_material_id?: string;
-}
+import { Item, StudyMaterial } from "../../../../types/studyMaterial";
 
 const ViewStudyMaterial = () => {
   const { studyMaterialId } = useParams();
   const location = useLocation();
   const [selected, setSelected] = useState("Summary");
   const [title, setTitle] = useState(location.state?.title || "");
-  const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(
-    null
-  );
+  const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(null);
   const [loading, setLoading] = useState(true);
+  const [modifiedItems, setModifiedItems] = useState<Item[]>([]);
+  const [originalItems, setOriginalItems] = useState<Item[]>([]);
 
   useEffect(() => {
     if (!studyMaterialId) return;
@@ -40,15 +23,13 @@ const ViewStudyMaterial = () => {
     const fetchStudyMaterial = async () => {
       try {
         const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/study-material/get-by-study-material-id/${studyMaterialId}`
+          `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-by-study-material-id/${studyMaterialId}`
         );
         const data = await response.json();
-        console.log("API Response:", data);
+        console.log("API Response for study material:", data);
 
-        if (data && typeof data === "object" && "title" in data) {
-          let items: Item[] = data.items || [];
+        if (data && typeof data === "object") {
+          let items: Item[] = [];
           let tags: string[] = [];
 
           try {
@@ -60,7 +41,32 @@ const ViewStudyMaterial = () => {
             tags = [];
           }
 
-          setStudyMaterial({
+          // Process items to include both original and AI-generated content
+          if (Array.isArray(data.items)) {
+            items = data.items.map((item: any) => {
+              console.log("Processing item from API:", item);
+              
+              // Create the processed item with all fields
+              const processedItem = {
+                term: item.term,
+                definition: item.definition,
+                image: item.image,
+                item_number: item.item_number,
+                type: item.type,
+                question: item.question,
+                answer: item.answer,
+                options: item.options,
+                original: item.original
+              };
+
+              console.log("Processed item:", processedItem);
+              return processedItem;
+            });
+          }
+
+          console.log("All processed items:", items);
+
+          const material = {
             title: data.title,
             tags,
             images: data.images || [],
@@ -68,8 +74,18 @@ const ViewStudyMaterial = () => {
             created_by: data.created_by || "Unknown",
             total_views: data.total_views || 0,
             created_at: data.created_at || new Date().toISOString(),
-            items,
-          });
+            items: items,
+            summary: data.summary || "",
+          };
+
+          setOriginalItems(items.map(item => ({
+            term: item.original?.term || item.term,
+            definition: item.original?.definition || item.definition,
+            image: item.image
+          })));
+          
+          setStudyMaterial(material);
+          setModifiedItems(items);
         } else {
           console.error("Invalid response format:", data);
         }
@@ -83,6 +99,10 @@ const ViewStudyMaterial = () => {
     fetchStudyMaterial();
   }, [studyMaterialId]);
 
+  const updateModifiedItems = (newItems: Item[]) => {
+    setModifiedItems(newItems);
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -90,6 +110,16 @@ const ViewStudyMaterial = () => {
       day: "numeric",
     });
   };
+
+  const originalStudyMaterial: StudyMaterial | null = studyMaterial ? {
+    ...studyMaterial,
+    items: originalItems
+  } : null;
+
+  const modifiedStudyMaterial: StudyMaterial | null = studyMaterial ? {
+    ...studyMaterial,
+    items: modifiedItems
+  } : null;
 
   return (
     <PageTransition>
@@ -161,9 +191,22 @@ const ViewStudyMaterial = () => {
             </Stack>
             <Box mt={2}>
               {selected === "Summary" ? (
-                <SummaryPage studyMaterial={studyMaterial} />
+                <Box sx={{ p: 4, backgroundColor: "#F2EFFF", borderRadius: 2 }}>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      color: "#322168",
+                      fontWeight: "bold",
+                      mb: 4,
+                      textAlign: "center"
+                    }}
+                  >
+                    {studyMaterial?.summary || "No summary available"}
+                  </Typography>
+                  <SummaryPage studyMaterial={originalStudyMaterial} />
+                </Box>
               ) : (
-                <CardPage studyMaterial={studyMaterial} />
+                <CardPage studyMaterial={modifiedStudyMaterial!} />
               )}
             </Box>
           </Stack>

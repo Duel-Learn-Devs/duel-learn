@@ -9,6 +9,13 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import PageTransition from "../../../../../styles/PageTransition";
 
+interface UpdateItem {
+  term: string;
+  definition: string;
+  item_number: number;
+  image: string | null;
+}
+
 const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
   const location = useLocation();
@@ -33,6 +40,7 @@ const SetUpQuestionType: React.FC = () => {
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
   const [manaPoints, setManaPoints] = useState(10); // State for dynamic mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
+  const [snackbarMessage, setSnackbarMessage] = useState(""); // State for snackbar message
 
   // Signal when component is fully ready
   useEffect(() => {
@@ -82,51 +90,169 @@ const SetUpQuestionType: React.FC = () => {
     navigate("/dashboard/home");
   };
 
-  const handleStartLearning = () => {
-    // If no question type is selected, show the alert
+  const handleStartLearning = async () => {
+    console.log("Starting learning process...");
+    console.log("Selected Types:", selectedTypes);
+    console.log("Mode:", mode);
+    console.log("Material:", material);
+    console.log("Mana Points:", manaPoints);
+  
     if (selectedTypes.length === 0) {
+      setSnackbarMessage("Please select at least one question type.");
+      setOpenAlert(true);
+      return;
+    }
+  
+    if (mode !== "Time Pressured" && manaPoints < 10) {
+      setOpenManaAlert(true);
+      return;
+    }
+  
+    try {
+      const items = material?.items || [];
+      console.log("Processing items:", items);
+      const generatedQuestions: { question: string; answer: string }[] = [];
+    
+      for (const item of items) {
+        console.log("Processing item:", item);
+        const payload = {
+          term: item.term,
+          definition: item.definition,
+          selectedQuestionTypes: selectedTypes,
+          numberOfItems: 1
+        };
+        console.log("Sending payload to AI:", payload);
+        
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/ai/generate-questions`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("AI API Error Response:", errorData);
+          throw new Error(errorData.error || `AI Server error: ${response.status}`);
+        }
+
+        const questions = await response.json();
+        console.log("Received AI generated questions:", questions);
+        generatedQuestions.push(...questions);
+      }
+
+      console.log("All generated questions:", generatedQuestions);
+
+      // Create a deep copy of the material to transform
+      const transformedMaterial = JSON.parse(JSON.stringify(material));
+      
+      // Transform each item with the generated questions
+      transformedMaterial.items = transformedMaterial.items.map((item: any, index: number) => {
+        const generatedQuestion = generatedQuestions[index];
+        console.log(`Transforming item ${index}:`, { item, generatedQuestion });
+        
+        if (generatedQuestion?.question && generatedQuestion?.answer) {
+          return {
+            ...item,
+            item_number: index + 1,
+            originalTerm: item.term,
+            originalDefinition: item.definition,
+            term: generatedQuestion.answer,
+            definition: generatedQuestion.question,
+            isTransformed: true
+          };
+        }
+        return {
+          ...item,
+          item_number: index + 1
+        };
+      });
+
+      console.log("Transformed material with questions:", transformedMaterial);
+
+      // Update the material in the database
+      try {
+        const updateUrl = `${import.meta.env.VITE_BACKEND_URL}/api/study-material/update/${material.study_material_id}`;
+        console.log('Sending update request to:', updateUrl);
+
+        const updateItems: UpdateItem[] = transformedMaterial.items.map((item: any) => ({
+          term: item.term,
+          definition: item.definition,
+          item_number: item.item_number,
+          image: item.image || null
+        }));
+
+        console.log('Prepared update items:', JSON.stringify(updateItems, null, 2));
+
+        const updateResponse = await fetch(updateUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ items: updateItems })
+        });
+
+        console.log('Update response status:', updateResponse.status);
+        const responseText = await updateResponse.text();
+        console.log('Raw response:', responseText);
+
+        if (!updateResponse.ok) {
+          console.error('Update failed with status:', updateResponse.status);
+          console.error('Error response:', responseText);
+          throw new Error(`Update failed: ${updateResponse.status} - ${responseText}`);
+        }
+
+        let responseData;
+        try {
+          responseData = JSON.parse(responseText);
+          console.log('Parsed response data:', responseData);
+        } catch (parseError) {
+          console.error('Error parsing response:', parseError);
+          throw new Error('Failed to parse server response');
+        }
+
+        if (!responseData.items || !Array.isArray(responseData.items)) {
+          console.error('Invalid response format:', responseData);
+          throw new Error('Invalid response format from server');
+        }
+
+        console.log('Successfully updated study material:', responseData);
+        transformedMaterial.items = responseData.items;
+
+        // Navigation logic
+        const navigationState = {
+          mode,
+          material: transformedMaterial,
+          selectedTypes,
+          questions: generatedQuestions,
+          timeLimit: mode === "Time Pressured" ? undefined : null
+        };
+
+        console.log("Navigation state:", navigationState);
+
+        if (mode === "Peaceful") {
+          navigate("/dashboard/loading-screen", { state: navigationState });
+        } else if (mode === "Time Pressured") {
+          navigate("/dashboard/setup/timer", { state: navigationState });
+        } else {
+          navigate("/dashboard/pvp-lobby", { state: navigationState });
+        }
+
+      } catch (error: unknown) {
+        console.error("Error in update process:", error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to update study material';
+        setSnackbarMessage(errorMessage);
+        setOpenAlert(true);
+      }
+    } catch (error: unknown) {
+      console.error("Error in handleStartLearning:", error);
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while processing';
+      setSnackbarMessage(errorMessage);
       setOpenAlert(true);
     }
-    // If manaPoints are below 10 and mode is not "Time Pressured", show the mana alert
-    else if (mode !== "Time Pressured" && manaPoints < 10) {
-      setOpenManaAlert(true);
-    }
-    // If mode is "Time Pressured", navigate to Timer Setup
-    else if (mode === "Time Pressured") {
-      navigate("/dashboard/setup/timer", {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-        },
-      });
-    }
-    // If the mode is "Peaceful", navigate to LoadingScreen
-    else if (mode === "Peaceful") {
-      navigate("/dashboard/loading-screen", {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-          timeLimit: null
-        },
-      });
-    }
-    // If the mode is not "Time Pressured" and not "Peaceful Mode", navigate to PvP Lobby
-    else if (mode !== "Time Pressured" && mode !== "Peaceful Mode") {
-      navigate("/dashboard/pvp-lobby", {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-        },
-      });
-    }
-    // Default fallback logic
-    else {
-      console.log("Normal mode selected, staying on current flow.");
-    }
   };
+  
 
   const handleCloseAlert = () => {
     setOpenAlert(false); // Close the alert when the user acknowledges
@@ -195,7 +321,7 @@ const SetUpQuestionType: React.FC = () => {
             severity="warning"
             sx={{ width: "100%" }}
           >
-            Please select a question type before proceeding.
+            {snackbarMessage}
           </Alert>
         </Snackbar>
 

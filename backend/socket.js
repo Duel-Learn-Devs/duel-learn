@@ -1,4 +1,5 @@
 import { Server } from "socket.io";
+import { pool } from "./config/db.js";
 
 let io;
 
@@ -180,24 +181,75 @@ const setupSocket = (server) => {
         });
 
         // Listen for new study material creation
-        socket.on("newStudyMaterial", (data) => {
+        socket.on("broadcast_study_material", async (data) => {
             try {
-                if (!data || !data.content) {
-                    throw new Error("Invalid study material data");
+                console.log("Received study material data for broadcasting:", data);
+
+                // Validate the data structure
+                if (!data || !data.study_material_id) {
+                    throw new Error("Missing study material ID");
                 }
 
-                console.log("📚 New study material received:", data);
-                io.emit("broadcastStudyMaterial", data);
+                // Fetch the complete study material data from the database
+                const connection = await pool.getConnection();
+                try {
+                    // Get study material info
+                    const [studyMaterial] = await connection.query(
+                        `SELECT * FROM study_material_info WHERE study_material_id = ?`,
+                        [data.study_material_id]
+                    );
+
+                    if (!studyMaterial.length) {
+                        throw new Error("Study material not found");
+                    }
+
+                    // Get study material content
+                    const [items] = await connection.query(
+                        'SELECT * FROM study_material_content WHERE study_material_id = ? ORDER BY item_number',
+                        [data.study_material_id]
+                    );
+
+                    // Parse summary and tags
+                    let summary;
+                    try {
+                        summary = JSON.parse(studyMaterial[0].summary || '{"term":"","definition":""}');
+                    } catch (e) {
+                        console.error('Error parsing summary:', e);
+                        summary = { term: "", definition: "" };
+                    }
+
+                    const tags = JSON.parse(studyMaterial[0].tags || '[]');
+
+                    // Construct the complete study material object
+                    const studyMaterialData = {
+                        study_material_id: studyMaterial[0].study_material_id,
+                        title: studyMaterial[0].title,
+                        tags: tags,
+                        summary: summary,
+                        created_by: studyMaterial[0].created_by,
+                        created_by_id: studyMaterial[0].created_by_id,
+                        created_at: studyMaterial[0].created_at,
+                        visibility: studyMaterial[0].visibility,
+                        total_views: studyMaterial[0].total_views || 0,
+                        items: items.map(item => ({
+                            term: item.term,
+                            definition: item.definition,
+                            item_number: item.item_number,
+                            image: item.image
+                        }))
+                    };
+
+                    console.log("Broadcasting study material:", studyMaterialData);
+                    socket.broadcast.emit("receive_study_material", studyMaterialData);
+
+                } finally {
+                    connection.release();
+                }
             } catch (error) {
                 console.error("Error broadcasting study material:", error);
-                socket.emit("error", {
-                    type: "studyMaterial",
-                    message: "Failed to broadcast study material",
-                    details: error.message
-                });
+                socket.emit("broadcast_error", { error: error.message });
             }
         });
-
 
         // Handle disconnection
         socket.on("disconnect", (reason) => {

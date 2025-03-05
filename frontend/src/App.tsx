@@ -8,6 +8,7 @@ import theme from "../../frontend/src/contexts/ThemeContext";
 import "./index.css";
 
 function App() {
+  
   return (
     <Router>
       <UserProvider>

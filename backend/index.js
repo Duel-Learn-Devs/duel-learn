@@ -1,4 +1,3 @@
-
 import express from "express";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
@@ -6,6 +5,7 @@ import cors from "cors"; // Import CORS package
 import studyMaterialRoutes from "./routes/StudyMaterial.js";
 import userRoutes from "./routes/UserAccount.js";
 import friendRoutes from "./routes/FriendRoutes.js";
+import aiRoutes from './routes/aiRoutes.js';
 // Load environment variables
 dotenv.config();
 
@@ -28,7 +28,6 @@ app.use(cors({
     credentials: true,
 }));
 
-
 // Middleware
 app.use(express.json());
 
@@ -36,5 +35,6 @@ app.use(express.json());
 app.use("/api/study-material", studyMaterialRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/friend", friendRoutes);
+app.use('/api/ai', aiRoutes);
 
 export default app;
