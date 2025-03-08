@@ -2,23 +2,23 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import DefaultUnknownPic from "../../../../assets/General/DefaultUnknownPic.png";
-import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
+import { useAudio } from "../../../../contexts/AudioContext";
 
 const WelcomeGameMode: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const audioContext = useAudio();
   const { mode, material } = location.state || {};
   const [fadeOut, setFadeOut] = useState(false);
   const [setupIsReady, setSetupIsReady] = useState(false);
-  const { playPeacefulModeAudio } = useAudio(); // Use the playPeacefulModeAudio function
-  // Add console log to debug
+
   console.log("WelcomeGameMode received state:", { mode, material });
+  console.log("Current audio playing status:", audioContext.isPlaying, "Track:", audioContext.currentTrack);
 
   // Check if SetUpQuestionType is ready
   useEffect(() => {
     const checkSetupComponent = async () => {
       try {
-        // Preload the SetUpQuestionType component
         await import('../components/setup/SetUpQuestionType');
         setSetupIsReady(true);
       } catch (error) {
@@ -32,7 +32,17 @@ const WelcomeGameMode: React.FC = () => {
   // Only start transition when setup is ready
   useEffect(() => {
     if (setupIsReady) {
-      // Add 1.5 second delay before starting transition
+      // If audio isn't already playing, try to start it based on mode
+      if (!audioContext.isPlaying) {
+        if (mode === "Peaceful") {
+          audioContext.playPeacefulModeAudio();
+        } else if (mode === "Time Pressured") {
+          audioContext.playTimePressuredAudio();
+        } else if (mode === "PvP") {
+          audioContext.playPvPModeAudio(); // Add PvP audio playback
+        }
+      }
+      
       setTimeout(() => {
         setFadeOut(true);
         setTimeout(() => {
@@ -44,14 +54,9 @@ const WelcomeGameMode: React.FC = () => {
             }
           });
         }, 1000);
-      }, 1500); // 1.5 second delay
+      }, 1500);
     }
-  }, [setupIsReady, navigate, mode, material]);
-
-  // Play peaceful mode audio when the component mounts
-  useEffect(() => {
-    playPeacefulModeAudio();
-  }, [playPeacefulModeAudio]);
+  }, [setupIsReady, navigate, mode, material, audioContext]);
 
   return (
     <motion.div
@@ -94,7 +99,7 @@ const WelcomeGameMode: React.FC = () => {
           >
             {mode === "Peaceful" && "Take your time, master at your own pace! ✨"}
             {mode === "Time Pressured" && "Beat the clock, unleash your magical prowess! ⚡"}
-            {mode?.includes("PvP") && "Battle head-to-head for magical supremacy! 🏆"}
+            {mode === "PvP" && "Battle head-to-head for magical supremacy! 🏆"}
           </motion.p>
         </>
       )}

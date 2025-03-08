@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useGameLogic } from "../../hooks/useGameLogic";
 import FlashCard from "../../components/common/FlashCard";
 import Header from "../../components/common/Header";
 import Timer from "../../components/common/Timer";
 import { GameState } from "../../types";
+import { useAudio } from "../../../../../contexts/AudioContext";
 import "./../../styles/setupques.css";
 
 const TimePressuredMode: React.FC<GameState> = ({
@@ -34,6 +35,13 @@ const TimePressuredMode: React.FC<GameState> = ({
   } = useGameLogic({ mode, material, selectedTypes, timeLimit });
 
   const [startTime] = useState(new Date());
+  const audioContext = useAudio();
+  
+  // Use effect to update audio intensity based on the timer
+  useEffect(() => {
+    const actualTimeLimit = timeLimit ?? 30;
+    audioContext.updateTimePressuredIntensity(questionTimer, actualTimeLimit);
+  }, [questionTimer, timeLimit, audioContext]);
 
   const renderQuestionContent = () => {
     if (!currentQuestion) return null;

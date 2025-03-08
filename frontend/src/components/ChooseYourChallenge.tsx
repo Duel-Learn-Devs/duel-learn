@@ -1,6 +1,8 @@
-//import * as React from "react";
 import { Box, Card, CardContent, Typography, CardMedia } from "@mui/material";
 import { styled } from "@mui/system";
+import { useNavigate } from 'react-router-dom';
+import { useAudio } from "../contexts/AudioContext";
+import { useState } from "react";
 
 const ModeCard = styled(Card)({
   padding: "2rem",
@@ -24,6 +26,58 @@ const ModeCard = styled(Card)({
 });
 
 const ChooseYourChallenge = () => {
+  const navigate = useNavigate();
+  const audioContext = useAudio();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  console.log('ChooseYourChallenge mounted, audioContext:', !!audioContext);
+
+  const handleModeSelection = async (mode: string) => {
+    // Prevent multiple clicks/processing
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    console.log(`Mode selected: ${mode}`);
+    
+    try {
+      let audioStarted = false;
+      
+      // Play the appropriate audio based on mode
+      if (mode === "Peaceful") {
+        console.log('Starting Peaceful Mode audio');
+        await audioContext.playPeacefulModeAudio();
+        audioStarted = true;
+      } else if (mode === "Time Pressured") {
+        console.log('Starting Time Pressured audio');
+        await audioContext.playTimePressuredAudio();
+        audioStarted = true;
+      } else if (mode === "PvP") {
+        console.log('Starting PvP Mode audio');
+        await audioContext.playPvPModeAudio(); // Play PvP mode audio
+        audioStarted = true;
+      }
+      
+      console.log('Audio started successfully:', audioStarted);
+
+      // Give audio a moment to start before navigating
+      setTimeout(() => {
+        console.log('Navigating to welcome-game-mode with mode:', mode);
+        navigate("/dashboard/welcome-game-mode", {
+          state: { mode }
+        });
+        setIsProcessing(false);
+      }, 300);
+    } catch (error) {
+      console.error('Error in handleModeSelection:', error);
+      setIsProcessing(false);
+      
+      // Navigate anyway if audio fails
+      navigate("/dashboard/welcome-game-mode", {
+        state: { mode }
+      });
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -38,7 +92,7 @@ const ChooseYourChallenge = () => {
       }}
     >
       {/* Peaceful Mode */}
-      <ModeCard>
+      <ModeCard onClick={() => !isProcessing && handleModeSelection("Peaceful")}>
         <CardMedia
           component="svg"
           className="cardMedia"
@@ -62,7 +116,6 @@ const ChooseYourChallenge = () => {
               bottom: 28,
               left: 28,
               textAlign: "left",
-              // Higher z-index to appear above the CardMedia
             }}
           >
             <Typography
@@ -84,7 +137,7 @@ const ChooseYourChallenge = () => {
       </ModeCard>
 
       {/* Time Pressured Mode */}
-      <ModeCard>
+      <ModeCard onClick={() => !isProcessing && handleModeSelection("Time Pressured")}>
         <CardMedia
           component="svg"
           className="cardMedia"
@@ -128,7 +181,7 @@ const ChooseYourChallenge = () => {
       </ModeCard>
 
       {/* PvP Mode */}
-      <ModeCard>
+      <ModeCard onClick={() => !isProcessing && handleModeSelection("PvP")}>
         <CardMedia
           component="svg"
           className="cardMedia"

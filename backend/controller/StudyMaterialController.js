@@ -209,7 +209,7 @@ const studyMaterialController = {
         createdById,
         totalView = 1,
         status = "active",
-        items, // Receiving items with Base64 images
+        items,
       } = req.body;
 
       console.log("Generated Study Material ID:", studyMaterialId);
@@ -218,15 +218,14 @@ const studyMaterialController = {
 
       await connection.beginTransaction();
 
-      // Insert into study_material_info
       await connection.execute(
         `INSERT INTO study_material_info 
-                (study_material_id, title, tags, total_items, visibility, status,created_by, created_by_id, total_views, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?,?,?, ?, ?,?);`,
+                (study_material_id, title, tags, total_items, visibility, status, created_by, created_by_id, total_views, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           studyMaterialId,
           title,
-          JSON.stringify(tags), // Store tags as a JSON string
+          JSON.stringify(tags),
           totalItems,
           visibility,
           status,
@@ -238,32 +237,43 @@ const studyMaterialController = {
         ]
       );
 
-      // Insert items into study_material_content
-      const insertItemPromises = items.map(async (item, index) => {
-        const itemId = nanoid();
-        let imageBuffer = null;
+      // Insert items and collect term-definition pairs
+      const termDefinitionPairs = [];
+      const insertItemPromises = Array.isArray(items)
+        ? items.map(async (item, index) => {
+            const itemId = nanoid();
+            let imageBuffer = null;
 
-        if (item.image) {
-          // Decode Base64 to binary (Buffer)
-          const base64Data = item.image.replace(/^data:image\/\w+;base64,/, ""); // Remove Base64 header
-          imageBuffer = Buffer.from(base64Data, "base64");
-        }
+            if (item.image) {
+              const base64Data = item.image.replace(
+                /^data:image\/\w+;base64,/,
+                ""
+              );
+              imageBuffer = Buffer.from(base64Data, "base64");
+            }
 
-        return connection.execute(
-          `INSERT INTO study_material_content 
+            termDefinitionPairs.push({
+              term: item.term,
+              definition: item.definition,
+            });
+
+            return connection.execute(
+              `INSERT INTO study_material_content 
                     (study_material_id, item_id, item_number, term, definition, image) 
                     VALUES (?, ?, ?, ?, ?, ?);`,
-          [
-            studyMaterialId,
-            itemId,
-            index + 1,
-            item.term,
-            item.definition,
-            imageBuffer,
-          ]
-        );
-      });
+              [
+                studyMaterialId,
+                itemId,
+                index + 1,
+                item.term,
+                item.definition,
+                imageBuffer,
+              ]
+            );
+          })
+        : [];
 
+      // Ensure termDefinitionPairs is fully populated before AI calls
       await Promise.all(insertItemPromises);
       await connection.commit();
 
@@ -283,7 +293,9 @@ const studyMaterialController = {
           console.error("Error rolling back transaction:", rollbackError);
         }
       }
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       if (connection) {
         try {
@@ -299,14 +311,8 @@ const studyMaterialController = {
     let connection;
     try {
       connection = await pool.getConnection();
-      const {
-        studyMaterialId,
-        title,
-        tags,
-        totalItems,
-        visibility,
-        items,
-      } = req.body;
+      const { studyMaterialId, title, tags, totalItems, visibility, items } =
+        req.body;
 
       // Validate required fields
       if (!studyMaterialId || !title || !items || !items.length) {
@@ -346,7 +352,9 @@ const studyMaterialController = {
 
         if (item.image) {
           // Handle both new base64 images and existing ones
-          const base64Data = item.image.toString().replace(/^data:image\/\w+;base64,/, "");
+          const base64Data = item.image
+            .toString()
+            .replace(/^data:image\/\w+;base64,/, "");
           imageBuffer = Buffer.from(base64Data, "base64");
         }
 
@@ -384,7 +392,7 @@ const studyMaterialController = {
       res.status(200).json({
         message: "Study material updated successfully",
         studyMaterialId,
-        updated_at: updatedTimestamp
+        updated_at: updatedTimestamp,
       });
     } catch (error) {
       console.error("Error editing study material:", error);
@@ -395,7 +403,9 @@ const studyMaterialController = {
           console.error("Error rolling back transaction:", rollbackError);
         }
       }
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       if (connection) {
         try {
@@ -656,8 +666,9 @@ const studyMaterialController = {
       );
 
       if (infoRows.length === 0) {
-        return res
-          .json({ message: "No study materials found with matching tags" });
+        return res.json({
+          message: "No study materials found with matching tags",
+        });
       }
 
       const studyMaterials = await Promise.all(
@@ -839,17 +850,20 @@ const studyMaterialController = {
       );
 
       console.log(`Found ${friendsQuery.length} friends with accepted status`);
-      console.log("Friend IDs:", friendsQuery.map(row => row.friend_id));
+      console.log(
+        "Friend IDs:",
+        friendsQuery.map((row) => row.friend_id)
+      );
 
       if (friendsQuery.length === 0) {
         return res.status(200).json([]);
       }
 
       // Extract friend IDs
-      const friendIds = friendsQuery.map(row => row.friend_id);
+      const friendIds = friendsQuery.map((row) => row.friend_id);
 
       // Use IN clause with prepared statement
-      const placeholders = friendIds.map(() => '?').join(',');
+      const placeholders = friendIds.map(() => "?").join(",");
 
       // Enhanced direct query for debugging
       const [directCheckQuery] = await connection.execute(
@@ -866,7 +880,9 @@ const studyMaterialController = {
       console.log("Direct check results:", directCheckQuery);
 
       // Log the query that will be executed
-      console.log(`Query to execute: SELECT * FROM study_material_info WHERE created_by IN (${placeholders})`);
+      console.log(
+        `Query to execute: SELECT * FROM study_material_info WHERE created_by IN (${placeholders})`
+      );
       console.log("With parameters:", friendIds);
 
       // Fetch study materials created by friends
@@ -879,7 +895,10 @@ const studyMaterialController = {
       );
 
       console.log(`Found ${infoRows.length} study materials from friends`);
-      console.log("Created_by values:", infoRows.map(row => row.created_by));
+      console.log(
+        "Created_by values:",
+        infoRows.map((row) => row.created_by)
+      );
 
       if (infoRows.length === 0) {
         return res.status(200).json([]);
@@ -903,7 +922,7 @@ const studyMaterialController = {
             created_by: info.created_by,
             total_views: info.total_views,
             created_at: info.created_at,
-            items: contentRows.map(item => ({
+            items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
               image: formatImageToBase64(item.image),
@@ -921,7 +940,9 @@ const studyMaterialController = {
 
     } catch (error) {
       console.error("Error fetching study materials from friends:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -931,7 +952,7 @@ const studyMaterialController = {
     const connection = await pool.getConnection();
     try {
       let { username } = req.params;
-      if (username.includes('%')) {
+      if (username.includes("%")) {
         username = decodeURIComponent(username);
       }
       console.log("Fetching discover content for user:", username);
@@ -946,8 +967,8 @@ const studyMaterialController = {
 
       // Parse and flatten user's tags
       const userTags = userTagRows
-        .flatMap(row => JSON.parse(row.tags))
-        .map(tag => tag.toLowerCase());
+        .flatMap((row) => JSON.parse(row.tags))
+        .map((tag) => tag.toLowerCase());
 
       console.log("User's tags:", userTags);
 
@@ -971,7 +992,7 @@ const studyMaterialController = {
 
           // Calculate tag difference score
           const uniqueTags = materialTags.filter(
-            tag => !userTags.includes(tag.toLowerCase())
+            (tag) => !userTags.includes(tag.toLowerCase())
           ).length;
 
           // Get content for this material
@@ -991,7 +1012,7 @@ const studyMaterialController = {
             total_views: material.total_views,
             created_at: material.created_at,
             uniqueness_score: uniqueTags,
-            items: contentRows.map(item => ({
+            items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
               image: formatImageToBase64(item.image),
@@ -1010,12 +1031,11 @@ const studyMaterialController = {
       }
 
       res.status(200).json(sortedMaterials);
-
     } catch (error) {
       console.error("Error in discover endpoint:", error);
       res.status(500).json({
         error: "Internal server error",
-        details: error.message
+        details: error.message,
       });
     } finally {
       connection.release();

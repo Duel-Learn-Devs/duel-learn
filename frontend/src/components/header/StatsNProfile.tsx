@@ -34,7 +34,7 @@ const StatsNProfile = () => {
             user.firebase_uid
           }`
         );
-        setUserInfo(response.data.user);
+        setUserInfo((response.data as { user: UserInfo }).user);
       } catch (err) {
         console.error("Error fetching user info:", err);
         setError("Failed to load user data");
@@ -124,7 +124,10 @@ const StatsNProfile = () => {
         <Avatar
           variant="rounded"
           onClick={handleProfileClick}
-          src={user?.display_picture || sampleAvatarDeployment}
+          src={
+            userInfo?.display_picture ||
+            sampleAvatarDeployment
+          }
           alt={user?.email || "User"}
           sx={{
             cursor: "pointer",
