@@ -9,6 +9,8 @@ import PageTransition from "../../../../styles/PageTransition";
 import PlayIcon from "/play-button.svg";
 import EditIcon from "/edit-icon.svg";
 import MoreIcon from "@mui/icons-material/MoreHorizRounded";
+import UnBookmarkIcon from "@mui/icons-material/BookmarkBorderRounded";
+import BookmarkIcon from "@mui/icons-material/BookmarkRounded";
 import MoreOptionPopover from "./MoreOptionPopover";
 import { useUser } from "../../../../contexts/UserContext";
 
@@ -23,7 +25,10 @@ const ViewStudyMaterial = () => {
   const [modifiedItems, setModifiedItems] = useState<Item[]>([]);
   const [originalItems, setOriginalItems] = useState<Item[]>([]);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const open = Boolean(anchorEl);
+
+  const isOwner = studyMaterial?.created_by_id === user?.firebase_uid;
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -49,7 +54,7 @@ const ViewStudyMaterial = () => {
         console.log("API Response for study material:", data);
 
         if (data && typeof data === "object") {
-          let items: Item[] = [];
+          const items: Item[] = [];
           let tags: string[] = [];
 
           try {
@@ -109,7 +114,7 @@ const ViewStudyMaterial = () => {
     };
 
     fetchStudyMaterial();
-  }, [studyMaterialId]);
+  }, [studyMaterialId, user?.firebase_uid]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -178,6 +183,32 @@ const ViewStudyMaterial = () => {
                 <img src={PlayIcon} alt="" className="h-[0.9rem] w-auto mr-2" />
                 Play
               </Button>
+              {!isOwner && (
+                <Button
+                  variant="outlined"
+                  onClick={handleBookmarkToggle}
+                  sx={{
+                    alignItems: "center",
+                    borderColor: "#E2DDF3",
+                    color: "#E2DDF3",
+                    height: "fit-content",
+                    borderRadius: "0.8rem",
+                    padding: "0.4rem 1rem",
+                    fontSize: "0.9rem",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      transform: "scale(1.05)",
+                    },
+                  }}
+                >
+                  {isBookmarked ? (
+                    <BookmarkIcon className="text-[#FBB03B]" />
+                  ) : (
+                    <UnBookmarkIcon />
+                  )}
+                </Button>
+              )}
+
               {studyMaterial?.created_by_id === user?.firebase_uid && (
                 <Button
                   variant="outlined"
@@ -309,7 +340,7 @@ const ViewStudyMaterial = () => {
           open={open}
           onClose={handleClose}
           studyMaterialId={studyMaterialId || ""}
-          isOwner={studyMaterial?.created_by_id !== user?.firebase_uid}
+          isOwner={studyMaterial?.created_by_id === user?.firebase_uid}
         />
       </Box>
     </PageTransition>
