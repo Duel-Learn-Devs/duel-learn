@@ -1,4 +1,5 @@
 import { Button } from "@mui/material";
+import { useEffect, useRef } from "react"; // Add useEffect and useRef
 import SessionComplete from "../../../../assets/General/SessionComplete.png";
 import ClockIcon from "../../../../assets/clock.png";
 import ManaIcon from "../../../../assets/ManaIcon.png";
@@ -56,6 +57,46 @@ const SessionReport = () => {
     unmasteredCount,
   } = location.state as SessionReportProps;
   const { pauseAudio } = useAudio(); // Use the pauseAudio function
+  
+  // Add session completion sound reference
+  const completionSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize and play session completion sound
+  useEffect(() => {
+    // Create the audio element
+    completionSoundRef.current = new Audio('/sounds-sfx/session-report-completed.wav');
+    
+    // Set volume and play
+    if (completionSoundRef.current) {
+      completionSoundRef.current.volume = 0.7;
+      completionSoundRef.current.play();
+    }
+
+    // Cleanup function for when component unmounts
+    return () => {
+      if (completionSoundRef.current) {
+        // Create fade out effect
+        const fadeAudio = setInterval(() => {
+          if (completionSoundRef.current && completionSoundRef.current.volume > 0.1) {
+            completionSoundRef.current.volume -= 0.1;
+          } else {
+            if (completionSoundRef.current) {
+              completionSoundRef.current.pause();
+            }
+            clearInterval(fadeAudio);
+          }
+        }, 100);
+        
+        // Ensure audio is stopped after fade out
+        setTimeout(() => {
+          if (completionSoundRef.current) {
+            completionSoundRef.current.pause();
+            completionSoundRef.current.currentTime = 0;
+          }
+        }, 1000);
+      }
+    };
+  }, []);
 
   // Add console log to check the value of highestStreak after destructuring it from location.state
   console.log("Received highestStreak:", highestStreak);
@@ -99,6 +140,35 @@ const SessionReport = () => {
     earnedXP,
     highestStreak,
   });
+  
+  // Function to handle navigation with fade out effect
+  const handleNavigation = (path: string, state?: any) => {
+    // Start fade out
+    if (completionSoundRef.current) {
+      const fadeAudio = setInterval(() => {
+        if (completionSoundRef.current && completionSoundRef.current.volume > 0.1) {
+          completionSoundRef.current.volume -= 0.1;
+        } else {
+          if (completionSoundRef.current) {
+            completionSoundRef.current.pause();
+          }
+          clearInterval(fadeAudio);
+        }
+      }, 50);
+    }
+    
+    // Pause other audio via context
+    pauseAudio();
+    
+    // Navigate after a short delay to allow fade out to be heard
+    setTimeout(() => {
+      if (state) {
+        navigate(path, { state });
+      } else {
+        navigate(path);
+      }
+    }, 300);
+  };
 
   return (
     <div
@@ -190,7 +260,7 @@ const SessionReport = () => {
               },
             }}
             onClick={() =>
-              navigate("/dashboard/welcome-game-mode", {
+              handleNavigation("/dashboard/welcome-game-mode", {
                 state: { mode, material },
               })
             }
@@ -208,10 +278,7 @@ const SessionReport = () => {
                 backgroundColor: "#3A12B0",
               },
             }}
-            onClick={() => {
-              pauseAudio(); // Stop audio when navigating back to home
-              navigate("/dashboard/home");
-            }}
+            onClick={() => handleNavigation("/dashboard/home")}
           >
             Go Back to Home
           </Button>

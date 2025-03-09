@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useGameLogic } from "../../hooks/useGameLogic";
 import FlashCard from "../../components/common/FlashCard";
 import Header from "../../components/common/Header";
@@ -14,7 +14,7 @@ const PeacefulMode: React.FC<GameState> = ({
     currentQuestion,
     isFlipped,
     handleFlip,
-    handleAnswerSubmit,
+    handleAnswerSubmit: originalHandleAnswerSubmit,
     masteredCount,
     unmasteredCount,
     showResult,
@@ -28,6 +28,43 @@ const PeacefulMode: React.FC<GameState> = ({
   } = useGameLogic({ mode, material, selectedTypes });
 
   const [startTime] = useState(new Date());
+  
+  // Audio references
+  const correctSoundRef = useRef<HTMLAudioElement | null>(null);
+  const incorrectSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize audio elements
+  useEffect(() => {
+    correctSoundRef.current = new Audio('/sounds-sfx/right_answer.wav');
+    incorrectSoundRef.current = new Audio('/sounds-sfx/wronganswer.mp3');
+  }, []);
+
+  // Custom answer submit handler with sound effects
+  const handleAnswerSubmit = (answer: string) => {
+    let isAnswerCorrect = false;
+    
+    if (currentQuestion?.questionType === 'identification') {
+      isAnswerCorrect = answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+    } else {
+      isAnswerCorrect = answer.toLowerCase() === currentQuestion?.correctAnswer.toLowerCase();
+    }
+    
+    // Play appropriate sound
+    if (isAnswerCorrect) {
+      if (correctSoundRef.current) {
+        correctSoundRef.current.currentTime = 0;
+        correctSoundRef.current.play();
+      }
+    } else {
+      if (incorrectSoundRef.current) {
+        incorrectSoundRef.current.currentTime = 0;
+        incorrectSoundRef.current.play();
+      }
+    }
+    
+    // Call the original handler
+    originalHandleAnswerSubmit(answer);
+  };
 
   const renderQuestionContent = () => {
     if (!currentQuestion) return null;

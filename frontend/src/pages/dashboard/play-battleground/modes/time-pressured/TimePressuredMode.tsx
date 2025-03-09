@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useGameLogic } from "../../hooks/useGameLogic";
 import FlashCard from "../../components/common/FlashCard";
 import Header from "../../components/common/Header";
@@ -16,7 +16,7 @@ const TimePressuredMode: React.FC<GameState> = ({
     currentQuestion,
     isFlipped,
     handleFlip,
-    handleAnswerSubmit,
+    handleAnswerSubmit: originalHandleAnswerSubmit,
     correctCount,
     incorrectCount,
     showResult,
@@ -34,6 +34,43 @@ const TimePressuredMode: React.FC<GameState> = ({
   } = useGameLogic({ mode, material, selectedTypes, timeLimit });
 
   const [startTime] = useState(new Date());
+  
+  // Audio references
+  const correctSoundRef = useRef<HTMLAudioElement | null>(null);
+  const incorrectSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize audio elements
+  useEffect(() => {
+    correctSoundRef.current = new Audio('/sounds-sfx/right_answer.wav');
+    incorrectSoundRef.current = new Audio('/sounds-sfx/wronganswer.mp3');
+  }, []);
+
+  // Custom answer submit handler with sound effects
+  const handleAnswerSubmit = (answer: string) => {
+    let isCorrect = false;
+    
+    if (currentQuestion?.questionType === 'identification') {
+      isCorrect = answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+    } else {
+      isCorrect = answer.toLowerCase() === currentQuestion?.correctAnswer.toLowerCase();
+    }
+    
+    // Play appropriate sound
+    if (isCorrect) {
+      if (correctSoundRef.current) {
+        correctSoundRef.current.currentTime = 0;
+        correctSoundRef.current.play();
+      }
+    } else {
+      if (incorrectSoundRef.current) {
+        incorrectSoundRef.current.currentTime = 0;
+        incorrectSoundRef.current.play();
+      }
+    }
+    
+    // Call the original handler
+    originalHandleAnswerSubmit(answer);
+  };
 
   const renderQuestionContent = () => {
     if (!currentQuestion) return null;
