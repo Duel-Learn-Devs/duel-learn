@@ -1,13 +1,21 @@
+import {
+  Box,
+  Stack,
+  Typography,
+  Skeleton,
+  useMediaQuery,
+  useTheme,
+  Fab,
+} from "@mui/material";
 import { useState, useEffect } from "react";
-import { Box, Fab, useMediaQuery, useTheme, Skeleton } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { useUser } from "../../../contexts/UserContext";
 import CardComponent from "../../../components/CardComponent";
+import { StudyMaterial } from "../../../types/studyMaterialObject";
 import NextIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
-import { useUser } from "../../../contexts/UserContext";
-import { useNavigate } from "react-router-dom";
-import { StudyMaterial } from "../../../types/studyMaterialObject";
 
-const DiscoverMore = () => {
+const YourPickedTopics = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -29,7 +37,7 @@ const DiscoverMore = () => {
     : cards.length === 1
     ? 100 // Single card: 60%
     : isMediumScreen && cardsToShow === 2
-    ? 70 // Medium screen with 2 cards: 50% each
+    ? 100 // Medium screen with 2 cards: 50% each
     : 100 / maxCardsToShow; // Default distribution
 
   useEffect(() => {
@@ -41,7 +49,7 @@ const DiscoverMore = () => {
           const response = await fetch(
             `${
               import.meta.env.VITE_BACKEND_URL
-            }/api/study-material/discover/${encodedUsername}`
+            }/api/study-material/personalized/${encodedUsername}`
           );
 
           if (!response.ok) {
@@ -131,6 +139,27 @@ const DiscoverMore = () => {
               }}
             />
           ))}
+        </Box>
+      ) : cards.length === 0 ? (
+        <Box
+          display="flex"
+          flexDirection="column"
+          justifyContent="center"
+          alignItems="center"
+          textAlign="center"
+          minHeight="auto"
+          py={9}
+        >
+          <Typography
+            variant="body1"
+            sx={{
+              color: "#6F658D",
+              fontSize: { xs: "0.9rem", sm: "1rem" },
+              textAlign: "center",
+            }}
+          >
+            No study materials found matching your preferences.
+          </Typography>
         </Box>
       ) : (
         <Box
@@ -245,4 +274,4 @@ const DiscoverMore = () => {
   );
 };
 
-export default DiscoverMore;
+export default YourPickedTopics;

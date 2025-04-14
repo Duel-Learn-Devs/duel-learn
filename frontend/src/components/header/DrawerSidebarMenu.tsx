@@ -116,6 +116,11 @@ export default function DrawerSidebarMenu({
     </Tooltip>
   );
 
+  const handleCreateStudyMaterial = () => {
+    setSelectedIndex(null);
+    navigate("/dashboard/study-material/create");
+  };
+
   return (
     <Drawer
       anchor="left"
@@ -173,7 +178,7 @@ export default function DrawerSidebarMenu({
               />,
               "Create",
               "contained",
-              () => {}
+              handleCreateStudyMaterial
             )}
             {renderButton(
               <PlayIcon

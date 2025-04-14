@@ -3,9 +3,11 @@ import Typewriter from "typewriter-effect";
 import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
 import useWandCursor from "./data/useWandCursor";
-import Tutorial1Magician from "../../assets/UserOnboarding/StandingBunny.gif";
+import Tutorial1Magician from "/UserOnboarding/StandingBunny.gif";
 import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 
 const TutorialOnePage: React.FC = () => {
   const [animate, setAnimate] = useState<boolean>(false);
@@ -14,13 +16,15 @@ const TutorialOnePage: React.FC = () => {
   const [typingDone, setTypingDone] = useState<boolean>(false);
   const [key, setKey] = useState(0); // Key to force Typewriter re-render
   const navigate = useNavigate();
-  const { pauseAudio, playLoopAudio, isPlaying } = useAudio();
+  const { pauseAudio, playLoopAudio, isPlaying, isMuted, toggleMute } =
+    useAudio();
+  const loopAudioRef = React.useRef<HTMLAudioElement | null>(null);
 
   useWandCursor();
 
   useEffect(() => {
     setAnimate(true);
-    setKey(prevKey => prevKey + 1); // Force Typewriter to restart
+    setKey((prevKey) => prevKey + 1); // Force Typewriter to restart
 
     const initAudio = async () => {
       if (!isPlaying) {
@@ -31,16 +35,25 @@ const TutorialOnePage: React.FC = () => {
     initAudio();
 
     return () => {
-      // Don't pause audio here, let it continue playing
+      // Clean up audio when component unmounts
+      if (loopAudioRef.current) {
+        loopAudioRef.current.pause();
+        loopAudioRef.current.currentTime = 0;
+      }
     };
   }, [isPlaying, playLoopAudio]);
 
   const dialogues = [
     `Congratulations on stepping into the magical world of <span class="font-bold">Duel Learn</span>! Before we reveal the powerful spells you'll be casting here, let's first attune your grimoire to your unique style.`,
-    `A wizard’s journey begins with the right tools—so let’s <i>personalize</i> your experience!`,
+    `A wizard's journey begins with the right tools—so let's <i>personalize</i> your experience!`,
   ];
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    // Check if the click was on the sound button
+    if ((e.target as HTMLElement).closest("button")) {
+      return;
+    }
+
     if (!typingDone) {
       setShowFullText(true);
       setTypingDone(true);
@@ -51,11 +64,33 @@ const TutorialOnePage: React.FC = () => {
       setAnimate(false);
       setTimeout(() => {
         setAnimate(true);
-        setKey(prevKey => prevKey + 1); // Restart Typewriter
+        setKey((prevKey) => prevKey + 1);
       }, 100);
     } else {
-      pauseAudio(); // Stop audio before navigating away
-      navigate("/dashboard/my-preferences");
+      // Fade out audio before navigation
+      if (loopAudioRef.current) {
+        const fadeOutInterval = 50;
+        const fadeOutStep =
+          loopAudioRef.current.volume / (1000 / fadeOutInterval);
+        const fadeOut = setInterval(() => {
+          if (loopAudioRef.current && loopAudioRef.current.volume > 0) {
+            loopAudioRef.current.volume = Math.max(
+              0,
+              loopAudioRef.current.volume - fadeOutStep
+            );
+          } else {
+            clearInterval(fadeOut);
+            if (loopAudioRef.current) {
+              loopAudioRef.current.pause();
+              loopAudioRef.current.currentTime = 0;
+              loopAudioRef.current.volume = 1;
+            }
+            navigate("/dashboard/my-preferences");
+          }
+        }, fadeOutInterval);
+      } else {
+        navigate("/dashboard/my-preferences");
+      }
     }
   };
 
@@ -65,6 +100,22 @@ const TutorialOnePage: React.FC = () => {
         className="flex flex-col items-center justify-center h-screen bg-[#080511] relative overflow-hidden cursor-none"
         onClick={handleClick}
       >
+        <div className="absolute top-4 right-4 z-50 pointer-events-none">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMute();
+            }}
+            className="text-white hover:text-gray-300 transition-colors pointer-events-auto"
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? (
+              <VolumeOffIcon style={{ height: 23, width: 23 }} />
+            ) : (
+              <VolumeUpIcon style={{ height: 23, width: 23 }} />
+            )}
+          </button>
+        </div>
         {/* Sparkles Container */}
         <div id="sparkles-container"></div>
 
@@ -92,19 +143,19 @@ const TutorialOnePage: React.FC = () => {
                 />
               ) : (
                 <Typewriter
-                key={key} // Force re-render
-                onInit={(typewriter) => {
-                  typewriter
-                    .typeString(dialogues[clickCount])
-                    .callFunction(() => setTypingDone(true))
-                    .start();
-                }}
-                options={{
-                  autoStart: true,
-                  loop: false,
-                  delay: 50,
-                }}
-              />
+                  key={key} // Force re-render
+                  onInit={(typewriter) => {
+                    typewriter
+                      .typeString(dialogues[clickCount])
+                      .callFunction(() => setTypingDone(true))
+                      .start();
+                  }}
+                  options={{
+                    autoStart: true,
+                    loop: false,
+                    delay: 50,
+                  }}
+                />
               )}
             </div>
             {/* Triangle for the speech bubble */}

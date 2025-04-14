@@ -1,7 +1,7 @@
 import { useState } from "react";
-import pvpMatches from "../../../assets/images/pvp-matches-icon.svg";
-import pvpWins from "../../../assets/images/pvp-wins-icon.svg";
-import longestStreak from "../../../assets/images/longest-streak-icon.svg";
+import pvpMatches from "/images/pvp-matches-icon.svg";
+import pvpWins from "/images/pvp-wins-icon.svg";
+import longestStreak from "/images/longest-streak-icon.svg";
 
 const Statictics = () => {
   // State for statistics data

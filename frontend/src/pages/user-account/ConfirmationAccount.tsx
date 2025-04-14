@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import ExitIcon from "../../assets/images/Exit.png";
-import sampleAvatarDeployment from "../../assets/images/sampleAvatar2.png";
+import ExitIcon from "/images/Exit.png";
+import sampleAvatarDeployment from "/images/sampleAvatar2.png";
 import {
   getFirestore,
   collection,
@@ -68,9 +68,17 @@ const ConfirmationAccount = () => {
 
         if (!querySnapshot.empty) {
           const userDoc = querySnapshot.docs[0];
-          const userData = userDoc.data();
-          setUsername(userData.username);
-          setProfilePic(userData.profilePic);
+          // Define type for user data
+          interface UserData {
+            username: string;
+            profilePic?: string;
+            email?: string;
+            phone?: string;
+          }
+
+          const userData = userDoc.data() as UserData;
+          setUsername(userData.username || "");
+          setProfilePic(userData.profilePic || "");
         } else {
           setError("User not found");
         }

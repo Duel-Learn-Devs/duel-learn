@@ -33,6 +33,7 @@ router.put('/battle/update-session', updateBattleSession);
 router.get('/battle/session-state/:lobby_code', getBattleSessionState);
 router.get('/battle/session-with-material/:lobby_code', getBattleSessionWithMaterial);
 
+
 // Battle rounds
 router.post('/battle/initialize-rounds', initializeBattleRounds);
 router.put('/battle/update-round', updateBattleRound);

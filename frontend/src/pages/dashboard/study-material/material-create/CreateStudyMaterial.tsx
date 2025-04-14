@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from "framer-motion"; // Importing from Frame
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
 import Filter from "../../../../components/Filter"; // Adjust the
+import CauldronIcon from "/General/Cauldron.gif";
 import "../../../../styles/custom-scrollbar.css"; // Add this import
 
 // Add these imports near the top with your other imports
@@ -60,7 +61,7 @@ const MAX_TERM_LENGTH = 50;
 const MAX_DEFINITION_LENGTH = 500;
 const MAX_IMAGE_SIZE_MB = 10;
 const MAX_TOTAL_PAYLOAD_MB = 50;
-const MIN_REQUIRED_ITEMS = 10;
+const MIN_REQUIRED_ITEMS = 1;
 
 // Add this helper function to check file size
 const getFileSizeInMB = (base64String: string): number => {
@@ -95,7 +96,7 @@ interface TermDefinitionPair {
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Add this line
-  const { user } = useUser();
+  const { user, updateUser } = useUser();
 
   // Properly type the socket state
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -105,6 +106,7 @@ const CreateStudyMaterial = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Check if we're in edit mode
   const editMode = location.state?.editMode || false;
@@ -126,7 +128,11 @@ const CreateStudyMaterial = () => {
       item_number: number;
     }[]
   >(location.state?.items || []);
-  const [visibility, setVisibility] = useState<string>("0"); // Add this state for visibility
+  const [visibility, setVisibility] = useState<string>(
+    location.state?.visibility !== undefined
+      ? location.state.visibility.toString()
+      : "0"
+  );
   const [showCustomTagInput, setShowCustomTagInput] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [inputValue, setInputValue] = useState("");
@@ -356,6 +362,8 @@ const CreateStudyMaterial = () => {
       return;
     }
 
+    setIsSaving(true);
+
     // Define summary variable outside try block so it's accessible in the main scope
     let summary = "";
 
@@ -504,6 +512,9 @@ const CreateStudyMaterial = () => {
     } catch (error) {
       console.error("Error in handleSaveButton:", error);
       handleShowSnackbar("An unexpected error occurred. Please try again.");
+    } finally {
+      // Set loading state back to false when done
+      setIsSaving(false);
     }
   };
 
@@ -554,6 +565,14 @@ const CreateStudyMaterial = () => {
 
   // Function to handle opening the scan notes modal
   const handleOpenScanModal = () => {
+    // Check if user has tech passes before allowing them to process
+    if (!user || !user.tech_pass || user.tech_pass <= 0) {
+      handleShowSnackbar(
+        "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop."
+      );
+      return;
+    }
+
     setScanModalOpen(true);
   };
 
@@ -757,6 +776,35 @@ const CreateStudyMaterial = () => {
           `Added ${newItems.length} new terms and definitions!`
         );
 
+        // Deduct a tech pass using the API
+        try {
+          if (user?.firebase_uid) {
+            const techPassResponse = await fetch(
+              `${import.meta.env.VITE_BACKEND_URL}/api/shop/use-tech-pass/${
+                user.firebase_uid
+              }`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (techPassResponse.ok) {
+              // Update the user context with updated tech pass count
+              updateUser({
+                ...user,
+                tech_pass: user.tech_pass - 1,
+              });
+            } else {
+              console.error("Failed to deduct tech pass, but feature was used");
+            }
+          }
+        } catch (passError) {
+          console.error("Error deducting tech pass:", passError);
+        }
+
         // Close the modal after processing
         handleCloseScanModal();
         setUploadProgress(100);
@@ -845,7 +893,7 @@ const CreateStudyMaterial = () => {
   return (
     <>
       <PageTransition>
-        <Box className="h-full w-full px-2 sm:px-4 md:px-8">
+        <Box className="h-full w-full ">
           <DocumentHead
             title={
               editMode
@@ -855,7 +903,17 @@ const CreateStudyMaterial = () => {
           />
           <Stack spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
             {/* Title Input */}
-            <Box className="sticky top-4">
+            <Box
+              className="z-10"
+              sx={{
+                position: "sticky",
+                top: 0,
+                backgroundColor: "#080511", // Match app background color
+                paddingTop: "1rem",
+                width: "100%",
+                borderBottom: "0.8rem",
+              }}
+            >
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={{ xs: 1, sm: 2 }}
@@ -970,6 +1028,7 @@ const CreateStudyMaterial = () => {
                   </Button>
                   <Button
                     variant="contained"
+                    disabled={isSaving}
                     sx={{
                       borderRadius: "0.8rem",
                       display: "flex",
@@ -984,10 +1043,21 @@ const CreateStudyMaterial = () => {
                       "&:hover": {
                         transform: "scale(1.05)",
                       },
+                      "&.Mui-disabled": {
+                        backgroundColor: "#4D18E8",
+                        color: "#E2DDF3",
+                        opacity: 0.7,
+                      },
                     }}
                     onClick={handleSaveButton}
                   >
-                    {editMode ? "Update" : "Save"}
+                    {isSaving ? (
+                      <CircularProgress size={20} sx={{ color: "#E2DDF3" }} />
+                    ) : editMode ? (
+                      "Update"
+                    ) : (
+                      "Save"
+                    )}
                   </Button>
                 </Stack>
               </Stack>
@@ -999,17 +1069,11 @@ const CreateStudyMaterial = () => {
                 spacing={1}
                 sx={{ display: "inline-flex", maxWidth: "100%" }}
               >
-                <Stack direction="row" spacing={1} alignItems="baseline">
+                <Stack direction="row" spacing={1} alignItems="center">
                   <Typography variant="subtitle1" className="text-[#3B354D]">
                     Tags:
                   </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "#9F9BAE",
-                      fontSize: "0.75rem",
-                    }}
-                  >
+                  <Typography variant="caption" className="text-[#9F9BAE]">
                     (Type a custom tag or select from predefined subjects, then
                     press Enter)
                   </Typography>
@@ -1021,9 +1085,10 @@ const CreateStudyMaterial = () => {
                     alignSelf: "flex-start",
                     flexWrap: "wrap",
                     gap: 0.5,
-                    padding: { xs: "0.5rem", sm: "0.8rem" },
+                    padding: { xs: "0.5rem", sm: "0.6rem" },
                     width: "auto",
-                    maxWidth: "100%",
+                    minWidth: "14ch",
+                    maxWidth: "fit-content",
                     border: "1px solid #3B354D",
                     borderRadius: "0.8rem",
                     backgroundColor: "#3B354D",
@@ -1035,6 +1100,10 @@ const CreateStudyMaterial = () => {
                     "&:active": {
                       backgroundColor: "#2F283A",
                       borderColor: "#9B85E1",
+                    },
+                    "& > *": {
+                      // Apply to all direct children
+                      margin: tags.length === 0 ? "0" : "0.15rem",
                     },
                   }}
                 >
@@ -1062,18 +1131,13 @@ const CreateStudyMaterial = () => {
                     <Box
                       sx={{
                         position: "relative",
-                        minWidth: "120px",
-                        maxWidth: "200px",
-                        flex: "0 1 auto",
+                        display: "inline-flex",
+                        alignItems: "center",
                       }}
                     >
-                      <TextField
-                        variant="standard"
-                        placeholder={
-                          inputValue || tags.length > 0
-                            ? ""
-                            : "Add a tag here ..."
-                        }
+                      <input
+                        id="tags"
+                        type="text"
                         value={inputValue}
                         onChange={(e) => {
                           setInputValue(e.target.value);
@@ -1089,23 +1153,25 @@ const CreateStudyMaterial = () => {
                             setSearchQuery("");
                           }
                         }}
-                        sx={{
-                          "& .MuiInputBase-root": {
-                            color: "#E2DDF3",
-                            width: "100%",
-                            "&:before, &:after": {
-                              display: "none",
-                            },
-                          },
-                          "& .MuiInput-input": {
-                            border: "none",
-                            outline: "none",
-                            background: "transparent",
-                            fontSize: "1rem",
-                            padding: "4px 6px",
-                            width: "100%",
-                          },
+                        placeholder={tags.length > 0 ? "" : "Add a tag here..."}
+                        style={{
+                          border: "none",
+                          outline: "none",
+                          background: "transparent",
+                          width: inputValue
+                            ? `${inputValue.length * 8 + 8}px`
+                            : tags.length > 0
+                            ? "ch"
+                            : "14ch",
+                          color: "#E2DDF3",
+                          fontSize: "1rem",
+                          padding: "6px 3px",
+                          margin: 0,
+                          textAlign: "left",
+                          cursor: "text",
+                          caretColor: "#E2DDF3",
                         }}
+                        className="tag-input-placeholder"
                       />
                       {inputValue && filteredSubjects.length > 0 && (
                         <Paper
@@ -1113,7 +1179,7 @@ const CreateStudyMaterial = () => {
                             position: "absolute",
                             top: "100%",
                             left: 0,
-                            right: 0,
+                            width: "200px", // Set fixed width
                             mt: 1,
                             maxHeight: "200px",
                             overflow: "auto",
@@ -1150,6 +1216,7 @@ const CreateStudyMaterial = () => {
                               sx={{
                                 padding: "8px 16px",
                                 cursor: "pointer",
+                                width: "auto",
                                 "&:hover": {
                                   backgroundColor: "#3B354D",
                                 },
@@ -1168,35 +1235,42 @@ const CreateStudyMaterial = () => {
                   )}
                 </Box>
                 {/* Tag counters */}
-                <Stack direction="row" spacing={2}>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
-                      transition: "color 0.3s ease-in-out",
-                      marginTop: "0.2rem",
-                      fontSize: "0.75rem",
-                      textAlign: "left",
-                    }}
-                  >
-                    {tags.length}/{MAX_TAGS} total tags
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color:
-                        customTagsCount >= MAX_CUSTOM_TAGS
-                          ? "#E57373"
-                          : "#6F658D",
-                      transition: "color 0.3s ease-in-out",
-                      marginTop: "0.2rem",
-                      fontSize: "0.75rem",
-                      textAlign: "left",
-                    }}
-                  >
-                    {customTagsCount}/{MAX_CUSTOM_TAGS} custom tags
-                  </Typography>
-                </Stack>
+                <Box
+                  sx={{
+                    position: "relative",
+                    zIndex: 0,
+                    marginTop: "0.5rem",
+                    clear: "both",
+                  }}
+                >
+                  <Stack direction="row" spacing={2}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
+                        transition: "color 0.3s ease-in-out",
+                        fontSize: "0.75rem",
+                        textAlign: "left",
+                      }}
+                    >
+                      {tags.length}/{MAX_TAGS} total tags
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color:
+                          customTagsCount >= MAX_CUSTOM_TAGS
+                            ? "#E57373"
+                            : "#6F658D",
+                        transition: "color 0.3s ease-in-out",
+                        fontSize: "0.75rem",
+                        textAlign: "left",
+                      }}
+                    >
+                      {customTagsCount}/{MAX_CUSTOM_TAGS} custom tags
+                    </Typography>
+                  </Stack>
+                </Box>
               </Stack>
             </Box>
 
@@ -1238,7 +1312,7 @@ const CreateStudyMaterial = () => {
                       color: "#E2DDF3",
                     },
                   }}
-                  onClick={handleUploadFile}
+                  onClick={handleOpenScanModal}
                 >
                   Scan Notes
                 </Button>
@@ -1324,7 +1398,6 @@ const CreateStudyMaterial = () => {
           </Stack>
         </Box>
       </PageTransition>
-
       {/* Scan Notes Modal */}
       <Modal
         open={scanModalOpen}
@@ -1649,17 +1722,28 @@ const CreateStudyMaterial = () => {
           <Button
             variant="contained"
             fullWidth
-            disabled={uploadedFiles.length === 0 || isProcessing}
+            disabled={
+              uploadedFiles.length === 0 ||
+              isProcessing ||
+              !user?.tech_pass ||
+              user.tech_pass <= 0
+            }
             onClick={handleProcessFile}
             sx={{
-              backgroundColor: "#4D18E8",
-              color: "#E2DDF3",
+              backgroundColor:
+                user?.tech_pass && user.tech_pass > 0 ? "#4D18E8" : "#3B354D",
+              color:
+                user?.tech_pass && user.tech_pass > 0 ? "#E2DDF3" : "#9F9BAE",
               borderRadius: "0.8rem",
               padding: "0.8rem",
               transition: "all 0.3s ease",
               "&:hover": {
-                backgroundColor: "#6939FF",
-                transform: "scale(1.02)",
+                backgroundColor:
+                  user?.tech_pass && user.tech_pass > 0 ? "#6939FF" : "#3B354D",
+                transform:
+                  user?.tech_pass && user.tech_pass > 0
+                    ? "scale(1.02)"
+                    : "scale(1)",
               },
               "&.Mui-disabled": {
                 backgroundColor: "#3B354D",
@@ -1672,20 +1756,69 @@ const CreateStudyMaterial = () => {
                 <CircularProgress size={24} sx={{ color: "#E2DDF3", mr: 1 }} />
                 Processing...
               </>
+            ) : user?.tech_pass && user.tech_pass > 0 ? (
+              <>
+                Generate cards from{" "}
+                {uploadedFiles.length > 0 ? uploadedFiles.length : ""}
+                {uploadedFiles.length === 1 ? " File" : " Files"}
+                <span className="ml-2 text-[#A38CE6] font-medium">
+                  (Uses 1 Tech Pass)
+                </span>
+              </>
             ) : (
-              `Generate cards from ${
-                uploadedFiles.length > 0 ? uploadedFiles.length : ""
-              } ${uploadedFiles.length === 1 ? "File" : "Files"}`
+              <>
+                Generate cards
+                <span className="ml-2 text-[#8b6d8d] font-medium">
+                  (No Tech Pass Available)
+                </span>
+              </>
             )}
           </Button>
         </Paper>
       </Modal>
-
       <AutoHideSnackbar
         message={snackbarMessage}
         open={snackbarOpen}
         onClose={handleCloseSnackbar}
       />
+      {/* Saving overlay */}
+      <Modal
+        open={isSaving}
+        aria-labelledby="saving-modal"
+        aria-describedby="modal-showing-saving-progress"
+        disableAutoFocus
+        disableEnforceFocus
+        disableEscapeKeyDown
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "#120F1B",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: "0.8rem",
+            outline: "none",
+            textAlign: "center",
+            alignItems: "center",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            gap: 2,
+          }}
+        >
+          <img src={CauldronIcon} alt="" className="w-32 h-auto" />
+          <Typography variant="h6" sx={{ color: "#E2DDF3", mb: 1 }}>
+            {editMode ? "Updating" : "Saving"} Your Study Material
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#9F9BAE" }}>
+            This may take a moment.
+          </Typography>
+        </Box>
+      </Modal>
     </>
   );
 };

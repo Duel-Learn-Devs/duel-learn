@@ -439,8 +439,7 @@ const ocrController = {
           const fileType = file.mimetype;
 
           console.log(
-            `Processing file ${i + 1} of ${
-              req.files.length
+            `Processing file ${i + 1} of ${req.files.length
             }: ${fileName} (${fileType})`
           );
 
@@ -471,12 +470,10 @@ const ocrController = {
           if (extractedText && extractedText.trim()) {
             processedCount++;
             // Add page marker and the extracted text
-            allExtractedText += `\n\n--- File ${
-              i + 1
-            }: ${fileName} ---\n\n${extractedText}`;
+            allExtractedText += `\n\n--- File ${i + 1
+              }: ${fileName} ---\n\n${extractedText}`;
             console.log(
-              `Successfully extracted ${
-                extractedText.length
+              `Successfully extracted ${extractedText.length
               } characters from file ${i + 1}`
             );
           } else {
@@ -499,9 +496,8 @@ const ocrController = {
       }
 
       // Add a summary of the extraction process
-      const summary = `\n\n=== Extraction Summary ===\nSuccessfully processed ${processedCount} of ${
-        req.files.length
-      } files${errorCount > 0 ? ` (${errorCount} files had issues)` : ""}\n`;
+      const summary = `\n\n=== Extraction Summary ===\nSuccessfully processed ${processedCount} of ${req.files.length
+        } files${errorCount > 0 ? ` (${errorCount} files had issues)` : ""}\n`;
 
       allExtractedText = summary + allExtractedText;
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import Profile from "../../../assets/profile-picture/default-picture.svg";
-import PremiumLabel from "../../../assets/premium-star.png";
+import Profile from "/profile-picture/default-picture.svg";
+import PremiumLabel from "/premium-star.png";
 import axios from "axios";
 import { UserInfo } from "../../../types/userInfoObject";
 import { useUser } from "../../../contexts/UserContext";
@@ -23,9 +23,10 @@ const ProfileHeader = () => {
     xpToNextLevel: 200,
     friendsCount: 0,
     xpProgress: 0,
+    account_type: "Loading...",
+    account_type_plan: "Loading...",
   });
-  const [accountType, setAccountType] = useState<string | undefined>(undefined);
-
+  const isPremium = userInfo?.account_type === "premium";
   // Extract fetchUserInfo to be reusable
   const fetchUserInfo = useCallback(async () => {
     if (!user?.firebase_uid) return;
@@ -39,9 +40,8 @@ const ProfileHeader = () => {
           user.firebase_uid
         }`
       );
+      console.log("User info response:", response.data); // Add this to debug
       setUserInfo(response.data.user);
-      // Also update the accountType when we get userInfo
-      setAccountType(response.data.user.account_type);
     } catch (err) {
       console.error("Error fetching user info:", err);
       setError("Failed to load user data");
@@ -155,6 +155,8 @@ const ProfileHeader = () => {
           xpToNextLevel: xpToNextLevel,
           friendsCount: friendsCount, // Use the friends count from state
           xpProgress: progress,
+          account_type: userInfo.account_type || "Free",
+          account_type_plan: userInfo.account_type_plan || "Free",
         });
       }
     }
@@ -205,24 +207,39 @@ const ProfileHeader = () => {
         <img
           src={userInfo?.display_picture || Profile}
           alt="Profile Avatar"
-          className="w-[158px] h-[158px] rounded-sm"
+          className="w-[158px] h-[158px] rounded-[0.8rem] sm:w-[120px] sm:h-[120px] md:w-[158px] md:h-[158px] object-cover"
         />
       </div>
 
       {/* Profile Info */}
       <div className="flex-1">
-        <div className="flex justify-center md:justify-start items-center">
-          <h2 className="text-[30px] font-bold mr-3 text-[#E2DDF3]">
+        <div className="flex xs:grid justify-center md:justify-start gap-2 items-center">
+          <h2 className="text-[30px] font-bold mr-4 text-[#E2DDF3]">
             {profileData.username}
           </h2>
-          {accountType === "premium" && (
-            <img
-              src={PremiumLabel}
-              alt="Profile Premium Icon"
-              className="w-[15px] h-auto rounded-sm"
-            />
+          {isPremium && (
+            <>
+              <img
+                src={PremiumLabel}
+                alt="Profile Premium Icon"
+                className="w-[15px] h-auto"
+              />
+
+              <div className="flex justify-center items-center gap-1 md:justify-start">
+                <p className="text-[#9F9BAE] text-[16px">Premium</p>
+                <p className="text-[#9F9BAE] text-[16px">|</p>
+                <p className="text-[#9F9BAE] text-[16px">
+                  {profileData.account_type_plan === "MONTHLY PLAN"
+                    ? "Monthly Plan"
+                    : profileData.account_type_plan === "ANNUAL PLAN"
+                    ? "Annual Plan"
+                    : profileData.account_type_plan}
+                </p>
+              </div>
+            </>
           )}
         </div>
+
         <div className="flex justify-center md:justify-between">
           <p className="text-[#9F9BAE] text-[16px">Level {profileData.level}</p>
           <p className="text-[#9F9BAE] text-[13px] mt-1 md:ml-2">

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, sendEmail } from "../../services/firebase";
 import { toast } from "react-hot-toast";
-import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
+import sampleAvatar2 from "/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -17,16 +17,19 @@ const VerifyEmail = () => {
   const navigate = useNavigate();
   const { user } = useUser(); // User data from UserContext
   const { currentUser, logout } = useAuth(); // Auth state from AuthContext
-  
+
   // Use auth currentUser as primary, user context as fallback
   const userInfo = currentUser || {
     email: user?.email,
     emailVerified: user?.email_verified,
-    uid: user?.firebase_uid
+    uid: user?.firebase_uid,
   };
 
-  const { timeRemaining, isButtonDisabled: isTimestampButtonDisabled, checkTimestamp } = 
-    useEmailTimestamp(userInfo.email || '', userInfo.uid);
+  const {
+    timeRemaining,
+    isButtonDisabled: isTimestampButtonDisabled,
+    checkTimestamp,
+  } = useEmailTimestamp(userInfo.email || "", userInfo.uid);
 
   const handleSendVerificationEmail = async () => {
     try {
@@ -35,7 +38,9 @@ const VerifyEmail = () => {
         const actionCodeSettings = {
           url: `${
             import.meta.env.VITE_FRONTEND_URL
-          }/email-action-handler?mode=verifyEmail&firebase_uid=${userInfo.uid}&email=${userInfo.email}`,
+          }/email-action-handler?mode=verifyEmail&firebase_uid=${
+            userInfo.uid
+          }&email=${userInfo.email}`,
           handleCodeInApp: true,
         };
         await sendEmail(auth.currentUser, actionCodeSettings);
@@ -47,7 +52,7 @@ const VerifyEmail = () => {
         if (userInfo.uid) {
           try {
             await updateDoc(doc(db, "temp_users", userInfo.uid), {
-              emailTimestamp: serverTimestamp()
+              emailTimestamp: serverTimestamp(),
             });
           } catch (error) {
             console.error("Error updating Firestore timestamp:", error);
@@ -127,7 +132,11 @@ const VerifyEmail = () => {
               onClick={handleButtonClick}
               disabled={isButtonDisabled || isTimestampButtonDisabled}
             >
-              {isButtonDisabled ? `Sending...` : timeRemaining ? `Resend in ${Math.ceil(timeRemaining / 1000)}s` : "Send Verification Email"}
+              {isButtonDisabled
+                ? `Sending...`
+                : timeRemaining
+                ? `Resend in ${Math.ceil(timeRemaining / 1000)}s`
+                : "Send Verification Email"}
             </button>
           )}
           <button

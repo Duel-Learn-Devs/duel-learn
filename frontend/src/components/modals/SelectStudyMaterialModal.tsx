@@ -22,7 +22,10 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { useUser } from "../../contexts/UserContext";
 import { StudyMaterial } from "../../types/studyMaterialObject";
-import { createNewLobby, navigateToWelcomeScreen } from "../../services/pvpLobbyService";
+import {
+  createNewLobby,
+  navigateToWelcomeScreen,
+} from "../../services/pvpLobbyService";
 
 interface SelectStudyMaterialModalProps {
   open: boolean;
@@ -117,25 +120,26 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   const handleMaterialSelect = (material: StudyMaterial) => {
     // Call the onMaterialSelect callback with the material
     onMaterialSelect(material);
-    
+
     // If we're in a lobby context, just close the modal and don't navigate
     if (isLobby) {
       handleClose();
       return;
     }
-    
+
     // Normal flow for non-lobby context
     onModeSelect(mode || "");
     handleClose();
 
     // Format mode string consistently
-    const formattedMode = mode === "Peaceful Mode"
-      ? "Peaceful"
-      : mode === "Time Pressured"
-      ? "Time Pressured"
-      : mode === "PvP Mode"
-      ? "PvP"
-      : mode || "Unknown";
+    const formattedMode =
+      mode === "Peaceful Mode"
+        ? "Peaceful"
+        : mode === "Time Pressured"
+        ? "Time Pressured"
+        : mode === "PvP Mode"
+        ? "PvP"
+        : mode || "Unknown";
 
     // For PVP mode, use the lobby service
     if (formattedMode === "PvP" || mode === "PvP Mode") {
@@ -145,11 +149,11 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
       }
       navigateToWelcomeScreen(navigate, lobbyState);
     } else {
-      navigate("/dashboard/welcome-game-mode", { 
+      navigate("/dashboard/welcome-game-mode", {
         state: {
           mode: formattedMode,
-          material
-        }
+          material,
+        },
       });
     }
   };
@@ -198,23 +202,13 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
               position: "absolute",
               top: 16,
               left: 16,
-              color: "#FFFFFF",
+              color: "#3B354D",
+              "&:hover": {
+                color: "#E2DDF3",
+              },
             }}
           >
             <ArrowBackIcon />
-          </IconButton>
-
-          <IconButton
-            aria-label="close"
-            onClick={handleClose}
-            sx={{
-              position: "absolute",
-              top: 16,
-              right: 16,
-              color: "#FFFFFF",
-            }}
-          >
-            <CloseIcon />
           </IconButton>
 
           <Typography

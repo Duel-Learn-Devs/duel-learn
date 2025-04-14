@@ -1,15 +1,19 @@
 import React, { useState } from "react";
-import CoinIcon from "../../assets/CoinIcon.png";
-import ManaIcon from "../../assets/ManaIcon.png";
+import CoinIcon from "/CoinIcon.png";
+import ManaIcon from "/ManaIcon.png";
 import Tooltip from "@mui/material/Tooltip";
+import TechPassIcon from "/shop-picture/tech-pass.png";
 import ProfilePopover from "./ProfilePopover";
 import { Avatar, Box } from "@mui/material";
 import { useUser } from "../../contexts/UserContext";
-import defaultPicture from "../../assets/profile-picture/default-picture.svg";
+import DefaultPicture from "/profile-picture/default-picture.svg";
+import PremiumLabel from "/premium-star.png";
 
 const StatsNProfile = () => {
   const { user } = useUser();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const isPremium = user?.account_type === "premium";
 
   // Handle profile icon click to open/close popover
   const handleProfileClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -22,7 +26,7 @@ const StatsNProfile = () => {
   };
 
   return (
-    <Box className="flex items-center space-x-2 sm:space-x-6">
+    <Box className="flex items-center space-x-3 ">
       {/* Coin */}
       <Tooltip
         title="Coin"
@@ -65,6 +69,45 @@ const StatsNProfile = () => {
         </div>
       </Tooltip>
 
+      <Tooltip
+        title="Tech Pass"
+        arrow
+        sx={{
+          "& .MuiTooltip-tooltip": {
+            padding: "8px 12px",
+            fontSize: "16px",
+            fontWeight: "bold",
+            animation: "fadeInOut 0.3s ease-in-out",
+          },
+        }}
+      >
+        <div className="flex items-center space-x-2">
+          <img src={TechPassIcon} alt="Tech Pass" className="w-6 h-auto" />
+          <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3] ">
+            {user?.tech_pass || 0}
+          </span>
+        </div>
+      </Tooltip>
+
+      {isPremium && (
+        <Tooltip
+          title="Premium"
+          arrow
+          sx={{
+            "& .MuiTooltip-tooltip": {
+              padding: "8px 12px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              animation: "fadeInOut 0.3s ease-in-out",
+            },
+          }}
+        >
+          <div className="flex items-center space-x-2 mr-4">
+            <img src={PremiumLabel} alt="" className="w-5 h-auto" />
+          </div>
+        </Tooltip>
+      )}
+
       {/* Profile Avatar */}
       <Tooltip
         title="Profile"
@@ -81,7 +124,7 @@ const StatsNProfile = () => {
         <Avatar
           variant="rounded"
           onClick={handleProfileClick}
-          src={user?.display_picture || defaultPicture}
+          src={user?.display_picture || DefaultPicture}
           alt={user?.email || "User"}
           sx={{
             cursor: "pointer",

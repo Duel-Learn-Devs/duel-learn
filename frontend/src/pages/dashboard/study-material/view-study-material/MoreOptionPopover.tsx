@@ -10,13 +10,13 @@ import {
   exportToDocx,
   exportToPdf,
 } from "../../../../utils/exportUtils";
-import headerImage from "../../../../assets/General/print-header.png";
-import shareIcon from "../../../../assets/study-material-popover-icons/share-icon.svg";
-import printIcon from "../../../../assets/study-material-popover-icons/print-icon.svg";
-import exportIcon from "../../../../assets/study-material-popover-icons/export-icon.svg";
-import archiveIcon from "../../../../assets/study-material-popover-icons/archive-icon.svg";
-import restoreIcon from "../../../../assets/study-material-popover-icons/restore-icon.svg";
-import deleteIcon from "../../../../assets/study-material-popover-icons/delete-icon.svg";
+import headerImage from "/General/print-header.png";
+import shareIcon from "/study-material-popover-icons/share-icon.svg";
+import printIcon from "/study-material-popover-icons/print-icon.svg";
+import exportIcon from "/study-material-popover-icons/export-icon.svg";
+import archiveIcon from "/study-material-popover-icons/archive-icon.svg";
+import restoreIcon from "/study-material-popover-icons/restore-icon.svg";
+import deleteIcon from "/study-material-popover-icons/delete-icon.svg";
 
 interface MoreOptionPopoverProps {
   anchorEl: HTMLElement | null;

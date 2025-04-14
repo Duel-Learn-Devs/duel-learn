@@ -84,7 +84,7 @@ const PremiumSection = () => {
             }}
           >
             <img
-              src="src/assets/landing-page/spark-2.png"
+              src="/landing-page/spark-2.png"
               alt="Spark"
               style={{
                 width: "100%",
@@ -150,7 +150,7 @@ const PremiumSection = () => {
             }}
           >
             <img
-              src="src/assets/landing-page/premium-solo.png"
+              src="/landing-page/premium-solo.png"
               alt="Premium Features"
               style={{
                 width: "auto",

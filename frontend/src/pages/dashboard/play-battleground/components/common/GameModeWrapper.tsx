@@ -1,5 +1,5 @@
-import { useLocation, Navigate } from 'react-router-dom';
-import { GameState } from '../../types';
+import { useLocation, Navigate } from "react-router-dom";
+import { GameState } from "../../types/index";
 
 interface GameModeWrapperProps {
   children: (props: GameState) => React.ReactNode;
@@ -16,4 +16,4 @@ const GameModeWrapper: React.FC<GameModeWrapperProps> = ({ children }) => {
   return <>{children(state)}</>;
 };
 
-export default GameModeWrapper; 
+export default GameModeWrapper;

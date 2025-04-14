@@ -186,7 +186,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         }}
       >
         <Stack spacing={3} className="flex">
-          <Stack direction="row" className="flex items-center pb-3" spacing={1}>
+          <Stack direction="row" className="flex items-center pb-2" spacing={1}>
             <Button
               onClick={handleLandingPage}
               sx={{

@@ -28,7 +28,8 @@ Thumbs.db
 
 # Package files
 package-lock.json
-package.json
+
+
 
 .vscode/*
 
@@ -37,3 +38,4 @@ duel-learn-firebase-adminsdk-65lmy-22bd9929f6.json
 
 # Lunar Goal JSON file
 lunar-goal-452311-e6-1af8037708ca.json
+.vercel

@@ -10,29 +10,8 @@ import {
   useTheme,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import defaultCover from "../assets/study-material-cover/cardBackground.svg";
-
-interface Item {
-  term: string;
-  definition: string;
-  image?: string | null; // Update to string for Base64 images
-}
-
-interface CardComponentProps {
-  title: string;
-  tags: string[];
-  images: string[];
-  totalItems: number;
-  createdBy: string;
-  createdById: string;
-  totalViews: number;
-  createdAt: string;
-  updatedAt: string;
-  visibility: number;
-  status: string;
-  items: Item[];
-  onClick?: () => void; // Optional onClick prop to handle card clicks
-}
+import defaultCover from "/study-material-cover/cardBackground.svg";
+import { CardComponentProps } from "src/types/cardComponentObject";
 
 const CardComponent: React.FC<CardComponentProps> = ({
   title,
@@ -88,8 +67,8 @@ const CardComponent: React.FC<CardComponentProps> = ({
         <Box
           sx={{
             position: "absolute",
-            bottom: isXsScreen ? 16 : isSmScreen ? 24 : 30,
-            left: isXsScreen ? 16 : isSmScreen ? 24 : 30,
+            bottom: isXsScreen ? 16 : isSmScreen ? 24 : 26,
+            left: isXsScreen ? 16 : isSmScreen ? 24 : 26,
             textAlign: "left",
             maxWidth: isXsScreen ? "80%" : "85%",
           }}

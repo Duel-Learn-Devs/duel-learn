@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, Snackbar } from "@mui/material"; // Import Snackbar and Alert from MUI
 import "./../../styles/setupques.css";
-import ManaIcon from "../../../../../assets/ManaIcon.png";
+import ManaIcon from "/ManaIcon.png";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckIcon from "@mui/icons-material/Check";
@@ -16,15 +16,15 @@ const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
   const location = useLocation();
   const navigate = useNavigate();
-  const { 
-    selectedTypes: preSelectedTypes, 
-    material, 
-    mode, 
+  const {
+    selectedTypes: preSelectedTypes,
+    material,
+    mode,
     lobbyCode,
     role,
     isPvpLobbyCreation,
     friendToInvite,
-    fromWelcome
+    fromWelcome,
   } = location.state || {};
   const [isComponentReady, setIsComponentReady] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -46,8 +46,14 @@ const SetUpQuestionType: React.FC = () => {
   const [manaPoints, _setManaPoints] = useState(10); // State for dynamic mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
   const [isGenerating, setIsGenerating] = useState(false);
-  const [alertMessage, setAlertMessage] = useState<string>("Please select a question type before proceeding.");
-  const { createLobby, loading: lobbyLoading, error: lobbyError } = usePvPLobby();
+  const [alertMessage, setAlertMessage] = useState<string>(
+    "Please select a question type before proceeding."
+  );
+  const {
+    createLobby,
+    loading: lobbyLoading,
+    error: lobbyError,
+  } = usePvPLobby();
 
   // Signal when component is fully ready
   useEffect(() => {
@@ -117,20 +123,20 @@ const SetUpQuestionType: React.FC = () => {
       });
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to create lobby');
+        throw new Error(result.error || "Failed to create lobby");
       }
 
       // Navigate to the PvP lobby with the generated code
       navigate(`/dashboard/pvp-lobby/${result.lobbyCode}`, {
-        state: { 
+        state: {
           ...navigationState,
           lobbyCode: result.lobbyCode,
           fromWelcome: true,
-          friendToInvite: friendToInvite
-        }
+          friendToInvite: friendToInvite,
+        },
       });
     } catch (error) {
-      console.error('Error creating PvP lobby:', error);
+      console.error("Error creating PvP lobby:", error);
       setOpenAlert(true); // Show error alert to user
     }
   };
@@ -149,13 +155,16 @@ const SetUpQuestionType: React.FC = () => {
       return;
     }
 
+    // Set loading state
+    setIsGenerating(true);
+
     // Pass role information in navigation state
     const navigationState = {
       mode,
       material,
       selectedTypes,
       lobbyCode,
-      role: role || 'host' // Default to host if not specified
+      role: role || "host", // Default to host if not specified
     };
 
     console.log("Navigation state being passed:", navigationState);
@@ -340,11 +349,11 @@ const SetUpQuestionType: React.FC = () => {
                 <div className="flex justify-center">
                   <button
                     onClick={handleStartLearning}
-                    disabled={isGenerating}
+                    disabled={isGenerating || lobbyLoading}
                     className="mt-8 w-[240px] sm:w-[280px] md:w-[320px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-700 hover:text-white hover:border-transparent flex items-center justify-center"
                   >
-                    {isGenerating
-                      ? "Generating Questions..."
+                    {isGenerating || lobbyLoading
+                      ? "Setting up lobby..."
                       : mode === "Time Pressured"
                       ? "Continue"
                       : "START LEARNING!"}
@@ -367,4 +376,3 @@ const SetUpQuestionType: React.FC = () => {
 };
 
 export default SetUpQuestionType;
-

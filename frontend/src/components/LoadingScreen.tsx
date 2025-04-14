@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import cauldronGif from "../assets/General/Cauldron.gif";
+import cauldronGif from "/General/Cauldron.gif";
 import PageTransition from "../styles/PageTransition";
 
 interface LoadingScreenProps {
@@ -7,7 +7,10 @@ interface LoadingScreenProps {
   isLoading?: boolean;
 }
 
-export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({ text, isLoading = true }) => {
+export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({
+  text,
+  isLoading = true,
+}) => {
   const loadingLines = [
     "For relaxed practice and review. The best way to retain those lessons in your head, Magician.",
     "A true Magician never stops learning. Prepare your spells of knowledge!",
@@ -27,8 +30,9 @@ export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({ text, isLoa
 
   // Effect to change loading lines periodically
   useEffect(() => {
-    const getRandomLine = () => loadingLines[Math.floor(Math.random() * loadingLines.length)];
-    
+    const getRandomLine = () =>
+      loadingLines[Math.floor(Math.random() * loadingLines.length)];
+
     setCurrentLine(getRandomLine());
     const interval = setInterval(() => {
       setCurrentLine(getRandomLine());
@@ -38,7 +42,9 @@ export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({ text, isLoa
   }, []);
 
   const changeLine = () => {
-    setCurrentLine(loadingLines[Math.floor(Math.random() * loadingLines.length)]);
+    setCurrentLine(
+      loadingLines[Math.floor(Math.random() * loadingLines.length)]
+    );
   };
 
   if (!isLoading) return null;

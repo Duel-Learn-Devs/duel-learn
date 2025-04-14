@@ -17,7 +17,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       {/* Accept button */}
       <button
         onClick={onAccept}
-        className="flex justify-center items-center h-10 bg-green-600 rounded-xl cursor-pointer border-[none] w-[45px] max-md:h-[35px] max-md:w-[35px] max-sm:h-[30px] max-sm:w-[30px]"
+        className="flex justify-center items-center h-[40px] bg-green-600 rounded-xl cursor-pointer w-[40px] max-md:h-[35px] max-md:w-[35px] max-sm:h-[30px] max-sm:w-[30px] hover:scale-110 transition-all duration-200 ease-in-out"
         aria-label="Accept invitation"
       >
         <div>
@@ -33,7 +33,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       {/* Decline button */}
       <button
         onClick={onDecline}
-        className="flex justify-center items-center h-10 bg-pink-800 rounded-xl cursor-pointer border-[none] w-[45px] max-md:h-[35px] max-md:w-[35px] max-sm:h-[30px] max-sm:w-[30px]"
+        className="flex justify-center items-center h-[40px] bg-pink-800 rounded-xl cursor-pointer border-[none] w-[40px] max-md:h-[35px] max-md:w-[35px] max-sm:h-[30px] max-sm:w-[30px] hover:scale-110 transition-all duration-200 ease-in-out"
         aria-label="Decline invitation"
       >
         <div>
@@ -49,4 +49,4 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   );
 };
 
-export default ActionButtons; 
+export default ActionButtons;

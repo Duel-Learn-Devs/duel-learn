@@ -9,6 +9,7 @@ interface QuestionTypeSelectionModalProps {
   selectedTypes: string[];
   questionTypes: { display: string; value: string }[];
   onConfirm: (selectedTypes: string[]) => void;
+  isHost?: boolean; // Add isHost prop to determine if user can edit
 }
 
 const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
@@ -17,6 +18,7 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
   selectedTypes,
   questionTypes,
   onConfirm,
+  isHost = true, // Default to true for backward compatibility
 }) => {
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
   const [localSelectedTypes, setLocalSelectedTypes] =
@@ -38,6 +40,8 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
   };
 
   const toggleSelection = (type: string) => {
+    if (!isHost) return; // Only allow hosts to change selection
+    
     setLocalSelectedTypes((prev: string[]) =>
       prev.includes(type)
         ? prev.filter((t: string) => t !== type)
@@ -46,41 +50,27 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
   };
 
   return (
-    <>
-      <Dialog 
-        open={open} 
-        onClose={onClose} 
-        PaperProps={{
-          style: {
-            backgroundColor: 'transparent',
-            boxShadow: 'none',
-            maxWidth: 'none',
-            margin: 0,
-            padding: 0,
-            overflow: 'visible'
-          },
-        }}
-        fullWidth
-        maxWidth="md"
-      >
-        {/* Centered Paper Container with same styling as SetUpQuestionType */}
-        <div className="flex justify-center items-center h-full overflow-hidden">
+    <div>
+      <Dialog open={open} onClose={onClose} sx={{ borderRadius: "16px" }}>
+        <div className="flex justify-center bg-[#080511] px-20 py-14 items-center h-full overflow-x-hidden overflow-y-hidden">
           <div className="paper-container flex flex-col items-center justify-center max-h-full overflow-y-hidden w-full">
-            {/* Top Scroll Bar */}
-            <div className="scroll-wrapper">
-              <div className="scroll-holder"></div>
-              <div className="scroll-bar"></div>
-              <div className="scroll-holder"></div>
+            {/* Top Scroll Design */}
+            <div className="scroll-wrapper flex justify-center items-center">
+              <div className="scroll-holder rounded-t-full bg-gray-700 w-10 h-5"></div>
+              <div className="scroll-bar bg-gray-500 w-20 h-2"></div>
+              <div className="scroll-holder rounded-t-full bg-gray-700 w-10 h-5"></div>
             </div>
 
-            {/* Paper Content (Perfectly Centered) */}
-            <div className="paper flex justify-center items-center p-4 sm:p-6 md:p-8 w-full max-w-xs sm:max-w-sm md:max-w-md">
+            <div className="paper flex justify-center items-center p-4 sm:p-6 md:p-8 w-full max-w-xs sm:max-w-sm md:max-w-md bg-white shadow-md border border-gray-300 rounded-lg">
               <div className="w-full text-center">
                 <h3 className="text-[20px] sm:text-[22px] md:text-[24px] lg:text-[26px] font-bold text-black">
                   Choose your question types
                 </h3>
                 <p className="text-[12px] sm:text-[14px] w-[200px] sm:w-[250px] md:w-[300px] mx-auto text-gray-700">
-                  Tailor your study flow and focus on what suits you best!
+                  {isHost 
+                    ? "Tailor your study flow and focus on what suits you best!" 
+                    : "These are the question types selected by the host"
+                  }
                 </p>
 
                 {/* Question Type Selection */}
@@ -88,7 +78,8 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
                   {questionTypes.map((type) => (
                     <div
                       key={type.value}
-                      className="flex justify-between items-center text-black py-2 sm:py-3 px-8 sm:px-10 md:px-14"
+                      className={`flex justify-between items-center text-black py-2 sm:py-3 px-8 sm:px-10 md:px-14 ${!isHost ? 'cursor-default' : 'cursor-pointer'}`}
+                      onClick={() => toggleSelection(type.value)}
                     >
                       <span className="font-bold text-[14px] sm:text-[16px]">
                         {type.display}
@@ -96,8 +87,11 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
 
                       {/* Toggle Button */}
                       <div
-                        onClick={() => toggleSelection(type.value)}
-                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all bg-black`}
+                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md transition-all ${
+                          localSelectedTypes.includes(type.value)
+                            ? "bg-black"
+                            : "bg-black"
+                        } ${isHost ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
                       >
                         {/* Check Icon */}
                         <div
@@ -125,31 +119,31 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
                   ))}
                 </div>
 
-                {/* Save Changes Button styled like START LEARNING! button */}
+                {/* Save Changes Button */}
                 <div className="flex justify-center">
                   <button
                     onClick={handleSaveChanges}
-                    className="mt-8 w-[240px] sm:w-[280px] md:w-[320px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-700 hover:text-white hover:border-transparent flex items-center justify-center"
+                    disabled={!isHost}
+                    className={`mt-8 w-[240px] sm:w-[280px] md:w-[320px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg ${isHost ? 'hover:bg-purple-700 hover:text-white hover:border-transparent' : 'opacity-60 cursor-not-allowed'} flex items-center justify-center`}
                   >
-                    Save Changes
+                    {isHost ? "Save Changes" : "Only Host Can Edit"}
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Bottom Scroll Bar */}
-            <div className="scroll-wrapper">
-              <div className="scroll-holder"></div>
-              <div className="scroll-bar"></div>
-              <div className="scroll-holder"></div>
+            {/* Bottom Scroll Design */}
+            <div className="scroll-wrapper flex justify-center items-center">
+              <div className="scroll-holder rounded-b-full bg-gray-700 w-10 h-5"></div>
+              <div className="scroll-bar bg-gray-500 w-20 h-2"></div>
+              <div className="scroll-holder rounded-b-full bg-gray-700 w-10 h-5"></div>
             </div>
           </div>
         </div>
       </Dialog>
-
-      {/* Alert for no question type selected */}
+      {/* Top Alert (for question type selection) */}
       <Snackbar
-        open={openAlert}
+        open={openAlert} // Show the alert if openAlert is true
         autoHideDuration={6000}
         onClose={handleCloseAlert}
       >
@@ -161,7 +155,7 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
           Please select a question type before proceeding.
         </Alert>
       </Snackbar>
-    </>
+    </div>
   );
 };
 

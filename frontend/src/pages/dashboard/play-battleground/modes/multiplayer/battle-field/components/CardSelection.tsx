@@ -19,14 +19,15 @@ interface Card {
     description: string;
     type: string;
     image?: string; // Added image property
+
 }
 
 export interface CardSelectionProps {
-    isMyTurn: boolean;
-    opponentName: string;
-    playerName: string;
-    onCardSelected: (cardId: string) => void;
-    difficultyMode?: string | null;
+  isMyTurn: boolean;
+  opponentName: string;
+  playerName: string;
+  onCardSelected: (cardId: string) => void;
+  difficultyMode?: string | null;
 }
 
 /**
@@ -340,13 +341,56 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         const messageElement = document.createElement('div');
         messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
         messageElement.innerHTML = `
+
             <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
                 No card selected! Proceeding to question...
             </div>
         `;
-        document.body.appendChild(messageElement);
+    document.body.appendChild(messageElement);
 
-        // Remove the message after 1.2 seconds
+    // Remove the message after 1.2 seconds
+    setTimeout(() => {
+      document.body.removeChild(messageElement);
+
+      // No card selected, use a special "no-card" ID
+      onCardSelected("no-card-selected");
+      setShowCardOptions(false);
+      setTimerActive(false);
+    }, 1200);
+  };
+
+  // Timer effect
+  useEffect(() => {
+    if (timerActive && selectionTimer > 0) {
+      const timer = setTimeout(() => {
+        setSelectionTimer(selectionTimer - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (timerActive && selectionTimer === 0) {
+      // Time's up
+      handleTimeExpired();
+    }
+  }, [timerActive, selectionTimer]);
+
+  useEffect(() => {
+    if (isMyTurn) {
+      // Reset animation states
+      setShowBackCard(true);
+      setShowCardOptions(false);
+      setBackCardExitComplete(false);
+      setAnimationComplete(false);
+      setSelectionTimer(8); // Reset timer to 8 seconds
+      setTimerActive(false); // Don't start timer yet
+
+      // Generate cards for this turn
+      const cardsForThisTurn = generateCardsForTurn(
+        difficultyMode || "average"
+      );
+      setSelectedCards(cardsForThisTurn);
+
+      // Start the card animation sequence
+      const flipTimer = setTimeout(() => {
+        setShowBackCard(false);
         setTimeout(() => {
             document.body.removeChild(messageElement);
 
@@ -601,51 +645,48 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                             const messageElement = document.createElement('div');
                             messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
                             messageElement.innerHTML = `
+
                                 <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
                                     Answer Shield: ${response.data.data.cards_blocked} of your cards have been blocked!
                                 </div>
                             `;
-                            document.body.appendChild(messageElement);
+              document.body.appendChild(messageElement);
 
-                            // Remove the message after 2 seconds
-                            setTimeout(() => {
-                                document.body.removeChild(messageElement);
-                            }, 2000);
+              // Remove the message after 2 seconds
+              setTimeout(() => {
+                document.body.removeChild(messageElement);
+              }, 2000);
 
-                            // Mark the blocking effect as used
-                            if (response.data.data.effects && response.data.data.effects.length > 0) {
-                                const effectToConsume = response.data.data.effects[0];
+              // Mark the blocking effect as used
+              if (
+                response.data.data.effects &&
+                response.data.data.effects.length > 0
+              ) {
+                const effectToConsume = response.data.data.effects[0];
 
-                                // Consume the effect
-                                await axios.post(
-                                    `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/consume-card-effect`,
-                                    {
-                                        session_uuid: sessionUuid,
-                                        player_type: playerType,
-                                        effect_type: effectToConsume.type
-                                    }
-                                );
+                // Consume the effect
+                await axios.post(
+                  `${
+                    import.meta.env.VITE_BACKEND_URL
+                  }/api/gameplay/battle/consume-card-effect`,
+                  {
+                    session_uuid: sessionUuid,
+                    player_type: playerType,
+                    effect_type: effectToConsume.type,
+                  }
+                );
 
-                                console.log(`Card blocking effect consumed`);
-                            }
-                        } else {
-                            // No blocking, show all cards
-                            setVisibleCardIndices([0, 1, 2]);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Error checking for card blocking effects:", error);
-                    // Default to showing all cards on error
-                    setVisibleCardIndices([0, 1, 2]);
-                }
-            };
-
-            checkForCardBlocking();
-        } else {
-            // Reset when not player's turn
-            setHasCardBlocking(false);
-            setBlockedCardCount(0);
-            setVisibleCardIndices([0, 1, 2]);
+                console.log(`Card blocking effect consumed`);
+              }
+            } else {
+              // No blocking, show all cards
+              setVisibleCardIndices([0, 1, 2]);
+            }
+          }
+        } catch (error) {
+          console.error("Error checking for card blocking effects:", error);
+          // Default to showing all cards on error
+          setVisibleCardIndices([0, 1, 2]);
         }
     }, [isMyTurn]);
 
@@ -677,52 +718,50 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                             const messageElement = document.createElement('div');
                             messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
                             messageElement.innerHTML = `
+
                                 <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
                                     Mind Control: You cannot select a card this turn!
                                 </div>
                             `;
-                            document.body.appendChild(messageElement);
+              document.body.appendChild(messageElement);
 
-                            // Remove the message after 2 seconds
-                            setTimeout(() => {
-                                document.body.removeChild(messageElement);
-                            }, 2000);
+              // Remove the message after 2 seconds
+              setTimeout(() => {
+                document.body.removeChild(messageElement);
+              }, 2000);
 
-                            // Mark the mind control effect as used
-                            if (response.data.data.effects && response.data.data.effects.length > 0) {
-                                const effectToConsume = response.data.data.effects[0];
+              // Mark the mind control effect as used
+              if (
+                response.data.data.effects &&
+                response.data.data.effects.length > 0
+              ) {
+                const effectToConsume = response.data.data.effects[0];
 
-                                // Consume the effect
-                                await axios.post(
-                                    `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/consume-card-effect`,
-                                    {
-                                        session_uuid: sessionUuid,
-                                        player_type: playerType,
-                                        effect_type: effectToConsume.type
-                                    }
-                                );
+                // Consume the effect
+                await axios.post(
+                  `${
+                    import.meta.env.VITE_BACKEND_URL
+                  }/api/gameplay/battle/consume-card-effect`,
+                  {
+                    session_uuid: sessionUuid,
+                    player_type: playerType,
+                    effect_type: effectToConsume.type,
+                  }
+                );
 
-                                console.log(`Mind control effect consumed`);
+                console.log(`Mind control effect consumed`);
 
-                                // Auto-select "no-card" after a delay to simulate no card selection
-                                setTimeout(() => {
-                                    onCardSelected("no-card-selected");
-                                    setShowCardOptions(false);
-                                    setTimerActive(false);
-                                }, 3000);
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error("Error checking for mind control effects:", error);
-                }
-            };
-
-            checkForMindControl();
-        } else {
-            // Reset when not player's turn
-            setHasMindControl(false);
-            setMindControlActive(false);
+                // Auto-select "no-card" after a delay to simulate no card selection
+                setTimeout(() => {
+                  onCardSelected("no-card-selected");
+                  setShowCardOptions(false);
+                  setTimerActive(false);
+                }, 3000);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error checking for mind control effects:", error);
         }
     }, [isMyTurn, onCardSelected]);
 
@@ -920,40 +959,59 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                     {showCardOptions && backCardExitComplete && (
                         <div className="absolute bottom-[120px] text-white text-xl font-semibold">
                             Choose a card to use in this round
+
                         </div>
-                    )}
-
-                    {/* Show information about mind control if active */}
-                    {mindControlActive && showCardOptions && (
-                        <div className="flex flex-col items-center gap-4">
-                            <div className="bg-yellow-600 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-yellow-500/50">
-                                Mind Control Active: Cannot select a card!
-                            </div>
-                            <div className="text-white text-lg">
-                                Opponent used Mind Control - proceeding without a card...
-                            </div>
+                        <div className="mt-auto flex justify-end">
+                          <div className="text-xs italic opacity-60">
+                            Card ID: {card.id}
+                          </div>
                         </div>
-                    )}
-                </>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
             )}
+          </AnimatePresence>
 
-            {/* Show notification if cards are blocked */}
-            {hasCardBlocking && blockedCardCount > 0 && isMyTurn && (
-                <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
-                    {blockedCardCount === 1 ?
-                        "Your opponent used Answer Shield: 1 card has been blocked!" :
-                        `Your opponent used Answer Shield: ${blockedCardCount} cards have been blocked!`}
-                </div>
-            )}
+          {showCardOptions && backCardExitComplete && (
+            <div className="absolute bottom-[170px] text-white text-xl font-semibold">
+              Choose a card to use in this round
+            </div>
+          )}
 
-            {/* Show notification if mind control is active */}
-            {hasMindControl && mindControlActive && isMyTurn && (
-                <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
-                    Mind Control: Your opponent has prevented you from using cards this turn!
-                </div>
-            )}
+          {/* Show information about mind control if active */}
+          {mindControlActive && showCardOptions && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="bg-yellow-600 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-yellow-500/50">
+                Mind Control Active: Cannot select a card!
+              </div>
+              <div className="text-white text-lg">
+                Opponent used Mind Control - proceeding without a card...
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Show notification if cards are blocked */}
+      {hasCardBlocking && blockedCardCount > 0 && isMyTurn && (
+        <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
+          {blockedCardCount === 1
+            ? "Your opponent used Answer Shield: 1 card has been blocked!"
+            : `Your opponent used Answer Shield: ${blockedCardCount} cards have been blocked!`}
         </div>
-    );
+      )}
+
+      {/* Show notification if mind control is active */}
+      {hasMindControl && mindControlActive && isMyTurn && (
+        <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
+          Mind Control: Your opponent has prevented you from using cards this
+          turn!
+        </div>
+      )}
+    </div>
+  );
 };
 
-export default CardSelection; 
+export default CardSelection;

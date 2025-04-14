@@ -4,7 +4,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import axios from "axios";
 import CardComponent from "../CardComponent";
-import defaultPicture from "../../assets/profile-picture/default-picture.svg";
+import defaultPicture from "/profile-picture/default-picture.svg";
 import { useUser } from "../../contexts/UserContext";
 import { UserInfo } from "../../types/userInfoObject";
 import { StudyMaterial } from "../../types/studyMaterialObject";
@@ -114,9 +114,11 @@ const ProfileModal = ({
             level: userData.level,
             exp: userData.exp,
             display_picture: userData.display_picture,
-            account_type: userData.account_type || "standard",
+            account_type: userData.account_type || "free",
+            account_type_plan: userData.account_type_plan || "free",
             mana: userData.mana || 0,
             coin: userData.coin || 0,
+            tech_pass: userData.tech_pass || 0,
           });
 
           // Fetch friendship status
@@ -393,7 +395,7 @@ const ProfileModal = ({
       aria-labelledby="profile-modal-title"
       sx={{
         "& .MuiModal-backdrop": {
-          backgroundColor: "rgba(0, 0, 0, 0.2)",
+          backgroundColor: "rgba(0, 0, 0, 0.3)",
         },
       }}
     >
@@ -403,14 +405,15 @@ const ProfileModal = ({
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: "80%",
+          width: { xs: "95%", sm: "90%", md: "80%" },
           maxWidth: "900px",
-          maxHeight: "90vh",
+          maxHeight: { xs: "80vh", sm: "90vh" },
           overflow: "auto",
           bgcolor: "#120F1B",
           borderRadius: "0.8rem",
+          border: "2px solid #3B354D",
           boxShadow: 24,
-          p: 5,
+          p: { xs: 2, sm: 3, md: 5 },
           "&:focus": { outline: "none" },
         }}
       >
@@ -419,7 +422,7 @@ const ProfileModal = ({
             className="self-start flex items-center gap-2 pb-2 text-[#3B354C] hover:text-inherit transition-colors"
             onClick={onClose}
           >
-            <ArrowBackIcon fontSize="small" /> Close
+            <ArrowBackIcon fontSize="small" /> Back
           </button>
 
           {loadingUserData ? (
@@ -429,42 +432,54 @@ const ProfileModal = ({
           ) : selectedUser ? (
             <Stack spacing={3}>
               {/* User Profile */}
-              <div className="flex items-center p-6 bg-[#3B354D] rounded-[0.8rem]">
-                <img
-                  src={selectedUser.display_picture || defaultPicture}
-                  alt="Avatar"
-                  className="w-16 h-16 object-cover rounded-[5px] mr-6"
-                />
-                <div>
-                  <p className="text-[1.5rem] text-[#E2DDF3] font-medium">
-                    {selectedUser.username}
-                  </p>
-                  <div className="flex items-center gap-[0.5vw]">
-                    {" "}
-                    <p className="text-[clamp(0.8rem,0.5vw,1.5rem)]  min-text-[12px] text-[#9F9BAE]">
-                      Level {selectedUser.level}
+              <div className="flex flex-col sm:flex-row items-center p-3 sm:p-6 bg-[#3B354D] rounded-[0.8rem]">
+                <div className="flex items-center w-full sm:w-auto">
+                  <img
+                    src={selectedUser.display_picture || defaultPicture}
+                    alt="Avatar"
+                    className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-[5px] mr-4 sm:mr-6"
+                  />
+                  <div>
+                    <p className="text-[1.2rem] sm:text-[1.5rem] text-[#E2DDF3] font-medium">
+                      {selectedUser.username}
                     </p>
-                    <p className="text-[#9F9BAE] text-[clamp(0.6rem,0.7vw,2rem)]">
-                      •
-                    </p>
-                    <p className="text-[clamp(0.8rem,0.5vw,1.5rem)]  min-text-[12px] text-[#9F9BAE]">
-                      EXP {selectedUser.exp}
-                    </p>
-                  </div>
-
-                  {/* Show mutual friends if any */}
-                  {friendshipStatus &&
-                    friendshipStatus.mutual_friends.count > 0 && (
-                      <p className="text-[0.8rem] text-[#C6C1D8] mt-1">
-                        {friendshipStatus.mutual_friends.count} mutual friend
-                        {friendshipStatus.mutual_friends.count > 1 ? "s" : ""}
+                    <div className="flex items-center gap-[0.5vw]">
+                      <p className="text-[0.8rem] sm:text-[clamp(0.8rem,0.5vw,1.5rem)] text-[#9F9BAE]">
+                        Level {selectedUser.level}
                       </p>
-                    )}
+                      <p className="text-[#9F9BAE] text-[0.8rem] sm:text-[clamp(0.6rem,0.7vw,2rem)]">
+                        •
+                      </p>
+                      <p className="text-[0.8rem] sm:text-[clamp(0.8rem,0.5vw,1.5rem)] text-[#9F9BAE]">
+                        EXP {selectedUser.exp}
+                      </p>
+                    </div>
+
+                    {/* Show mutual friends if any */}
+                    {friendshipStatus &&
+                      friendshipStatus.mutual_friends.count > 0 && (
+                        <p className="text-[0.75rem] text-[#C6C1D8] mt-1">
+                          {friendshipStatus.mutual_friends.count}
+                          {isOwnProfile
+                            ? ` friend${
+                                friendshipStatus.mutual_friends.count > 1
+                                  ? "s"
+                                  : ""
+                              }`
+                            : ` mutual friend${
+                                friendshipStatus.mutual_friends.count > 1
+                                  ? "s"
+                                  : ""
+                              }`}
+                        </p>
+                      )}
+                  </div>
                 </div>
                 <Box flex={1} />
+
                 {!isOwnProfile && (
                   <button
-                    className={`rounded-[0.8rem] px-6 py-[0.4rem] h-fit text-[0.9rem] hover:scale-105 transition-all duration-300 ease-in-out ${friendButtonClass}`}
+                    className={`rounded-[0.8rem] px-4 sm:px-6 py-[0.4rem] mt-3 sm:mt-0 self-end sm:self-auto h-fit text-[0.85rem] sm:text-[0.9rem] hover:scale-105 transition-all duration-300 ease-in-out ${friendButtonClass}`}
                     onClick={() => handleAddFriend(selectedUser.firebase_uid)}
                     disabled={friendButtonDisabled}
                   >
@@ -478,24 +493,25 @@ const ProfileModal = ({
               </div>
 
               {/* Mutual Friends (if any) */}
+              {/* Mutual Friends (if any) */}
               {friendshipStatus &&
                 friendshipStatus.mutual_friends.list.length > 0 && (
-                  <div className="p-4 bg-[#3B354D15] rounded-[0.8rem]">
-                    <p className="text-[#9F9BAE] font-medium mb-2">
-                      Mutual Friends:
+                  <div className="p-3 sm:p-4 bg-[#3B354D15] rounded-[0.8rem]">
+                    <p className="text-[#9F9BAE] font-medium text-[0.9rem] sm:text-base mb-2">
+                      {isOwnProfile ? "Your Friends:" : "Mutual Friends:"}
                     </p>
-                    <div className="flex gap-3 overflow-x-auto py-2">
+                    <div className="flex gap-2 sm:gap-3 overflow-x-auto py-1 sm:py-2">
                       {friendshipStatus.mutual_friends.list.map((friend) => (
                         <div
                           key={friend.firebase_uid}
-                          className="flex flex-col items-center min-w-[80px]"
+                          className="flex flex-col items-center min-w-[70px] sm:min-w-[80px]"
                         >
                           <img
                             src={friend.display_picture || defaultPicture}
                             alt={friend.username}
-                            className="w-10 h-10 rounded-full object-cover"
+                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
                           />
-                          <p className="text-[#E2DDF3] text-xs mt-1 text-center">
+                          <p className="text-[#E2DDF3] text-[0.7rem] sm:text-xs mt-1 text-center">
                             {friend.username}
                           </p>
                         </div>
@@ -506,12 +522,12 @@ const ProfileModal = ({
 
               {/* User's Study Materials */}
               <Stack spacing={2}>
-                <p className="text-[#9F9BAE] font-semibold text-[2.5vh]">
+                <p className="text-[#9F9BAE] font-semibold text-[1.1rem] sm:text-[2.5vh]">
                   Study Materials by {selectedUser.username}
                 </p>
 
                 {userMaterials.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {userMaterials.map((material) => (
                       <CardComponent
                         key={material.study_material_id}

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CachedIcon from "@mui/icons-material/Cached";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import ManaIcon from "../../../../../../assets/ManaIcon.png";
+import ManaIcon from "/ManaIcon.png";
 
 interface PvPHeaderProps {
   onBackClick: () => void;
@@ -56,25 +56,30 @@ const PvPHeader: React.FC<PvPHeaderProps> = ({
             {isCurrentUserGuest ? "Host selected: " : ""}
             {selectedTypesFinal.map((type, index) => {
               // Map question type values to display names
-              const displayType = questionTypes.find(qt => qt.value === type)?.display || type;
+              const displayType =
+                questionTypes.find((qt) => qt.value === type)?.display || type;
               return (
                 <span key={type}>
-                  {index > 0 ? ', ' : ''}
+                  {index > 0 ? ", " : ""}
                   {displayType}
                 </span>
               );
             })}
           </h6>
           <p className="text-[12px] sm:text-[14px] text-gray-400 flex items-center">
-            {isCurrentUserGuest ? "Host's Study Material: " : "Chosen Study Material: "}&nbsp;
+            {isCurrentUserGuest
+              ? "Host's Study Material: "
+              : "Chosen Study Material: "}
+            &nbsp;
             <span className="font-bold text-white">
               {selectedMaterial
-                ? (typeof selectedMaterial === 'string' && selectedMaterial === "None")
+                ? typeof selectedMaterial === "string" &&
+                  selectedMaterial === "None"
                   ? "Waiting for host's material..."
                   : selectedMaterial.title || "Loading material..."
                 : isCurrentUserGuest
-                  ? "Waiting for host's material..."
-                  : "Choose Study Material"}
+                ? "Waiting for host's material..."
+                : "Choose Study Material"}
             </span>
             {!isCurrentUserGuest && (
               <span className="transition-colors duration-200">
@@ -143,4 +148,4 @@ const PvPHeader: React.FC<PvPHeaderProps> = ({
   );
 };
 
-export default PvPHeader; 
+export default PvPHeader;

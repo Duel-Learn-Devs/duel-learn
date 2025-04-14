@@ -17,12 +17,15 @@ interface AudioContextType {
   playCorrectAnswerSound: () => Promise<void>;
   playIncorrectAnswerSound: () => Promise<void>;
   playSessionCompleteSound: () => Promise<void>;
+  playSessionIncompleteSound: () => Promise<void>;
   playTimePressuredAudio: (timeRemaining: number) => Promise<void>;
   setActiveModeAudio: (mode: string) => Promise<void>;
   pauseAudio: () => void;
   stopAllAudio: () => void;
   isPlaying: boolean;
   activeAudio: string | null;
+  isMuted: boolean;
+  toggleMute: () => void;
 }
 
 const AudioContext = createContext<AudioContextType | null>(null);
@@ -45,11 +48,13 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const correctAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
   const incorrectAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
   const sessionCompleteSoundRef = useRef<HTMLAudioElement | null>(null);
+  const sessionIncompleteSoundRef = useRef<HTMLAudioElement | null>(null);
   const timePressuredAudioRef = useRef<HTMLAudioElement | null>(null);
   const timePressuredSpeedUpAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeAudio, setActiveAudio] = useState<string | null>(null);
   const location = useLocation();
+  const [isMuted, setIsMuted] = useState(false);
 
   // Initialize audio elements
   const initializeAudio = () => {
@@ -64,6 +69,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     sessionCompleteSoundRef.current = new Audio(
       "/sounds-sfx/session-report-completed.mp3"
     );
+    sessionIncompleteSoundRef.current = new Audio("/sounds-sfx/session-incomplete.wav");
     timePressuredAudioRef.current = new Audio("/sounds-sfx/time-pressured.mp3");
     timePressuredSpeedUpAudioRef.current = new Audio(
       "/sounds-sfx/time-pressured-speed-up.mp3"
@@ -89,21 +95,25 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Function to ensure audio capabilities after user interaction
-  const initAudioContext = useCallback(() => {
+  const initAudioContext = useCallback(async () => {
     // Create and immediately use an audio context to enable audio
     const AudioContext =
       window.AudioContext || (window as any).webkitAudioContext;
     if (AudioContext) {
       const audioCtx = new AudioContext();
       if (audioCtx.state === "suspended") {
-        audioCtx.resume();
+        await audioCtx.resume();
       }
     }
   }, []);
 
   useEffect(() => {
     // Add click listener to initialize audio on first user interaction
-    document.addEventListener("click", initAudioContext, { once: true });
+    const handleFirstInteraction = async () => {
+      await initAudioContext();
+      document.removeEventListener("click", handleFirstInteraction);
+    };
+    document.addEventListener("click", handleFirstInteraction);
 
     initializeAudio();
 
@@ -113,7 +123,8 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       setActiveAudio(storedAudio);
 
       // Resume the appropriate audio based on stored state
-      setTimeout(() => {
+      setTimeout(async () => {
+        await initAudioContext();
         if (storedAudio === "peaceful") {
           playPeacefulModeAudio();
         } else if (storedAudio === "timePressured") {
@@ -124,7 +135,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
 
     return () => {
       // Cleanup function
-      document.removeEventListener("click", initAudioContext);
+      document.removeEventListener("click", handleFirstInteraction);
 
       if (startAudioRef.current) {
         startAudioRef.current.pause();
@@ -154,6 +165,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         sessionCompleteSoundRef.current.pause();
         sessionCompleteSoundRef.current = null;
       }
+      if (sessionIncompleteSoundRef.current) {
+        sessionIncompleteSoundRef.current.pause();
+        sessionIncompleteSoundRef.current = null;
+      }
       if (timePressuredAudioRef.current) {
         timePressuredAudioRef.current.pause();
         timePressuredAudioRef.current = null;
@@ -168,9 +183,67 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
+  const pauseAudio = useCallback(() => {
+    // Quick fade out for background music
+    fadeOutAudio(startAudioRef, 300);
+    fadeOutAudio(loopAudioRef, 300);
+    fadeOutAudio(peacefulModeAudioRef, 300);
+    fadeOutAudio(userOnboardingAudioRef, 300);
+    fadeOutAudio(timePressuredAudioRef, 300);
+    fadeOutAudio(timePressuredSpeedUpAudioRef, 300);
+
+    // Stop sound effects immediately
+    if (correctAnswerSoundRef.current) {
+      correctAnswerSoundRef.current.pause();
+      correctAnswerSoundRef.current.currentTime = 0;
+    }
+    if (incorrectAnswerSoundRef.current) {
+      incorrectAnswerSoundRef.current.pause();
+      incorrectAnswerSoundRef.current.currentTime = 0;
+    }
+    setIsPlaying(false);
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    setIsMuted(!isMuted);
+    if (!isMuted) {
+      // When muting, pause all audio
+      if (startAudioRef.current) {
+        startAudioRef.current.pause();
+      }
+      if (loopAudioRef.current) {
+        loopAudioRef.current.pause();
+      }
+      if (userOnboardingAudioRef.current) {
+        userOnboardingAudioRef.current.pause();
+      }
+      setIsPlaying(false);
+    } else {
+      // When unmuting, resume the appropriate audio based on activeAudio state
+      if (activeAudio === "start" && startAudioRef.current) {
+        startAudioRef.current.play().catch(console.error);
+        setIsPlaying(true);
+      } else if (activeAudio === "loop" && loopAudioRef.current) {
+        loopAudioRef.current.play().catch(console.error);
+        setIsPlaying(true);
+      } else if (activeAudio === "onboarding" && userOnboardingAudioRef.current) {
+        userOnboardingAudioRef.current.play().catch(console.error);
+        setIsPlaying(true);
+      }
+    }
+  }, [isMuted, activeAudio]);
+
   const playStartAudio = useCallback(async () => {
-    if (startAudioRef.current) {
-      pauseAudio(); // Stop other audio first
+    if (startAudioRef.current && !isMuted) {
+      // Stop any playing audio first
+      if (loopAudioRef.current) {
+        loopAudioRef.current.pause();
+        loopAudioRef.current.currentTime = 0;
+      }
+      if (userOnboardingAudioRef.current) {
+        userOnboardingAudioRef.current.pause();
+        userOnboardingAudioRef.current.currentTime = 0;
+      }
       try {
         startAudioRef.current.currentTime = 0;
         await startAudioRef.current.play();
@@ -180,11 +253,19 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Error playing start audio:", error);
       }
     }
-  }, []);
+  }, [isMuted]);
 
   const playLoopAudio = useCallback(async () => {
-    if (loopAudioRef.current) {
-      pauseAudio(); // Stop other audio first
+    if (loopAudioRef.current && !isMuted) {
+      // Stop start audio if it's playing
+      if (startAudioRef.current) {
+        startAudioRef.current.pause();
+        startAudioRef.current.currentTime = 0;
+      }
+      if (userOnboardingAudioRef.current) {
+        userOnboardingAudioRef.current.pause();
+        userOnboardingAudioRef.current.currentTime = 0;
+      }
       try {
         loopAudioRef.current.currentTime = 0;
         await loopAudioRef.current.play();
@@ -194,7 +275,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Error playing loop audio:", error);
       }
     }
-  }, []);
+  }, [isMuted]);
 
   const playPeacefulModeAudio = useCallback(async () => {
     if (peacefulModeAudioRef.current) {
@@ -216,8 +297,16 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [activeAudio]);
 
   const playUserOnboardingAudio = useCallback(async () => {
-    if (userOnboardingAudioRef.current) {
-      pauseAudio(); // Stop other audio first
+    if (userOnboardingAudioRef.current && !isMuted) {
+      // Stop start and loop audio if they're playing
+      if (startAudioRef.current) {
+        startAudioRef.current.pause();
+        startAudioRef.current.currentTime = 0;
+      }
+      if (loopAudioRef.current) {
+        loopAudioRef.current.pause();
+        loopAudioRef.current.currentTime = 0;
+      }
       try {
         userOnboardingAudioRef.current.currentTime = 0;
         await userOnboardingAudioRef.current.play();
@@ -227,7 +316,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Error playing user onboarding audio:", error);
       }
     }
-  }, []);
+  }, [isMuted]);
 
   const playCorrectAnswerSound = useCallback(async () => {
     if (correctAnswerSoundRef.current) {
@@ -254,17 +343,23 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const playSessionCompleteSound = useCallback(async () => {
     if (sessionCompleteSoundRef.current) {
       try {
-        // Ensure the audio is properly initialized
-        if (!sessionCompleteSoundRef.current.src) {
-          sessionCompleteSoundRef.current = new Audio(
-            "/sounds-sfx/session-report-completed.mp3"
-          );
-        }
         sessionCompleteSoundRef.current.currentTime = 0;
         sessionCompleteSoundRef.current.volume = 1;
         await sessionCompleteSoundRef.current.play();
       } catch (error) {
         console.error("Error playing session complete sound:", error);
+      }
+    }
+  }, []);
+
+  const playSessionIncompleteSound = useCallback(async () => {
+    if (sessionIncompleteSoundRef.current) {
+      try {
+        sessionIncompleteSoundRef.current.currentTime = 0;
+        sessionIncompleteSoundRef.current.volume = 1;
+        await sessionIncompleteSoundRef.current.play();
+      } catch (error) {
+        console.error("Error playing session incomplete sound:", error);
       }
     }
   }, []);
@@ -338,52 +433,43 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     [activeAudio]
   );
 
-  const fadeOutAudio = (
-    audioRef: React.MutableRefObject<HTMLAudioElement | null>,
-    duration: number
-  ) => {
-    if (audioRef.current && !audioRef.current.paused) {
+  const fadeOutAudio = useCallback((audioRef: React.MutableRefObject<HTMLAudioElement | null>, duration: number = 1000) => {
+    if (audioRef.current) {
+      const startVolume = audioRef.current.volume;
       const fadeOutInterval = 50;
-      const fadeOutStep =
-        audioRef.current.volume / (duration / fadeOutInterval);
+      const fadeOutStep = startVolume / (duration / fadeOutInterval);
 
       const fadeOut = setInterval(() => {
         if (audioRef.current && audioRef.current.volume > 0) {
-          audioRef.current.volume = Math.max(
-            0,
-            audioRef.current.volume - fadeOutStep
-          );
+          audioRef.current.volume = Math.max(0, audioRef.current.volume - fadeOutStep);
         } else {
           clearInterval(fadeOut);
           if (audioRef.current) {
             audioRef.current.pause();
-            audioRef.current.volume = 1; // Reset volume for next play
+            audioRef.current.currentTime = 0;
+            audioRef.current.volume = startVolume; // Reset volume for next play
           }
         }
       }, fadeOutInterval);
     }
-  };
+  }, []);
 
-  const pauseAudio = useCallback(() => {
-    // Quick fade out for background music
-    fadeOutAudio(startAudioRef, 300);
-    fadeOutAudio(loopAudioRef, 300);
-    fadeOutAudio(peacefulModeAudioRef, 300);
-    fadeOutAudio(userOnboardingAudioRef, 300);
-    fadeOutAudio(timePressuredAudioRef, 300);
-    fadeOutAudio(timePressuredSpeedUpAudioRef, 300);
-
-    // Stop sound effects immediately
-    if (correctAnswerSoundRef.current) {
-      correctAnswerSoundRef.current.pause();
-      correctAnswerSoundRef.current.currentTime = 0;
+  const stopAllAudio = useCallback(() => {
+    console.log("Stopping all audio completely");
+    if (startAudioRef.current) {
+      startAudioRef.current.pause();
+      startAudioRef.current.currentTime = 0;
     }
-    if (incorrectAnswerSoundRef.current) {
-      incorrectAnswerSoundRef.current.pause();
-      incorrectAnswerSoundRef.current.currentTime = 0;
+    if (loopAudioRef.current) {
+      loopAudioRef.current.pause();
+      loopAudioRef.current.currentTime = 0;
     }
-    // Don't stop session complete sound in pauseAudio
+    if (userOnboardingAudioRef.current) {
+      userOnboardingAudioRef.current.pause();
+      userOnboardingAudioRef.current.currentTime = 0;
+    }
     setIsPlaying(false);
+    setActiveAudio(null);
   }, []);
 
   // Central function to set the active mode audio - MOVED AFTER REQUIRED FUNCTIONS
@@ -439,54 +525,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     [pauseAudio]
   );
 
-  // Create a function to completely stop audio (without fade)
-  const stopAllAudio = useCallback(() => {
-    console.log("Stopping all audio completely");
-
-    // Stop all audio references immediately
-    if (startAudioRef.current) {
-      startAudioRef.current.pause();
-      startAudioRef.current.currentTime = 0;
-    }
-    if (loopAudioRef.current) {
-      loopAudioRef.current.pause();
-      loopAudioRef.current.currentTime = 0;
-    }
-    if (peacefulModeAudioRef.current) {
-      peacefulModeAudioRef.current.pause();
-      peacefulModeAudioRef.current.currentTime = 0;
-    }
-    if (userOnboardingAudioRef.current) {
-      userOnboardingAudioRef.current.pause();
-      userOnboardingAudioRef.current.currentTime = 0;
-    }
-    if (timePressuredAudioRef.current) {
-      timePressuredAudioRef.current.pause();
-      timePressuredAudioRef.current.currentTime = 0;
-    }
-    if (timePressuredSpeedUpAudioRef.current) {
-      timePressuredSpeedUpAudioRef.current.pause();
-      timePressuredSpeedUpAudioRef.current.currentTime = 0;
-    }
-    if (correctAnswerSoundRef.current) {
-      correctAnswerSoundRef.current.pause();
-      correctAnswerSoundRef.current.currentTime = 0;
-    }
-    if (incorrectAnswerSoundRef.current) {
-      incorrectAnswerSoundRef.current.pause();
-      incorrectAnswerSoundRef.current.currentTime = 0;
-    }
-    if (sessionCompleteSoundRef.current) {
-      sessionCompleteSoundRef.current.pause();
-      sessionCompleteSoundRef.current.currentTime = 0;
-    }
-
-    // Reset state
-    setIsPlaying(false);
-    setActiveAudio(null);
-    sessionStorage.removeItem("activeAudio");
-  }, []);
-
   // Route-based audio management (keep this for specific routes)
   useEffect(() => {
     // Check current location path
@@ -535,6 +573,29 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     activeAudio,
   ]);
 
+  // Add route-based audio management
+  useEffect(() => {
+    const handleRouteChange = () => {
+      const currentPath = window.location.pathname;
+      
+      // Fade out start/loop audio when navigating to personalization
+      if (currentPath.includes("/personalization")) {
+        if (startAudioRef.current) {
+          fadeOutAudio(startAudioRef);
+        }
+        if (loopAudioRef.current) {
+          fadeOutAudio(loopAudioRef);
+        }
+        setIsPlaying(false);
+        setActiveAudio(null);
+      }
+    };
+
+    // Listen for route changes
+    window.addEventListener('popstate', handleRouteChange);
+    return () => window.removeEventListener('popstate', handleRouteChange);
+  }, [fadeOutAudio]);
+
   return (
     <AudioContext.Provider
       value={{
@@ -545,12 +606,15 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         playCorrectAnswerSound,
         playIncorrectAnswerSound,
         playSessionCompleteSound,
+        playSessionIncompleteSound,
         playTimePressuredAudio,
         setActiveModeAudio,
         pauseAudio,
         stopAllAudio,
         isPlaying,
         activeAudio,
+        isMuted,
+        toggleMute,
       }}
     >
       {children}

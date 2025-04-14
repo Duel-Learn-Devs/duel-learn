@@ -55,13 +55,24 @@ export const useGameLogic = ({
   const [retakePhase, setRetakePhase] = useState(0); // Track retake phases
   const [masteredQuestions, setMasteredQuestions] = useState<string[]>([]); // Track mastered questions
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [isQuestionInitiallyLoaded, setIsQuestionInitiallyLoaded] = useState(false); // Flag to track initial question load
+  const [isQuestionInitiallyLoaded, setIsQuestionInitiallyLoaded] =
+    useState(false); // Flag to track initial question load
   const [seenQuestions, setSeenQuestions] = useState<Set<string>>(new Set()); // Track seen questions to prevent duplicates
-  const [processedQuestionIds, setProcessedQuestionIds] = useState<Set<string>>(new Set()); // Track which questions have been processed
-  const [questionDisplayOrder, setQuestionDisplayOrder] = useState<string[]>([]); // Track the order of questions to display
-  const [lastProcessedQuestionId, setLastProcessedQuestionId] = useState<string | null>(null); // Track the last processed question ID
-  const [uniqueQuestionIds, setUniqueQuestionIds] = useState<Set<string>>(new Set());
-  const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
+  const [processedQuestionIds, setProcessedQuestionIds] = useState<Set<string>>(
+    new Set()
+  ); // Track which questions have been processed
+  const [questionDisplayOrder, setQuestionDisplayOrder] = useState<string[]>(
+    []
+  ); // Track the order of questions to display
+  const [lastProcessedQuestionId, setLastProcessedQuestionId] = useState<
+    string | null
+  >(null); // Track the last processed question ID
+  const [uniqueQuestionIds, setUniqueQuestionIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(
+    null
+  );
 
   const navigate = useNavigate();
 
@@ -79,9 +90,9 @@ export const useGameLogic = ({
       materialTitle: material?.title,
       selectedTypes,
       timeLimit,
-      aiQuestionsCount: aiQuestions?.length || 0
+      aiQuestionsCount: aiQuestions?.length || 0,
     });
-    
+
     if (aiQuestions) {
       console.log("AI questions received in hook:", aiQuestions);
     }
@@ -90,19 +101,23 @@ export const useGameLogic = ({
   // Add a function to initialize the question display order
   useEffect(() => {
     // Initialize the question display order with all questions
-    if (aiQuestions && aiQuestions.length > 0 && questionDisplayOrder.length === 0) {
+    if (
+      aiQuestions &&
+      aiQuestions.length > 0 &&
+      questionDisplayOrder.length === 0
+    ) {
       console.log("Initializing question display order");
-      
+
       // Create a unique ID for each question
       const questionIds = aiQuestions.map((q) => {
         // Support both correctAnswer and answer fields
         const questionId = `${q.question}-${q.correctAnswer || q.answer}`;
         return questionId;
       });
-      
+
       // Shuffle the question IDs to randomize the order
       const shuffledIds = [...questionIds].sort(() => Math.random() - 0.5);
-      
+
       console.log(`Created display order with ${shuffledIds.length} questions`);
       setQuestionDisplayOrder(shuffledIds);
     }
@@ -113,12 +128,12 @@ export const useGameLogic = ({
 
     // Ensure we preserve the answer field correctly
     const correctAnswer = rawQuestion.correctAnswer || rawQuestion.answer;
-    
+
     // Determine the type of options (object or array)
     let processedOptions = rawQuestion.options;
-    
+
     // If options is a string (JSON), try to parse it
-    if (typeof rawQuestion.options === 'string') {
+    if (typeof rawQuestion.options === "string") {
       try {
         processedOptions = JSON.parse(rawQuestion.options);
         console.log("Parsed options from JSON string:", processedOptions);
@@ -126,7 +141,7 @@ export const useGameLogic = ({
         console.error("Failed to parse options JSON:", e);
       }
     }
-    
+
     return {
       questionType: rawQuestion.questionType || rawQuestion.type,
       type: rawQuestion.type,
@@ -140,41 +155,43 @@ export const useGameLogic = ({
         term: rawQuestion.term,
         definition: rawQuestion.definition,
         itemId: rawQuestion.item_id,
-        itemNumber: rawQuestion.item_number
-      }
+        itemNumber: rawQuestion.item_number,
+      },
     };
   };
 
   const handleGameComplete = () => {
     const totalItems = material?.items?.length || 0;
-    
+
     console.log("Game completion triggered:", {
       masteredCount,
       totalItems,
       retakeQuestionsCount: retakeQuestions.length,
-      isInRetakeMode
+      isInRetakeMode,
     });
 
     // Force immediate game completion - no additional checks
     console.log("Navigating to session summary immediately");
-    
+
     const endTime = new Date();
     const timeDiff = endTime.getTime() - startTime.getTime();
     const minutes = Math.floor(timeDiff / 60000);
     const seconds = Math.floor((timeDiff % 60000) / 1000);
-    const timeSpent = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    const timeSpent = `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
 
-    // Navigate directly to summary
+    // Navigate directly to summary with actual counts
     navigate("/dashboard/study/session-summary", {
       state: {
         timeSpent,
-        correctCount: totalItems,
-        incorrectCount: 0,
+        correctCount,
+        incorrectCount,
         mode,
         material,
         highestStreak,
-        masteredCount: totalItems,
-        unmasteredCount: 0,
+        masteredCount,
+        unmasteredCount,
         totalQuestions: totalItems,
         aiQuestions: aiQuestions || [],
       },
@@ -186,7 +203,7 @@ export const useGameLogic = ({
       console.log("Skipping question processing:", {
         hasQuestions: !!aiQuestions,
         questionsLength: aiQuestions?.length,
-        isTransitioning
+        isTransitioning,
       });
       return;
     }
@@ -199,19 +216,25 @@ export const useGameLogic = ({
 
     // Debug log retake questions
     if (retakeQuestions.length > 0) {
-      console.log(`Current retake questions (${retakeQuestions.length}):`, 
-        retakeQuestions.map(q => `${q.question}-${q.correctAnswer || q.answer}`));
+      console.log(
+        `Current retake questions (${retakeQuestions.length}):`,
+        retakeQuestions.map(
+          (q) => `${q.question}-${q.correctAnswer || q.answer}`
+        )
+      );
     }
 
     const processCurrentQuestion = () => {
       // Quick check - if all items are mastered, end the game immediately
       const totalItems = material?.items?.length || 0;
       if (masteredCount >= totalItems) {
-        console.log("All items are mastered, ending game from processCurrentQuestion");
+        console.log(
+          "All items are mastered, ending game from processCurrentQuestion"
+        );
         handleGameComplete();
         return;
       }
-      
+
       let questionToProcess: any = null;
       let newQuestionId: string | null = null;
 
@@ -221,7 +244,7 @@ export const useGameLogic = ({
         retakeQuestionsLength: retakeQuestions.length,
         questionsLength: aiQuestions?.length || 0,
         masteredCount,
-        totalItems: material?.items?.length
+        totalItems: material?.items?.length,
       });
 
       // Simplified approach: In normal mode, directly use the aiQuestions array
@@ -230,34 +253,56 @@ export const useGameLogic = ({
         if (questionIndex < retakeQuestions.length) {
           questionToProcess = retakeQuestions[questionIndex];
           if (questionToProcess) {
-            newQuestionId = `${questionToProcess.question}-${questionToProcess.correctAnswer || questionToProcess.answer}`;
+            newQuestionId = `${questionToProcess.question}-${
+              questionToProcess.correctAnswer || questionToProcess.answer
+            }`;
             console.log("Found retake question:", {
               questionId: newQuestionId,
               questionIndex,
-              retakeQuestionsLength: retakeQuestions.length
+              retakeQuestionsLength: retakeQuestions.length,
             });
           } else {
-            console.log("No question found at index", questionIndex, "in retake list");
+            console.log(
+              "No question found at index",
+              questionIndex,
+              "in retake list"
+            );
           }
         } else {
-          console.log("Question index", questionIndex, "out of bounds for retake list length", retakeQuestions.length);
+          console.log(
+            "Question index",
+            questionIndex,
+            "out of bounds for retake list length",
+            retakeQuestions.length
+          );
         }
       } else {
         // In normal mode, directly use the aiQuestions array by index
         if (aiQuestions && questionIndex < aiQuestions.length) {
           questionToProcess = aiQuestions[questionIndex];
           if (questionToProcess) {
-            newQuestionId = `${questionToProcess.question}-${questionToProcess.correctAnswer || questionToProcess.answer}`;
+            newQuestionId = `${questionToProcess.question}-${
+              questionToProcess.correctAnswer || questionToProcess.answer
+            }`;
             console.log("Found normal mode question by direct index:", {
               questionId: newQuestionId,
               questionIndex,
-              questionsLength: aiQuestions.length
+              questionsLength: aiQuestions.length,
             });
           } else {
-            console.log("Question at index", questionIndex, "is null or undefined");
+            console.log(
+              "Question at index",
+              questionIndex,
+              "is null or undefined"
+            );
           }
         } else {
-          console.log("Question index", questionIndex, "out of bounds for questions length", aiQuestions?.length || 0);
+          console.log(
+            "Question index",
+            questionIndex,
+            "out of bounds for questions length",
+            aiQuestions?.length || 0
+          );
         }
       }
 
@@ -268,7 +313,7 @@ export const useGameLogic = ({
           questionIndex,
           masteredCount,
           totalItems: material?.items?.length,
-          retakeQuestionsLength: retakeQuestions.length
+          retakeQuestionsLength: retakeQuestions.length,
         });
 
         // Check if all questions are mastered, and if so, end the game immediately
@@ -299,8 +344,13 @@ export const useGameLogic = ({
           }
         } else {
           // In normal mode, check if we should switch to retake mode
-          if (retakeQuestions.length > 0 && questionIndex >= (aiQuestions?.length || 0) - 1) {
-            console.log("End of normal questions with retake items, switching to retake mode");
+          if (
+            retakeQuestions.length > 0 &&
+            questionIndex >= (aiQuestions?.length || 0) - 1
+          ) {
+            console.log(
+              "End of normal questions with retake items, switching to retake mode"
+            );
             setIsInRetakeMode(true);
             setQuestionIndex(0);
           } else if (masteredCount >= (material?.items?.length || 0)) {
@@ -312,8 +362,10 @@ export const useGameLogic = ({
             setQuestionIndex(0);
           } else {
             // Otherwise, just increment the index and try again
-            console.log("Incrementing question index to find next valid question");
-            setQuestionIndex(prev => prev + 1);
+            console.log(
+              "Incrementing question index to find next valid question"
+            );
+            setQuestionIndex((prev) => prev + 1);
           }
         }
         return;
@@ -324,14 +376,14 @@ export const useGameLogic = ({
         console.log("Processing new question:", {
           questionId: newQuestionId,
           currentQuestionId,
-          isInRetakeMode
+          isInRetakeMode,
         });
         const processedQuestion = processQuestion(questionToProcess);
         setCurrentQuestion(processedQuestion);
         if (newQuestionId) {
           setCurrentQuestionId(newQuestionId);
-          setProcessedQuestionIds(prev => new Set(prev).add(newQuestionId));
-          setUniqueQuestionIds(prev => {
+          setProcessedQuestionIds((prev) => new Set(prev).add(newQuestionId));
+          setUniqueQuestionIds((prev) => {
             const newSet = new Set(prev);
             newSet.add(newQuestionId);
             return newSet;
@@ -339,15 +391,19 @@ export const useGameLogic = ({
         }
         setIsQuestionInitiallyLoaded(true);
       } else {
-        console.log("Skipping question processing - same question or no new question ID:", {
-          questionId: newQuestionId,
-          currentQuestionId
-        });
+        console.log(
+          "Skipping question processing - same question or no new question ID:",
+          {
+            questionId: newQuestionId,
+            currentQuestionId,
+          }
+        );
       }
     };
 
     // Add a check to prevent infinite loops
-    const shouldProcess = !isTransitioning && !showResult && (aiQuestions?.length || 0) > 0;
+    const shouldProcess =
+      !isTransitioning && !showResult && (aiQuestions?.length || 0) > 0;
     if (shouldProcess) {
       processCurrentQuestion();
     }
@@ -361,15 +417,15 @@ export const useGameLogic = ({
     currentQuestionId,
     material?.items?.length,
     masteredCount,
-    handleGameComplete
+    handleGameComplete,
   ]);
 
   // Update isLastQuestion to account for retake mode
-  const isLastQuestion = isInRetakeMode 
+  const isLastQuestion = isInRetakeMode
     ? questionIndex === retakeQuestions.length - 1
-    : aiQuestions 
-      ? questionIndex === aiQuestions.length - 1
-      : currentQuestionIndex === filteredQuestions.length - 1;
+    : aiQuestions
+    ? questionIndex === aiQuestions.length - 1
+    : currentQuestionIndex === filteredQuestions.length - 1;
 
   // Timer logic for Time Pressured mode
   useEffect(() => {
@@ -378,6 +434,7 @@ export const useGameLogic = ({
     if (mode === "Time Pressured" && timeLimit && !showResult && isGameReady) {
       setQuestionTimer(timeLimit);
       setTimerProgress(100);
+      setRetakeQuestions([]); // Clear retake questions for Time Pressured mode
 
       timer = setInterval(() => {
         setQuestionTimer((prev) => {
@@ -403,14 +460,20 @@ export const useGameLogic = ({
 
     // Get correct answer - with fallbacks
     let correctAnswer = currentQuestion.correctAnswer || currentQuestion.answer;
-    
+
     // Handle special case for multiple-choice: correctAnswer might be in format "A. term"
-    if (currentQuestion.questionType === "multiple-choice" && typeof correctAnswer === 'string' && correctAnswer.includes('. ')) {
+    if (
+      currentQuestion.questionType === "multiple-choice" &&
+      typeof correctAnswer === "string" &&
+      correctAnswer.includes(". ")
+    ) {
       // Extract just the term part after the letter
-      const answerParts = correctAnswer.split('. ');
+      const answerParts = correctAnswer.split(". ");
       if (answerParts.length > 1) {
-        correctAnswer = answerParts.slice(1).join('. ').trim();
-        console.log(`Using extracted multiple-choice answer: "${correctAnswer}" from "${currentQuestion.correctAnswer}"`);
+        correctAnswer = answerParts.slice(1).join(". ").trim();
+        console.log(
+          `Using extracted multiple-choice answer: "${correctAnswer}" from "${currentQuestion.correctAnswer}"`
+        );
       }
     }
 
@@ -419,7 +482,7 @@ export const useGameLogic = ({
       correctAnswer = currentQuestion.itemInfo.term;
       console.log(`Using term as fallback answer: "${correctAnswer}"`);
     }
-    
+
     if (!correctAnswer) {
       console.error("No correct answer found for question:", currentQuestion);
       return;
@@ -428,49 +491,77 @@ export const useGameLogic = ({
     // For multiple-choice questions, check if the selected answer matches ANY of the options
     // that contain the correct answer (to handle options stored in different formats)
     let isAnswerCorrect = false;
-    
+
     // Safe string conversion for comparison
-    const answerString = String(answer || "").toLowerCase().trim();
+    const answerString = String(answer || "")
+      .toLowerCase()
+      .trim();
     const correctAnswerString = String(correctAnswer).toLowerCase().trim();
 
-    if (currentQuestion.questionType === "multiple-choice" && currentQuestion.options) {
-      console.log(`Handling multiple-choice comparison for "${answerString}" against correct "${correctAnswerString}"`);
-      
+    if (
+      currentQuestion.questionType === "multiple-choice" &&
+      currentQuestion.options
+    ) {
+      console.log(
+        `Handling multiple-choice comparison for "${answerString}" against correct "${correctAnswerString}"`
+      );
+
       // Check if the answer matches the correct answer directly
       if (answerString === correctAnswerString) {
         isAnswerCorrect = true;
       }
       // Also check if any option contains the correct answer (handle mixed formats)
-      else if (typeof currentQuestion.options === 'object' && !Array.isArray(currentQuestion.options)) {
+      else if (
+        typeof currentQuestion.options === "object" &&
+        !Array.isArray(currentQuestion.options)
+      ) {
         // Handle object format {A: "option1", B: "option2"}
-        Object.entries(currentQuestion.options).forEach(([key, optionValue]) => {
-          const optionString = String(optionValue || "").toLowerCase().trim();
-          // Check if this option contains the correct answer
-          if (optionString === correctAnswerString && answerString === optionString) {
-            console.log(`Found matching option ${key}: "${optionString}"`);
-            isAnswerCorrect = true;
+        Object.entries(currentQuestion.options).forEach(
+          ([key, optionValue]) => {
+            const optionString = String(optionValue || "")
+              .toLowerCase()
+              .trim();
+            // Check if this option contains the correct answer
+            if (
+              optionString === correctAnswerString &&
+              answerString === optionString
+            ) {
+              console.log(`Found matching option ${key}: "${optionString}"`);
+              isAnswerCorrect = true;
+            }
           }
-        });
-      } 
+        );
+      }
       // Handle array format ["option1", "option2"]
       else if (Array.isArray(currentQuestion.options)) {
         for (const option of currentQuestion.options) {
-          const optionString = String(option || "").toLowerCase().trim();
-          if (optionString === correctAnswerString && answerString === optionString) {
+          const optionString = String(option || "")
+            .toLowerCase()
+            .trim();
+          if (
+            optionString === correctAnswerString &&
+            answerString === optionString
+          ) {
             console.log(`Found matching option in array: "${optionString}"`);
             isAnswerCorrect = true;
             break;
           }
         }
       }
-      
-      console.log(`Multiple-choice answer result: ${isAnswerCorrect ? "CORRECT" : "INCORRECT"}`);
+
+      console.log(
+        `Multiple-choice answer result: ${
+          isAnswerCorrect ? "CORRECT" : "INCORRECT"
+        }`
+      );
     } else {
       // For non-multiple-choice questions, simple string comparison
-      console.log(`Comparing answer "${answerString}" with correct answer "${correctAnswerString}"`);
+      console.log(
+        `Comparing answer "${answerString}" with correct answer "${correctAnswerString}"`
+      );
       isAnswerCorrect = answerString === correctAnswerString;
     }
-    
+
     setIsCorrect(isAnswerCorrect);
     setShowResult(true);
 
@@ -491,22 +582,23 @@ export const useGameLogic = ({
 
       // Automatically mark incorrect answers as unmastered
       const questionId = `${currentQuestion.question}-${currentQuestion.correctAnswer}`;
-      
+
       // Remove from mastered list if it was there
       if (masteredQuestions.includes(questionId)) {
-        setMasteredQuestions(prev => prev.filter(id => id !== questionId));
-        setMasteredCount(prev => Math.max(0, prev - 1));
+        setMasteredQuestions((prev) => prev.filter((id) => id !== questionId));
+        setMasteredCount((prev) => Math.max(0, prev - 1));
       }
 
       // Add to retake list if not already there
-      const isAlreadyInRetakeList = retakeQuestions.some(q => 
-        q.question === currentQuestion.question && 
-        q.correctAnswer === currentQuestion.correctAnswer
+      const isAlreadyInRetakeList = retakeQuestions.some(
+        (q) =>
+          q.question === currentQuestion.question &&
+          q.correctAnswer === currentQuestion.correctAnswer
       );
 
       if (!isAlreadyInRetakeList) {
-        setUnmasteredCount(prev => prev + 1);
-        setRetakeQuestions(prev => [...prev, currentQuestion]);
+        setUnmasteredCount((prev) => prev + 1);
+        setRetakeQuestions((prev) => [...prev, currentQuestion]);
       }
     }
 
@@ -517,25 +609,28 @@ export const useGameLogic = ({
 
   const handleRevealAnswer = () => {
     if (showResult) return;
-    
+
     console.log("User revealed answer without attempting a solution");
-    
+
     // First, reveal the current question's answer
     setIsCorrect(false);
-    setIncorrectCount(prev => prev + 1);
+    setIncorrectCount((prev) => prev + 1);
     setCurrentStreak(0);
     setShowResult(true);
     setShowNextButton(true);
     setIsFlipped(true);
-    
+
     // Add revealed question to retake list if not already in it
-    if (!retakeQuestions.some(q => 
-      q.question === currentQuestion.question && 
-      q.correctAnswer === currentQuestion.correctAnswer
-    )) {
-      setRetakeQuestions(prev => [...prev, currentQuestion]);
+    if (
+      !retakeQuestions.some(
+        (q) =>
+          q.question === currentQuestion.question &&
+          q.correctAnswer === currentQuestion.correctAnswer
+      )
+    ) {
+      setRetakeQuestions((prev) => [...prev, currentQuestion]);
     }
-    
+
     // Do NOT automatically move to the next question
     // The user must click "Next Question", "Mastered", or "Retake" button
   };
@@ -545,11 +640,13 @@ export const useGameLogic = ({
     if (isTransitioning) return;
 
     const totalItems = material?.items?.length || 0;
-    
+
     // Check if the game should end (all questions mastered)
     // This is a direct check - we end immediately if all items are mastered
     if (masteredCount >= totalItems) {
-      console.log("All items mastered in handleNextQuestion, ending game immediately");
+      console.log(
+        "All items mastered in handleNextQuestion, ending game immediately"
+      );
       handleGameComplete();
       return;
     }
@@ -558,7 +655,7 @@ export const useGameLogic = ({
     setShowResult(false);
     setIsFlipped(false);
     setInputAnswer("");
-    
+
     if (isInRetakeMode) {
       // In retake mode
       if (retakeQuestions.length === 0) {
@@ -575,7 +672,7 @@ export const useGameLogic = ({
         }
       } else if (questionIndex < retakeQuestions.length - 1) {
         // Move to next retake question
-        setQuestionIndex(prev => prev + 1);
+        setQuestionIndex((prev) => prev + 1);
       } else {
         // At the end of retake questions, start over
         setQuestionIndex(0);
@@ -584,15 +681,19 @@ export const useGameLogic = ({
       // In normal mode
       if (questionIndex < (aiQuestions?.length || 0) - 1) {
         // Move to next question
-        setQuestionIndex(prev => prev + 1);
+        setQuestionIndex((prev) => prev + 1);
       } else {
         // Reached the end of normal questions
         if (retakeQuestions.length > 0) {
           // If we have retake questions, switch to retake mode
-          console.log("Normal mode completed. Switching to retake mode with", retakeQuestions.length, "questions");
+          console.log(
+            "Normal mode completed. Switching to retake mode with",
+            retakeQuestions.length,
+            "questions"
+          );
           setIsInRetakeMode(true);
           setQuestionIndex(0);
-          setRetakePhase(prev => prev + 1);
+          setRetakePhase((prev) => prev + 1);
         } else if (masteredCount >= totalItems) {
           // All questions mastered, complete the game
           console.log("All questions mastered in normal mode, completing game");
@@ -600,7 +701,9 @@ export const useGameLogic = ({
           return;
         } else {
           // Otherwise, cycle back to the beginning of normal mode
-          console.log("Cycling back to beginning of normal mode (no retake questions)");
+          console.log(
+            "Cycling back to beginning of normal mode (no retake questions)"
+          );
           setQuestionIndex(0);
         }
       }
@@ -622,7 +725,7 @@ export const useGameLogic = ({
     setIsCorrect(null);
     setIsQuestionInitiallyLoaded(false);
     setCurrentQuestionId(null);
-    
+
     setTimeout(() => {
       setIsTransitioning(false);
     }, 300);
@@ -632,29 +735,29 @@ export const useGameLogic = ({
     // Create a unique identifier for this question
     const questionId = `${currentQuestion.question}-${currentQuestion.correctAnswer}`;
     const totalItems = material?.items?.length || 0;
-    
+
     console.log("Processing mastered question:", {
       questionId,
       currentMasteredCount: masteredCount,
       totalItems,
-      retakeQuestionsCount: retakeQuestions.length
+      retakeQuestionsCount: retakeQuestions.length,
     });
 
     // Calculate the new mastered count immediately for logic checks
     let newMasteredCount = masteredCount;
-    
+
     // Only increment mastered count if not already mastered
     if (!masteredQuestions.includes(questionId)) {
       // Calculate the new value first
       newMasteredCount = masteredCount + 1;
-      
+
       // Then update the state
-      setMasteredQuestions(prev => [...prev, questionId]);
+      setMasteredQuestions((prev) => [...prev, questionId]);
       setMasteredCount(newMasteredCount);
 
       // Immediately remove from retake list
       let newRetakeLength = retakeQuestions.length;
-      const wasInRetakeList = retakeQuestions.some(q => {
+      const wasInRetakeList = retakeQuestions.some((q) => {
         const currentId = `${q.question}-${q.correctAnswer || q.answer}`;
         return currentId === questionId;
       });
@@ -662,17 +765,17 @@ export const useGameLogic = ({
       if (wasInRetakeList) {
         console.log("Removing question from retake list:", questionId);
         newRetakeLength -= 1;
-        setRetakeQuestions(prev => {
-          const filtered = prev.filter(q => {
+        setRetakeQuestions((prev) => {
+          const filtered = prev.filter((q) => {
             const currentId = `${q.question}-${q.correctAnswer || q.answer}`;
             return currentId !== questionId;
           });
           console.log(`Retake list updated. New length: ${filtered.length}`);
           return filtered;
         });
-        
+
         // Update unmastered count if it was in retake list
-        setUnmasteredCount(prev => Math.max(0, prev - 1));
+        setUnmasteredCount((prev) => Math.max(0, prev - 1));
       }
 
       // Check if this was the last item to master using our calculated value (not the state)
@@ -692,34 +795,36 @@ export const useGameLogic = ({
   const handleUnmastered = () => {
     // Create a unique identifier for this question
     const questionId = `${currentQuestion.question}-${currentQuestion.correctAnswer}`;
-    
+
     console.log("Marking question as unmastered:", {
       questionId,
       currentUnmasteredCount: unmasteredCount,
-      isAlreadyInRetakeList: retakeQuestions.some(q => 
-        q.question === currentQuestion.question && 
-        q.correctAnswer === currentQuestion.correctAnswer
-      )
+      isAlreadyInRetakeList: retakeQuestions.some(
+        (q) =>
+          q.question === currentQuestion.question &&
+          q.correctAnswer === currentQuestion.correctAnswer
+      ),
     });
 
     // Remove from mastered list if it was there
     if (masteredQuestions.includes(questionId)) {
-      setMasteredQuestions(prev => prev.filter(id => id !== questionId));
-      setMasteredCount(prev => Math.max(0, prev - 1));
+      setMasteredQuestions((prev) => prev.filter((id) => id !== questionId));
+      setMasteredCount((prev) => Math.max(0, prev - 1));
     }
 
     // Only add to retake list and increment unmastered if not already there
-    const isAlreadyInRetakeList = retakeQuestions.some(q => 
-      q.question === currentQuestion.question && 
-      q.correctAnswer === currentQuestion.correctAnswer
+    const isAlreadyInRetakeList = retakeQuestions.some(
+      (q) =>
+        q.question === currentQuestion.question &&
+        q.correctAnswer === currentQuestion.correctAnswer
     );
 
     if (!isAlreadyInRetakeList) {
       console.log("Adding question to retake list:", questionId);
-      setUnmasteredCount(prev => prev + 1);
-      
+      setUnmasteredCount((prev) => prev + 1);
+
       // Use a callback to ensure we have the latest state
-      setRetakeQuestions(prev => {
+      setRetakeQuestions((prev) => {
         const updatedList = [...prev, currentQuestion];
         console.log(`Retake list updated. New length: ${updatedList.length}`);
         return updatedList;
@@ -729,11 +834,13 @@ export const useGameLogic = ({
     }
 
     // Check if we're at the end of normal mode questions
-    const isLastNormalQuestion = !isInRetakeMode && 
-      questionIndex >= (aiQuestions?.length || 0) - 1;
-    
+    const isLastNormalQuestion =
+      !isInRetakeMode && questionIndex >= (aiQuestions?.length || 0) - 1;
+
     if (isLastNormalQuestion && retakeQuestions.length > 0) {
-      console.log("Last normal question marked as unmastered. Will transition to retake mode.");
+      console.log(
+        "Last normal question marked as unmastered. Will transition to retake mode."
+      );
     }
 
     handleNextQuestion();
@@ -747,8 +854,10 @@ export const useGameLogic = ({
     // Handle true/false questions differently
     if (currentQuestion?.type === "true-false") {
       const normalizedOption = String(option).toLowerCase();
-      const normalizedAnswer = String(currentQuestion.correctAnswer).toLowerCase();
-      
+      const normalizedAnswer = String(
+        currentQuestion.correctAnswer
+      ).toLowerCase();
+
       if (normalizedOption === normalizedAnswer) {
         return "border-2 border-[#6DBE45] bg-[#16251C]";
       }
@@ -756,7 +865,9 @@ export const useGameLogic = ({
     }
 
     // Handle other question types
-    if (option?.toLowerCase() === currentQuestion?.correctAnswer?.toLowerCase()) {
+    if (
+      option?.toLowerCase() === currentQuestion?.correctAnswer?.toLowerCase()
+    ) {
       return "border-2 border-[#6DBE45] bg-[#16251C]";
     }
     return "border-2 border-[#FF3B3F] bg-[#39101B]";
@@ -764,6 +875,42 @@ export const useGameLogic = ({
 
   // Add a computed value for retake questions count that includes both initial and new retakes
   const retakeQuestionsCount = retakeQuestions.length;
+
+  console.log("Current question index:", questionIndex);
+  console.log("Current question ID:", currentQuestionId);
+  console.log("Processed question IDs:", Array.from(processedQuestionIds));
+  console.log("Unique question IDs:", Array.from(uniqueQuestionIds));
+
+  if (
+    mode === "Time Pressured" &&
+    correctCount + incorrectCount >= (aiQuestions?.length || 0)
+  ) {
+    console.log("All questions answered in Time Pressured mode, ending game.");
+    handleGameComplete();
+    return;
+  }
+
+  const handleFlip = () => {
+    if (showResult) return;
+    
+    console.log("User flipped card to reveal answer");
+    
+    // First, reveal the current question's answer
+    setIsCorrect(false);
+    setIncorrectCount(prev => prev + 1);
+    setCurrentStreak(0);
+    setShowResult(true);
+    setShowNextButton(true);
+    setIsFlipped(true);
+    
+    // Add revealed question to retake list if not already in it
+    if (!retakeQuestions.some(q => 
+      q.question === currentQuestion.question && 
+      q.correctAnswer === currentQuestion.correctAnswer
+    )) {
+      setRetakeQuestions(prev => [...prev, currentQuestion]);
+    }
+  };
 
   return {
     currentQuestion,
@@ -786,7 +933,7 @@ export const useGameLogic = ({
     retakeQuestionsCount,
     retakePhase,
     isTransitioning,
-    handleFlip: () => setIsFlipped(!isFlipped),
+    handleFlip,
     handleAnswerSubmit,
     handleNextQuestion,
     getButtonStyle,

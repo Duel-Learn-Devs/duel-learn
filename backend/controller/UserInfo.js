@@ -20,10 +20,12 @@ const UserInfo = {
                     u.email_verified,
                     u.isSSO,
                     u.account_type,
+                    u.account_type_plan,
                     ui.level,
                     ui.exp,
                     ui.mana,
-                    ui.coins
+                    ui.coins,
+                    ui.tech_pass
                 FROM users u
                 LEFT JOIN user_info ui ON u.firebase_uid = ui.firebase_uid
                 WHERE u.firebase_uid = ?`,
@@ -74,11 +76,6 @@ const UserInfo = {
       if (connection) connection.release();
     }
   },
-
-  /**
-   * Get user profile information by user ID
-   * Specifically designed for the battle UI to fetch display pictures
-   */
   getUserProfileById: async (req, res) => {
     let connection;
     try {
@@ -162,6 +159,73 @@ const UserInfo = {
       if (connection) connection.release();
     }
   },
+
+  editPersonalization: async (req, res) => {
+
+    let connection;
+    try {
+      const { firebase_uid } = req.params;
+      const { selectedSubjects } = req.body;
+
+
+      // Get a connection from the pool
+      connection = await pool.getConnection();
+
+      // Update personalization in user_info table
+
+      await connection.execute(
+        "UPDATE user_info SET personalization = ? WHERE firebase_uid = ?",
+        [JSON.stringify(selectedSubjects), firebase_uid]
+      );
+      res.status(200).json({
+        success: true,
+        message: "User personalization updated successfully",
+        data: selectedSubjects,
+      });
+    } catch (error) {
+      console.error("Error updating user personalization:", error);
+      res.status(500).json({
+        success: false,
+        error: "Internal server error",
+        details: error.message,
+      });
+    }
+  },
+
+  fetchUserPersonalization: async (req, res) => {
+
+    let connection;
+    try {
+      const { firebase_uid } = req.params;
+
+      // Get a connection from the pool
+      connection = await pool.getConnection();
+
+      // Fetch personalization from user_info table
+      const [userData] = await connection.execute(
+        "SELECT personalization FROM user_info WHERE firebase_uid = ?",
+        [firebase_uid]
+      );
+
+      if (userData.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: JSON.parse(userData[0].personalization),
+      });
+    } catch (error) {
+      console.error("Error fetching user personalization:", error);
+      res.status(500).json({
+        success: false,
+        error: "Internal server error",
+        details: error.message,
+      });
+    } finally {
+      if (connection) connection.release();
+    }
+  }
 };
 
 export default UserInfo;

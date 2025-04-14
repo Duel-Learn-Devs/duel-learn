@@ -6,7 +6,7 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import { verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
 import { auth, db } from "../../services/firebase"; // Adjust the path as needed
 import PageTransition from "../../styles/PageTransition";
-import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
+import sampleAvatar2 from "/images/sampleAvatar2.png"; // Add this import
 import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
 import { setDoc, doc, getDoc } from "firebase/firestore";
 import bcrypt from "bcryptjs"; // Add this import
@@ -30,10 +30,13 @@ const ResetPassword = () => {
       .matches(/[A-Z]/, "Password must contain at least one uppercase letter.")
       .matches(/[a-z]/, "Password must contain at least one lowercase letter.")
       .matches(/[0-9]/, "Password must contain at least one number.")
-      .matches(/[!@#$%^&*(),.?":{}|<>]/, "Password must contain at least one special character."),
+      .matches(
+        /[!@#$%^&*(),.?":{}|<>]/,
+        "Password must contain at least one special character."
+      ),
     confirmPassword: Yup.string()
       .required("Please confirm your password.")
-      .oneOf([Yup.ref('newpassword')], "Passwords do not match.")
+      .oneOf([Yup.ref("newpassword")], "Passwords do not match."),
   });
 
   useEffect(() => {
@@ -70,7 +73,7 @@ const ResetPassword = () => {
     initialValues: {
       newpassword: "",
       confirmPassword: "",
-      general: ""
+      general: "",
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -98,7 +101,9 @@ const ResetPassword = () => {
             userData.password_hash
           );
           if (isMatch) {
-            formik.setErrors({ general: "Cannot use old password. Please try again" });
+            formik.setErrors({
+              general: "Cannot use old password. Please try again",
+            });
             setLoading(false);
             return;
           }
@@ -106,13 +111,10 @@ const ResetPassword = () => {
 
         await confirmPasswordReset(auth, oobCode, values.newpassword);
         await resetPasswordApi(firebase_uid, password_hash, updated_at);
-        
+
         // Update the user document with new password hash
         const userRef = doc(db, "users", firebase_uid);
-        await setDoc(userRef, 
-          { updated_at, password_hash },
-          { merge: true }
-        );
+        await setDoc(userRef, { updated_at, password_hash }, { merge: true });
 
         socket.emit("passwordResetSuccess");
         navigate("/password-changed-successfully");
@@ -122,11 +124,12 @@ const ResetPassword = () => {
       } finally {
         setLoading(false);
       }
-    }
+    },
   });
 
   const togglePassword = () => setShowPassword(!showPassword);
-  const toggleConfirmPassword = () => setShowConfirmPassword(!showConfirmPassword);
+  const toggleConfirmPassword = () =>
+    setShowConfirmPassword(!showConfirmPassword);
   const handleBacktoLoginClick = () => navigate("/login");
 
   return (
@@ -196,7 +199,9 @@ const ResetPassword = () => {
                 )}
               </span>
               {formik.touched.newpassword && formik.errors.newpassword && (
-                <p className="text-red-500 mt-1 text-sm">{formik.errors.newpassword}</p>
+                <p className="text-red-500 mt-1 text-sm">
+                  {formik.errors.newpassword}
+                </p>
               )}
             </div>
 
@@ -211,7 +216,8 @@ const ResetPassword = () => {
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  formik.touched.confirmPassword && formik.errors.confirmPassword
+                  formik.touched.confirmPassword &&
+                  formik.errors.confirmPassword
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
@@ -227,9 +233,12 @@ const ResetPassword = () => {
                   <VisibilityOffRoundedIcon />
                 )}
               </span>
-              {formik.touched.confirmPassword && formik.errors.confirmPassword && (
-                <p className="text-red-500 mt-1 text-sm">{formik.errors.confirmPassword}</p>
-              )}
+              {formik.touched.confirmPassword &&
+                formik.errors.confirmPassword && (
+                  <p className="text-red-500 mt-1 text-sm">
+                    {formik.errors.confirmPassword}
+                  </p>
+                )}
             </div>
 
             {/* Submit Button */}

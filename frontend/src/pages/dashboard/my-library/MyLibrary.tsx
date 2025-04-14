@@ -14,7 +14,7 @@ import MyLibraryCards from "./MyLibraryCards";
 import Filter from "../../../components/Filter";
 import { useUser } from "../../../contexts/UserContext";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
-import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
+import NoStudyMaterial from "/images/noStudyMaterial.svg";
 import RefreshIcon from "@mui/icons-material/Refresh"; // Add this import
 
 const MyLibraryPage = () => {
@@ -435,7 +435,7 @@ const MyLibraryPage = () => {
     <PageTransition>
       <Box className="h-full w-full">
         <DocumentHead title="My Library | Duel Learn" />
-        <Stack spacing={2} className="px-3 sm:px-5 md:px-8">
+        <Stack spacing={2}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={{ xs: 1, sm: 1 }}
@@ -560,7 +560,7 @@ const MyLibraryPage = () => {
               minHeight="60vh"
             >
               <img
-                src={noStudyMaterial}
+                src={NoStudyMaterial}
                 alt="No Study Materials"
                 style={{ width: "22rem", height: "auto", opacity: 0.75 }}
               />

@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Add } from "@mui/icons-material";
-import defaultAvatar from "../../../../../../assets/profile-picture/bunny-picture.png";
+import defaultAvatar from "/profile-picture/default-picture.svg";
 
 interface PlayerInfo {
   firebase_uid: string;
@@ -24,8 +24,9 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
   onClick,
 }) => {
   const isNoPlayer = !player;
-  const cursorStyle = isNoPlayer && !isHost ? "cursor-pointer" : "cursor-default";
-  
+  const cursorStyle =
+    isNoPlayer && !isHost ? "cursor-pointer" : "cursor-default";
+
   return (
     <motion.div
       className={`flex flex-col items-center ${cursorStyle}`}
@@ -69,7 +70,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
               )}
             </>
           ) : (
-            <Add className="text-gray-500" style={{ fontSize: '48px' }} />
+            <Add className="text-gray-500" style={{ fontSize: "48px" }} />
           )}
         </div>
         <div className={`text-center mt-5 ${isPending ? "opacity-50" : ""}`}>
@@ -88,4 +89,4 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
   );
 };
 
-export default PlayerCard; 
+export default PlayerCard;

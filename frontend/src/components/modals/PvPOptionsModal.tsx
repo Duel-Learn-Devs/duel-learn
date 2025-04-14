@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import ModalFriendList from "../../assets/General/ModalFriendList.png";
+import ModalFriendList from "/General/ModalFriendList.png";
 import SocketService from "../../services/socketService";
 import { useUser } from "../../contexts/UserContext";
 import { usePvPLobby } from "../../hooks/usePvPLobby";
@@ -41,7 +41,7 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
   const [validatingLobby, setValidatingLobby] = useState(false);
   const { user } = useUser();
   const { joinLobby } = usePvPLobby();
-  
+
   // Get socket instance
   const socketService = SocketService.getInstance();
   const socket = socketService.getSocket();
@@ -49,19 +49,19 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
   // Listen for lobby validation response
   useEffect(() => {
     if (!socket) return;
-    
-    const handleLobbyValidationResponse = (data: { 
-      exists: boolean, 
-      lobbyCode: string, 
-      error?: string 
+
+    const handleLobbyValidationResponse = (data: {
+      exists: boolean;
+      lobbyCode: string;
+      error?: string;
     }) => {
       setValidatingLobby(false);
-      
+
       if (data.error) {
         setError(data.error);
         return;
       }
-      
+
       if (data.exists && data.lobbyCode === lobbyCode) {
         setIsJoining(true);
         // Proceed with joining the lobby
@@ -70,9 +70,9 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
         setError("Lobby not found or no longer active");
       }
     };
-    
+
     socket.on("lobbyValidationResponse", handleLobbyValidationResponse);
-    
+
     return () => {
       socket.off("lobbyValidationResponse", handleLobbyValidationResponse);
     };
@@ -91,87 +91,93 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
       setError("Please enter a lobby code");
       return;
     }
-    
+
     // Ensure consistent format - uppercase and trim whitespace
     const formattedLobbyCode = lobbyCode.trim().toUpperCase();
-    
+
     // Validate lobby code format more strictly
     if (!/^[A-Z0-9]{4,6}$/.test(formattedLobbyCode)) {
-      setError("Invalid lobby code format. Should be 4-6 alphanumeric characters.");
+      setError(
+        "Invalid lobby code format. Should be 4-6 alphanumeric characters."
+      );
       return;
     }
-    
+
     if (!user) {
       setError("You must be logged in to join a lobby");
       return;
     }
-    
+
     // Set loading state
     setValidatingLobby(true);
     setError("");
-    
+
     try {
       // Use the lobby API to validate and join the lobby
       console.log("Validating and joining lobby:", formattedLobbyCode);
-      
+
       // First validate the lobby through the API
       const validateResponse = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/lobby/validate/${formattedLobbyCode}`
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/lobby/validate/${formattedLobbyCode}`
       );
-      
+
       if (!validateResponse.data.success) {
         throw new Error(validateResponse.data.message || "Invalid lobby code");
       }
-      
+
       console.log("Lobby validation successful:", validateResponse.data);
-      
+
       // Now that lobby is validated, join it
       setIsJoining(true);
-      
+
       const joinResponse = await joinLobby(formattedLobbyCode);
-      
+
       if (!joinResponse.success) {
         throw new Error(joinResponse.error || "Failed to join lobby");
       }
-      
+
       console.log("Successfully joined lobby:", joinResponse);
-      
+
       // Get lobby details with all settings
       const detailsResponse = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}/api/lobby/${formattedLobbyCode}`
       );
-      
+
       const lobbyData = detailsResponse.data.data;
-      
+
       // Parse settings
       const settings = lobbyData.settings || {};
-      
+
       // Prepare data for navigation
       const lobbyState = {
         lobbyCode: formattedLobbyCode,
         isGuest: true,
         isJoining: true,
-        role: 'guest',
-        mode: 'PvP',
+        role: "guest",
+        mode: "PvP",
         selectedTypes: settings.question_types || [],
-        selectedMaterial: settings.study_material_title ? { 
-          title: settings.study_material_title,
-          id: settings.study_material_id 
-        } : null,
+        selectedMaterial: settings.study_material_title
+          ? {
+              title: settings.study_material_title,
+              id: settings.study_material_id,
+            }
+          : null,
         hostInfo: {
           firebase_uid: lobbyData.host_id,
           username: lobbyData.host_username,
           level: lobbyData.host_level,
-          display_picture: lobbyData.host_picture
-        }
+          display_picture: lobbyData.host_picture,
+        },
       };
-      
+
       // Close the modal
       handleClose();
-      
+
       // Notify parent component and pass to navigation
       onJoinLobby(formattedLobbyCode);
-      
+
       // Use the socket to inform the host that someone is joining
       if (socket) {
         socket.emit("guest_joined_lobby", {
@@ -179,10 +185,9 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
           guestId: user.firebase_uid,
           guestName: user.username,
           guestLevel: user.level,
-          guestPicture: user.display_picture
+          guestPicture: user.display_picture,
         });
       }
-      
     } catch (err: any) {
       console.error("Error joining lobby:", err);
       setError(err.message || "Failed to join lobby");
@@ -405,8 +410,8 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
                   },
                   "&.Mui-disabled": {
                     backgroundColor: "#6F658D",
-                    color: "#9F9BAE"
-                  }
+                    color: "#9F9BAE",
+                  },
                 }}
               >
                 {validatingLobby ? (
@@ -425,4 +430,4 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
   );
 };
 
-export default PvPOptionsModal; 
+export default PvPOptionsModal;

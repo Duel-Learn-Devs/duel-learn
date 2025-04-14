@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import firebaseEmailHandler from "../../services/firebaseEmailHandler";
 import LoadingScreen from "../../components/LoadingScreen";
 import PageTransition from "../../styles/PageTransition";
-import emailError from "../../assets/General/EmailSent.png";
+import emailError from "/General/EmailSent.png";
 import { socket } from "../../services/socket";
 
 const EmailActionHandler: React.FC = () => {

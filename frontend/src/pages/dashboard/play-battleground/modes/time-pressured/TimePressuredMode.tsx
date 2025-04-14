@@ -75,7 +75,10 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   const [startTime] = useState(new Date());
   const [inputAnswer, setInputAnswer] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isGameReady, setIsGameReady] = useState(false); // New state to track when game is ready to start
+  const [isGameReady, setIsGameReady] = useState(false);
+  const [isCurrentAnswerCorrect, setIsCurrentAnswerCorrect] = useState<
+    boolean | null
+  >(null);
 
   // 3. Then useRef declarations
   const previousTimerRef = React.useRef<number | null>(null);
@@ -85,24 +88,24 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
   // 5. Game logic hook
   const {
-    currentQuestion,
-    isFlipped,
-    handleFlip,
-    handleAnswerSubmit: originalHandleAnswerSubmit,
-    correctCount,
-    incorrectCount,
-    showResult,
-    showNextButton,
-    handleNextQuestion: originalHandleNextQuestion,
-    getButtonStyle,
-    questionTimer,
-    timerProgress,
-    currentStreak,
-    highestStreak,
-    masteredCount,
-    unmasteredCount,
-    handleRevealAnswer,
-    cardDisabled,
+    currentQuestion = {},
+    isFlipped = false,
+    handleFlip = () => {},
+    handleAnswerSubmit: originalHandleAnswerSubmit = () => {},
+    correctCount = 0,
+    incorrectCount = 0,
+    showResult = false,
+    showNextButton = false,
+    handleNextQuestion: originalHandleNextQuestion = () => {},
+    getButtonStyle = () => "",
+    questionTimer = null,
+    timerProgress = 100,
+    currentStreak = 0,
+    highestStreak = 0,
+    masteredCount = 0,
+    unmasteredCount = 0,
+    handleRevealAnswer = () => {},
+    cardDisabled = false,
   } = useGameLogic({
     mode,
     material,
@@ -110,21 +113,26 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     timeLimit,
     aiQuestions,
     isGameReady,
-  });
+  }) || {};
 
   // 6. Helper functions (move these outside useEffect)
-  const calculateExpGained = useCallback((isComplete: boolean, totalItems: number): number => {
-    if (!isComplete) {
-      return 0; // Always return 0 for incomplete sessions
-    }
-    return Math.floor(totalItems / 10) * 5;
-  }, []);
+  const calculateExpGained = useCallback(
+    (isComplete: boolean, totalItems: number): number => {
+      if (!isComplete) {
+        return 0; // Always return 0 for incomplete sessions
+      }
+      return Math.floor(totalItems / 10) * 5;
+    },
+    []
+  );
 
   const calculateTimeSpent = useCallback((start: Date, end: Date) => {
     const diff = Math.floor((end.getTime() - start.getTime()) / 1000);
     const minutes = Math.floor(diff / 60);
     const seconds = diff % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
   }, []);
 
   // 7. useEffect hooks
@@ -152,32 +160,40 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         console.log("Selected question types:", selectedTypes);
         console.log("Mode received:", mode);
         console.log("Study material ID:", material.study_material_id);
-        
+
         // Add debugging to inspect the material structure
         console.log("Material structure:", {
           id: material.id,
           study_material_id: material.study_material_id,
           title: material.title,
-          itemsCount: material.items?.length || 0
+          itemsCount: material.items?.length || 0,
         });
-        
+
         // Log the first few items to check for item_id
         if (material.items && material.items.length > 0) {
           console.log("First 3 items raw data:", material.items.slice(0, 3));
         }
 
         // Clear existing questions with explicit game mode
-        const clearEndpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/clear-questions/${material.study_material_id}`;
+        const clearEndpoint = `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/openai/clear-questions/${material.study_material_id}`;
         let clearSuccess = false;
-        
+
         try {
           console.log("Attempting to clear time-pressured questions...");
-          const clearResponse = await axios.delete<{success: boolean, error?: string}>(clearEndpoint, {
-            params: { gameMode: "time-pressured" }
+          const clearResponse = await axios.delete<{
+            success: boolean;
+            error?: string;
+          }>(clearEndpoint, {
+            params: { gameMode: "time-pressured" },
           });
-          
+
           if (!clearResponse.data.success) {
-            console.warn("Failed to clear existing questions:", clearResponse.data.error);
+            console.warn(
+              "Failed to clear existing questions:",
+              clearResponse.data.error
+            );
             // We'll continue without clearing
           } else {
             console.log("Successfully cleared time-pressured questions");
@@ -187,18 +203,20 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
           console.warn("Error clearing existing questions:", clearError);
           // Continue with question generation despite the error
         }
-        
+
         // If we couldn't clear questions, we'll use REPLACE INTO in the API endpoints
         if (!clearSuccess) {
-          console.log("Will rely on REPLACE INTO statements in API endpoints to handle duplicates");
+          console.log(
+            "Will rely on REPLACE INTO statements in API endpoints to handle duplicates"
+          );
         }
 
         // Create an array of items with proper IDs and image handling
         const items = [...material.items].map((item, index) => {
           // Use the original item_id if available, otherwise fallback to the sequential ID
           const itemNumber = index + 1;
-          const hasImage = item.image && item.image.startsWith('data:image');
-          
+          const hasImage = item.image && item.image.startsWith("data:image");
+
           return {
             ...item,
             id: item.item_id || item.id || itemNumber,
@@ -207,30 +225,37 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
             term: item.term,
             definition: item.definition,
             // Only include image URL if the item has an image
-            ...(hasImage ? {
-              image: `${import.meta.env.VITE_BACKEND_URL}/api/study-material/image/${itemNumber}`
-            } : {
-              image: null
-            })
+            ...(hasImage
+              ? {
+                  image: `${
+                    import.meta.env.VITE_BACKEND_URL
+                  }/api/study-material/image/${itemNumber}`,
+                }
+              : {
+                  image: null,
+                }),
           };
         });
 
         // Log the first few items to verify the data structure
-        console.log("First few items with full data:", items.slice(0, 3).map(item => ({
-          item_id: item.item_id,
-          item_number: item.item_number,
-          term: item.term,
-          definition: item.definition,
-          image: item.image
-        })));
+        console.log(
+          "First few items with full data:",
+          items.slice(0, 3).map((item) => ({
+            item_id: item.item_id,
+            item_number: item.item_number,
+            term: item.term,
+            definition: item.definition,
+            image: item.image,
+          }))
+        );
 
         const shuffledItems = items.sort(() => Math.random() - 0.5);
         const totalItems = items.length;
         const typesCount = selectedTypes.length;
-        
+
         // Validate selected types
-        const validTypes = ['identification', 'multiple-choice', 'true-false'];
-        selectedTypes.forEach(type => {
+        const validTypes = ["identification", "multiple-choice", "true-false"];
+        selectedTypes.forEach((type) => {
           if (!validTypes.includes(type)) {
             console.warn(`Warning: Unknown question type "${type}"`);
           }
@@ -239,7 +264,9 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         const distribution = selectedTypes.reduce((acc, type, index) => {
           // For the last type, assign all remaining items
           if (index === typesCount - 1) {
-            acc[type] = totalItems - Object.values(acc).reduce((sum, val) => sum + val, 0);
+            acc[type] =
+              totalItems -
+              Object.values(acc).reduce((sum, val) => sum + val, 0);
           } else {
             // Otherwise, distribute items evenly with a minimum of 1
             acc[type] = Math.max(1, Math.floor(totalItems / typesCount));
@@ -253,8 +280,13 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         });
 
         // Validate total matches number of items
-        const totalQuestions = Object.values(distribution).reduce((sum, count) => sum + count, 0);
-        console.log(`Total questions to generate: ${totalQuestions} (should equal number of items: ${totalItems})`);
+        const totalQuestions = Object.values(distribution).reduce(
+          (sum, count) => sum + count,
+          0
+        );
+        console.log(
+          `Total questions to generate: ${totalQuestions} (should equal number of items: ${totalItems})`
+        );
 
         // Keep track of which items have been used
         let currentItemIndex = 0;
@@ -263,11 +295,13 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         const generatedQuestions = [];
         for (const type of selectedTypes) {
           const questionsOfThisType = distribution[type];
-          console.log(`\nGenerating ${questionsOfThisType} questions of type "${type}":`);
+          console.log(
+            `\nGenerating ${questionsOfThisType} questions of type "${type}":`
+          );
 
           for (let i = 0; i < questionsOfThisType; i++) {
             const item = shuffledItems[currentItemIndex];
-            
+
             console.log("Processing item:", {
               item_id: item.item_id,
               item_number: item.item_number,
@@ -275,17 +309,19 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               definition: item.definition,
               image: item.image,
               originalItemId: material.items[currentItemIndex].item_id, // Log the original item ID from material
-              materialItemsStructure: typeof material.items[currentItemIndex]
+              materialItemsStructure: typeof material.items[currentItemIndex],
             });
 
             // Add this logging when processing items
             console.log("Processing item with image:", {
               term: item.term,
               image: item.image,
-              fullItem: item
+              fullItem: item,
             });
 
-            const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
+            const endpoint = `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/openai/generate-${type}`;
             const requestPayload = {
               term: item.term,
               definition: item.definition,
@@ -303,22 +339,29 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
                   trueOrFalse: [
                     "Create statements that test understanding of both term and its definition",
                     "Include false statements that mix up relationships between terms and definitions",
-                    "Ensure statements reference both the term and its meaning"
+                    "Ensure statements reference both the term and its meaning",
                   ],
                   multipleChoice: [
                     "Include options that test both term recognition and definition understanding",
                     "Create distractors that relate to both term and definition",
-                    "Ensure question text references both the concept and its explanation"
-                  ]
-                }
-              }
+                    "Ensure question text references both the concept and its explanation",
+                  ],
+                },
+              },
             };
 
             try {
-              const response = await axios.post<any[]>(endpoint, requestPayload);
-              
-              if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-                const questionsWithItemInfo = response.data.map(q => ({
+              const response = await axios.post<any[]>(
+                endpoint,
+                requestPayload
+              );
+
+              if (
+                response.data &&
+                Array.isArray(response.data) &&
+                response.data.length > 0
+              ) {
+                const questionsWithItemInfo = response.data.map((q) => ({
                   ...q,
                   item_id: item.item_id,
                   item_number: item.item_number,
@@ -328,20 +371,22 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
                     itemId: item.item_id,
                     itemNumber: item.item_number,
                     // Only include image if it exists
-                    ...(item.image ? { image: item.image } : {})
-                  }
+                    ...(item.image ? { image: item.image } : {}),
+                  },
                 }));
-                
+
                 // Add debug logging
                 console.log("Created question with full data:", {
                   question: questionsWithItemInfo[0],
                   hasImage: !!questionsWithItemInfo[0].itemInfo?.image,
                   imageUrl: questionsWithItemInfo[0].itemInfo?.image,
-                  fullItem: item
+                  fullItem: item,
                 });
-                
+
                 generatedQuestions.push(...questionsWithItemInfo);
-                console.log(`✓ Successfully generated ${type} question for "${item.term}" with definition "${item.definition}"`);
+                console.log(
+                  `✓ Successfully generated ${type} question for "${item.term}" with definition "${item.definition}"`
+                );
               }
             } catch (error) {
               console.error(`Error generating ${type} question:`, error);
@@ -352,21 +397,24 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         }
 
         // When setting the AI questions state
-        const finalQuestions = generatedQuestions.map(q => ({
+        const finalQuestions = generatedQuestions.map((q) => ({
           ...q,
           // Ensure itemInfo is preserved
           itemInfo: {
             ...q.itemInfo,
-            image: q.itemInfo?.image || null
-          }
+            image: q.itemInfo?.image || null,
+          },
         }));
 
-        console.log("Final questions before setting state:", finalQuestions.map(q => ({
-          question: q.question,
-          answer: q.answer,
-          hasImage: !!q.itemInfo?.image,
-          imageUrl: q.itemInfo?.image
-        })));
+        console.log(
+          "Final questions before setting state:",
+          finalQuestions.map((q) => ({
+            question: q.question,
+            answer: q.answer,
+            hasImage: !!q.itemInfo?.image,
+            imageUrl: q.itemInfo?.image,
+          }))
+        );
 
         setAiQuestions(finalQuestions);
         // Set game ready to true after questions are generated
@@ -399,13 +447,17 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
   useEffect(() => {
     const saveSession = async () => {
-      if (correctCount + incorrectCount === aiQuestions.length && aiQuestions.length > 0 && !hasSessionSaved) {
+      if (
+        correctCount + incorrectCount === aiQuestions.length &&
+        aiQuestions.length > 0 &&
+        !hasSessionSaved
+      ) {
         const sessionData: SessionData = {
           correctCount,
           incorrectCount,
           highestStreak,
           earnedXP: calculateExpGained(true, material?.items?.length || 0),
-          timeSpent: calculateTimeSpent(startTime, new Date())
+          timeSpent: calculateTimeSpent(startTime, new Date()),
         };
 
         try {
@@ -417,7 +469,13 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     };
 
     saveSession();
-  }, [correctCount, incorrectCount, aiQuestions.length, highestStreak, hasSessionSaved]);
+  }, [
+    correctCount,
+    incorrectCount,
+    aiQuestions.length,
+    highestStreak,
+    hasSessionSaved,
+  ]);
 
   // Custom answer submit handler with sound effects
   const handleAnswerSubmit = (answer: string) => {
@@ -430,14 +488,20 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
     // Get correct answer - with fallbacks
     let correctAnswer = currentQuestion.correctAnswer || currentQuestion.answer;
-    
+
     // Handle special case for multiple-choice: correctAnswer might be in format "A. term"
-    if (currentQuestion.questionType === "multiple-choice" && typeof correctAnswer === 'string' && correctAnswer.includes('. ')) {
+    if (
+      currentQuestion.questionType === "multiple-choice" &&
+      typeof correctAnswer === "string" &&
+      correctAnswer.includes(". ")
+    ) {
       // Extract just the term part after the letter
-      const answerParts = correctAnswer.split('. ');
+      const answerParts = correctAnswer.split(". ");
       if (answerParts.length > 1) {
-        correctAnswer = answerParts.slice(1).join('. ').trim();
-        console.log(`Using extracted multiple-choice answer: "${correctAnswer}"`);
+        correctAnswer = answerParts.slice(1).join(". ").trim();
+        console.log(
+          `Using extracted multiple-choice answer: "${correctAnswer}"`
+        );
       }
     }
 
@@ -453,11 +517,22 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     }
 
     // Safe string conversion and comparison
-    const answerString = String(answer || "").toLowerCase().trim();
-    const correctAnswerString = String(correctAnswer || "").toLowerCase().trim();
-    
-    console.log(`Comparing answer "${answerString}" with correct answer "${correctAnswerString}"`);
+    const answerString = String(answer || "")
+      .toLowerCase()
+      .trim();
+    const correctAnswerString = String(correctAnswer || "")
+      .toLowerCase()
+      .trim();
+
+    console.log(
+      `Comparing answer "${answerString}" with correct answer "${correctAnswerString}"`
+    );
     isAnswerCorrect = answerString === correctAnswerString;
+
+    // Update isCorrect property directly
+    if (currentQuestion) {
+      currentQuestion.isCorrect = isAnswerCorrect;
+    }
 
     // Play appropriate sound using AudioContext
     if (isAnswerCorrect) {
@@ -468,17 +543,23 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
     // Call the original handler
     originalHandleAnswerSubmit(answer);
+    setIsCurrentAnswerCorrect(isAnswerCorrect);
   };
 
   // Create a wrapper for handleNextQuestion that also clears the input
   const handleNextQuestion = () => {
-    setInputAnswer(''); // Clear the input
+    setInputAnswer(""); // Clear the input
     originalHandleNextQuestion(); // Call the original handler
   };
 
   // Show loading screen while generating questions
   if (isGeneratingAI) {
-    return <GeneralLoadingScreen text="Generating Questions" isLoading={isGeneratingAI} />;
+    return (
+      <GeneralLoadingScreen
+        text="Generating Questions"
+        isLoading={isGeneratingAI}
+      />
+    );
   }
 
   // Show loading screen if we don't have questions yet
@@ -493,37 +574,40 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       case "multiple-choice":
         return (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-[1000px] mx-auto">
-            {currentQuestion.options && typeof currentQuestion.options === 'object' ? (
-              // Handle options as an object (like {A: "option1", B: "option2"})
-              Object.entries(currentQuestion.options).map(([key, value], index) => (
-                <button
-                  key={index}
-                  onClick={() => handleAnswerSubmit(value as string)}
-                  disabled={showResult}
-                  className={`h-[100px] w-full bg-transparent 
+            {currentQuestion.options &&
+            typeof currentQuestion.options === "object"
+              ? // Handle options as an object (like {A: "option1", B: "option2"})
+                Object.entries(currentQuestion.options).map(
+                  ([key, value], index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleAnswerSubmit(value as string)}
+                      disabled={showResult}
+                      className={`h-[100px] w-full bg-transparent 
                     ${getButtonStyle(value as string)}
                     rounded-lg text-white hover:bg-gray-800/20 transition-colors
                     disabled:cursor-not-allowed px-4 text-center`}
-                >
-                  <span className="font-bold mr-2">{key}:</span> {value as string}
-                </button>
-              ))
-            ) : (
-              // Handle options as an array (for backward compatibility)
-              Array.isArray(currentQuestion.options) && currentQuestion.options.map((option: string, index: number) => (
-                <button
-                  key={index}
-                  onClick={() => handleAnswerSubmit(option)}
-                  disabled={showResult}
-                  className={`h-[100px] w-full bg-transparent 
+                    >
+                      <span className="font-bold mr-2">{key}:</span>{" "}
+                      {value as string}
+                    </button>
+                  )
+                )
+              : // Handle options as an array (for backward compatibility)
+                Array.isArray(currentQuestion.options) &&
+                currentQuestion.options.map((option: string, index: number) => (
+                  <button
+                    key={index}
+                    onClick={() => handleAnswerSubmit(option)}
+                    disabled={showResult}
+                    className={`h-[100px] w-full bg-transparent 
                     ${getButtonStyle(option)}
                     rounded-lg text-white hover:bg-gray-800/20 transition-colors
                     disabled:cursor-not-allowed px-4 text-center`}
-                >
-                  {option}
-                </button>
-              ))
-            )}
+                  >
+                    {option}
+                  </button>
+                ))}
           </div>
         );
 
@@ -541,14 +625,18 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               }}
               disabled={showResult}
               className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
-                                ${
-                                  showResult
-                                    ? currentQuestion?.isCorrect
-                                      ? "border-[#6DBE45]" // Green border for correct answers
-                                      : "border-[#FF3B3F]" // Red border for incorrect answers
-                                    : "border-gray-600" // Default gray border
-                                }
-                                text-white focus:outline-none placeholder:text-[#6F658D]`}
+                ${
+                  showResult
+                    ? isCurrentAnswerCorrect !== null
+                      ? isCurrentAnswerCorrect
+                        ? "border-[#52A647]" // Green border for correct answers
+                        : "border-[#FF3B3F]" // Red border for incorrect answers
+                      : currentQuestion?.isCorrect
+                      ? "border-[#52A647]" // Fallback to currentQuestion.isCorrect
+                      : "border-[#FF3B3F]"
+                    : "border-gray-600" // Default gray border
+                }
+                text-white focus:outline-none placeholder:text-[#6F658D]`}
               placeholder="Type your answer here..."
             />
           </div>
@@ -609,60 +697,70 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     );
   };
 
-  const saveSessionReport = async (sessionData: SessionData, isComplete: boolean = true) => {
+  const saveSessionReport = async (
+    sessionData: SessionData,
+    isComplete: boolean = true
+  ) => {
     if (hasSessionSaved) {
       console.log("Session already saved, skipping duplicate save");
       return;
     }
 
     try {
-      const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/session-report/save`;
-      
+      const endpoint = `${
+        import.meta.env.VITE_BACKEND_URL
+      }/api/session-report/save`;
+
       // Get total number of items from material
       const totalItems = material?.items?.length || 0;
-      
+
       // Calculate XP based on completion status
       const expGained = calculateExpGained(isComplete, totalItems);
-      
+
       // Log the values we're about to send
       console.log("Preparing session report with values:", {
         timeSpent: sessionData.timeSpent,
         correctCount: sessionData.correctCount,
-        incorrectCount: sessionData.incorrectCount
+        incorrectCount: sessionData.incorrectCount,
       });
 
       const payload: SessionPayload = {
         session_id: sessionId,
         study_material_id: material.study_material_id,
-        title: material.title || '',
-        summary: material.summary || '',
-        session_by_user_id: user?.firebase_uid || '',
-        session_by_username: user?.username || '',
+        title: material.title || "",
+        summary: material.summary || "",
+        session_by_user_id: user?.firebase_uid || "",
+        session_by_username: user?.username || "",
         status: isComplete ? "completed" : "incomplete",
         ends_at: new Date().toISOString(),
         exp_gained: expGained,
         coins_gained: null,
         game_mode: mode.toLowerCase(),
-        total_time: sessionData.timeSpent,        // Using timeSpent directly
-        mastered: sessionData.correctCount,       // Using correctCount directly
-        unmastered: sessionData.incorrectCount    // Using incorrectCount directly
+        total_time: sessionData.timeSpent,
+        mastered: sessionData.correctCount,
+        unmastered: sessionData.incorrectCount,
       };
 
       console.log("Sending payload to server:", payload);
 
-      const response = await axios.post<SessionReportResponse>(endpoint, payload);
-      
+      const response = await axios.post<SessionReportResponse>(
+        endpoint,
+        payload
+      );
+
       if (response.data.success) {
         console.log("Session report saved successfully:", response.data);
         setHasSessionSaved(true);
         return response.data;
       } else {
         console.error("Failed to save session report:", response.data);
-        throw new Error(response.data.message || "Failed to save session report");
+        throw new Error(
+          response.data.message || "Failed to save session report"
+        );
       }
     } catch (error: unknown) {
       console.error("Error in saveSessionReport:", error);
-      if (error && typeof error === 'object' && 'isAxiosError' in error) {
+      if (error && typeof error === "object" && "isAxiosError" in error) {
         const axiosError = error as any;
         console.error("Axios error details:", {
           message: axiosError.message,
@@ -677,7 +775,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   // Update the handleEndGame function
   const handleEndGame = async () => {
     console.log("Handling early game end...");
-    
+
     if (hasSessionSaved) {
       console.log("Session already saved, skipping save");
       return;
@@ -694,7 +792,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       highestStreak,
       masteredCount,
       unmasteredCount,
-      earnedXP: 0
+      earnedXP: 0,
     };
 
     try {
@@ -704,30 +802,33 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         incorrectCount,
         highestStreak,
         earnedXP: 0, // Force 0 XP for early end
-        timeSpent
+        timeSpent,
       };
 
       await saveSessionReport(sessionData, false);
-      
+
       setIsGameEndedByUser(true);
       setHasSessionSaved(true);
 
       // Log navigation attempt
-      console.log("Attempting navigation to summary with state:", navigationState);
+      console.log(
+        "Attempting navigation to summary with state:",
+        navigationState
+      );
 
       // Navigate after successful save
       navigate("/dashboard/study/session-summary", {
         replace: true,
-        state: navigationState
+        state: navigationState,
       });
     } catch (error) {
       console.error("Failed to save incomplete session:", error);
-      
+
       // Still try to navigate even if save fails
       console.log("Save failed, attempting navigation anyway");
       navigate("/dashboard/study/session-summary", {
         replace: true,
-        state: navigationState
+        state: navigationState,
       });
     }
   };
@@ -766,13 +867,15 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               />
             </div>
             {renderQuestionContent()}
-            {showNextButton && (
-              <button
-                onClick={handleNextQuestion}
-                className="mt-6 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
-              >
-                Next Question
-              </button>
+            {showResult && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={handleNextQuestion}
+                  className="px-6 py-2 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
+                >
+                  Next Question
+                </button>
+              </div>
             )}
           </div>
         </main>

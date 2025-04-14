@@ -4,7 +4,7 @@ import { CircularProgress, Modal } from "@mui/material";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import PageTransition from "../../styles/PageTransition";
-import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
+import sampleAvatar2 from "/images/sampleAvatar2.png";
 import useFirebaseError from "../../hooks/validation.hooks/useFirebaseError";
 import * as Yup from "yup";
 import { useAuth } from "../../contexts/AuthContext";
@@ -68,7 +68,9 @@ const ForgotPassword = () => {
                 },
               });
             } catch (error: any) {
-              setSubmitError(error.message || "Failed to send password reset email");
+              setSubmitError(
+                error.message || "Failed to send password reset email"
+              );
             }
           }
         }
@@ -130,12 +132,12 @@ const ForgotPassword = () => {
                 autoComplete="off"
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  error ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  error
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
                 }`}
               />
-              {error && (
-                <p className="text-red-500 mt-1 text-sm">{error}</p>
-              )}
+              {error && <p className="text-red-500 mt-1 text-sm">{error}</p>}
             </div>
             <button
               type="submit"

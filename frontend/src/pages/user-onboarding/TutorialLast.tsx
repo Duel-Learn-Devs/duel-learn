@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useWandCursor from "./data/useWandCursor";
-import GateRabbit from "../../assets/UserOnboarding/Gate.gif";
+import GateRabbit from "/UserOnboarding/Gate.gif";
 import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
 import { useUser } from "../../contexts/UserContext";

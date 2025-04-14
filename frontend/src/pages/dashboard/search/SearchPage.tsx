@@ -5,7 +5,7 @@ import axios from "axios";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
 import { UserInfo } from "../../../types/userInfoObject";
 import CardComponent from "../../../components/CardComponent";
-import defaultPicture from "../../../assets/profile-picture/default-picture.svg";
+import defaultPicture from "/profile-picture/default-picture.svg";
 import CircularProgress from "@mui/material/CircularProgress";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useUser } from "../../../contexts/UserContext";
@@ -308,7 +308,7 @@ const SearchPage = () => {
     const isOwnProfile = user?.firebase_uid === selectedUser.firebase_uid;
 
     return (
-      <Stack paddingX={4} spacing={2}>
+      <Stack spacing={2}>
         <button
           className="self-start flex items-center gap-2 pb-2 text-[#3B354C] hover:text-inherit transition-colors"
           onClick={handleBackToResults}
@@ -447,7 +447,7 @@ const SearchPage = () => {
   }
 
   return (
-    <Stack paddingX={4} spacing={2}>
+    <Stack spacing={2}>
       <Stack spacing={1}>
         <p className="text-[#9F9BAE] font-semibold text-[2.3vh]">
           Matching Results for "{searchQuery}"

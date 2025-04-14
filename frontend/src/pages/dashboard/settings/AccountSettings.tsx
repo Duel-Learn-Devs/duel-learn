@@ -1,4 +1,4 @@
-import sampleAvatar from "../../../assets/profile-picture/default-picture.svg";
+import sampleAvatar from "/profile-picture/default-picture.svg";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -15,7 +15,7 @@ import { toast } from "react-hot-toast";
 export default function AccountSettings() {
   const { user, refreshUserData } = useUser();
   const [refreshing, setRefreshing] = useState(false);
-  
+
   const {
     formik,
     isEditing,
@@ -60,7 +60,7 @@ export default function AccountSettings() {
 
   const handleRefresh = async () => {
     if (refreshing) return;
-    
+
     setRefreshing(true);
     try {
       await refreshUserData();
@@ -77,19 +77,21 @@ export default function AccountSettings() {
       <main className="px-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">Account Settings</h1>
-          
+
           <Button
             onClick={handleRefresh}
             disabled={refreshing}
             variant="contained"
             color="primary"
-            startIcon={<RefreshIcon className={refreshing ? "animate-spin" : ""} />}
+            startIcon={
+              <RefreshIcon className={refreshing ? "animate-spin" : ""} />
+            }
             sx={{ backgroundColor: "#4D18E8" }}
           >
             {refreshing ? "Refreshing..." : "Refresh Data"}
           </Button>
         </div>
-        
+
         <div className="flex items-start">
           <form
             onSubmit={formik.handleSubmit}

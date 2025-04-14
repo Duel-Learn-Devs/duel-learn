@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import DefaultUnknownPic from "../../../../assets/General/DefaultUnknownPic.png";
+import DefaultUnknownPic from "/General/DefaultUnknownPic.png";
 import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
 import peacefulModeAsset from "/game-mode-selection/peaceful-mode.svg";
 import timePressuredModeAsset from "/game-mode-selection/time-pressured-mode.svg";

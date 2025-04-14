@@ -1,4 +1,4 @@
-import headerImage from "../assets/General/print-header.png";
+import headerImage from "/General/print-header.png";
 import { ExportData } from "./exportUtils";
 
 export const handlePrint = async (data: ExportData) => {

@@ -14,7 +14,11 @@ import PvPOptionsModal from "./modals/PvPOptionsModal";
 import { StudyMaterial } from "../types/studyMaterialObject";
 import { useAudio } from "../contexts/AudioContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { createNewLobby, joinExistingLobby, navigateToWelcomeScreen } from "../services/pvpLobbyService";
+import {
+  createNewLobby,
+  joinExistingLobby,
+  navigateToWelcomeScreen,
+} from "../services/pvpLobbyService";
 
 // Using a function to make the styled component responsive with theme access
 const ModeCard = styled(Card)(({ theme }) => {
@@ -23,7 +27,7 @@ const ModeCard = styled(Card)(({ theme }) => {
   return {
     padding: isXsScreen ? "1rem 0.75rem" : "1.5rem 0.75rem", // Responsive padding with rem
     borderRadius: "0.8rem",
-    height: isXsScreen ? "180px" : "240px", // Fixed height values instead of vh
+    height: isXsScreen ? "120px" : "220px", // Fixed height values instead of vh
     minHeight: isXsScreen ? "120px" : "140px", // Min height with px
     maxHeight: isXsScreen ? "180px" : "240px", // Max height with px
     width: "100%",
@@ -96,11 +100,11 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     } else {
       // Regular flow for other modes
       navigate("/dashboard/welcome-game-mode", {
-        state: { 
-          mode: selectedMode, 
+        state: {
+          mode: selectedMode,
           material,
-          skipMaterialSelection: skipMaterialSelection
-        }
+          skipMaterialSelection: skipMaterialSelection,
+        },
       });
     }
   };
@@ -115,13 +119,13 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
   // Handler for back button from study material modal
   const handleStudyMaterialBack = () => {
     setModalOpen(false);
-    
+
     // Check if we have a previous modal to go back to
     if (modalHistoryStack.length > 0) {
       const prevModal = modalHistoryStack[modalHistoryStack.length - 1];
-      setModalHistoryStack(stack => stack.slice(0, -1)); // Remove current modal from history
-      
-      if (prevModal === 'pvpOptions') {
+      setModalHistoryStack((stack) => stack.slice(0, -1)); // Remove current modal from history
+
+      if (prevModal === "pvpOptions") {
         setPvpOptionsOpen(true);
       }
     }
@@ -147,7 +151,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
   const handleModeClick = (mode: string) => {
     setSelectedMode(mode);
     setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
-    
+
     // If it's PvP mode, show the options modal and update history
     if (mode === "PvP Mode") {
       setIsLobby(true);
@@ -155,7 +159,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
       setModalHistoryStack([]);
       return;
     }
-    
+
     // For other modes, show material selection
     if (skipMaterialSelection && preSelectedMaterial) {
       if (onSelectMode) {
@@ -166,12 +170,12 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
       }
 
       navigate("/dashboard/welcome-game-mode", {
-        state: { 
-          mode, 
+        state: {
+          mode,
           material: preSelectedMaterial,
           preSelectedMaterial,
-          skipMaterialSelection: true
-        }
+          skipMaterialSelection: true,
+        },
       });
     } else {
       // Show material selection modal
@@ -185,13 +189,13 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     setPvpOptionsOpen(false);
     setModalOpen(true);
     // Update history stack to remember we came from pvpOptions
-    setModalHistoryStack(['pvpOptions']);
+    setModalHistoryStack(["pvpOptions"]);
   };
 
   // Handler for joining an existing lobby
   const handleJoinLobby = (lobbyCode: string) => {
     setPvpOptionsOpen(false);
-    
+
     // Use the lobby service for joining
     const lobbyState = joinExistingLobby(lobbyCode, selectedMode || "PvP Mode");
     navigateToWelcomeScreen(navigate, lobbyState);
@@ -244,8 +248,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="700"
                 className="text-[#266349]"
                 sx={{
-                  fontSize: isXsScreen ? "1.1rem" : "1.3rem", // Responsive font size with rem
-                  marginBottom: "0.4rem", // Use rem for margin
+                  fontSize: isXsScreen ? "1rem" : "1.3rem", // Responsive font size with rem
+                  marginBottom: "0.1rem", // Use rem for margin
                 }}
               >
                 Peaceful Mode
@@ -254,7 +258,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="650"
                 className="text-[#266349]"
                 sx={{
-                  fontSize: isXsScreen ? "0.75rem" : "0.85rem", // Responsive font size with rem
+                  fontSize: isXsScreen ? "0.65rem" : "0.85rem", // Responsive font size with rem
                 }}
               >
                 Study your way, no rush, just flow!
@@ -295,8 +299,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="700"
                 className="text-[#504c36]"
                 sx={{
-                  fontSize: isXsScreen ? "1.1rem" : "1.3rem", // Responsive font size with rem
-                  marginBottom: "0.4rem", // Use rem for margin
+                  fontSize: isXsScreen ? "1rem" : "1.3rem", // Responsive font size with rem
+                  marginBottom: "0.1rem", // Use rem for margin
                 }}
               >
                 Time Pressured
@@ -305,7 +309,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="650"
                 className="text-[#504c36]"
                 sx={{
-                  fontSize: isXsScreen ? "0.75rem" : "0.85rem", // Responsive font size with rem
+                  fontSize: isXsScreen ? "0.7rem" : "0.85rem", // Responsive font size with rem
                 }}
               >
                 Beat the clock, challenge your speed!
@@ -345,8 +349,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="700"
                 className="text-[#303869]"
                 sx={{
-                  fontSize: isXsScreen ? "1.1rem" : "1.3rem", // Responsive font size with rem
-                  marginBottom: "0.4rem", // Use rem for margin
+                  fontSize: isXsScreen ? "1rem" : "1.3rem", // Responsive font size with rem
+                  marginBottom: "0.1rem", // Use rem for margin
                 }}
               >
                 PvP Mode
@@ -356,7 +360,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="650"
                 className="text-[#303869]"
                 sx={{
-                  fontSize: isXsScreen ? "0.75rem" : "0.85rem", // Responsive font size with rem
+                  fontSize: isXsScreen ? "0.65rem" : "0.85rem", // Responsive font size with rem
                 }}
               >
                 Outsmart your opponent and win!

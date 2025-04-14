@@ -34,7 +34,7 @@ const HowItWorksSection = () => {
             }}
           >
             <img
-              src="src/assets/landing-page/spark-2.png"
+              src="/landing-page/spark-2.png"
               alt="Spark"
               style={{
                 width: "100%",
@@ -172,7 +172,7 @@ const WorkCard = ({
       }}
     >
       <img
-        src={`src/assets/landing-page/${image}.png`}
+        src={`/landing-page/${image}.png`}
         alt={title}
         style={{
           width: "100%",

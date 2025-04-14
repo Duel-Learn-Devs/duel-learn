@@ -4,7 +4,7 @@ import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
 
 import ChooseYourChallenge from "../../../components/ChooseYourChallenge";
-import DiscoverMore from "./DiscoverMore";
+import YourPickedTopics from "./YourPickedTopics";
 import HomeBanner from "./HomeBanner";
 
 const HomePage = ({
@@ -23,7 +23,7 @@ const HomePage = ({
     <PageTransition>
       <Box className="h-full w-auto" sx={{ backgroundColor: "#080511" }}>
         <DocumentHead title="Home | Duel Learn" />
-        <Stack spacing={1} className="px-3 sm:px-5 md:px-8">
+        <Stack spacing={1}>
           <HomeBanner />
           <Stack spacing={2} className="pb-4 pt-4 sm:pb-6 sm:pt-6">
             <Stack
@@ -78,7 +78,7 @@ const HomePage = ({
                     fontWeight: 600,
                   }}
                 >
-                  Discover more materials
+                  Your Picked Topics
                 </Typography>
               </Stack>
               <Box flexGrow={1} />
@@ -110,7 +110,7 @@ const HomePage = ({
               </Button>
             </Stack>
             <Box className="w-full overflow-hidden">
-              <DiscoverMore />
+              <YourPickedTopics />
             </Box>
           </Stack>
 

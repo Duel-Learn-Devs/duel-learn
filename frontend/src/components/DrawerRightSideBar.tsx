@@ -1,8 +1,9 @@
 // src/components/DrawerRightSideBar.tsx
 
 import React, { useState } from "react";
-import { Drawer, Box } from "@mui/material";
+import { Drawer, Box, IconButton } from "@mui/material";
 import { useLocation } from "react-router";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 // Importing the necessary content components
 import Leaderboards from "./RighSideBar/Leaderboards/Leaderboards";
@@ -30,7 +31,7 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
   const [friendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
 
   // Determine whether to show EmptyLB or Leaderboards
-  const leaderboardContent = friendCount >= 5 ? <Leaderboards /> : <EmptyLB />;
+  const leaderboardContent = friendCount >= 2 ? <Leaderboards /> : <EmptyLB />;
   const friendListContent =
     friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
 
@@ -74,15 +75,28 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
       sx={{
         width: "100%", // Full width
         height: "200px", // Set the height to 200px
+        transition: "all 0.3s ease-in",
         "& .MuiDrawer-paper": {
           height: "430px", // Set the drawer height
           width: "100%", // Full width
           borderRadius: "16px 16px 0 0", // Optional: rounded top corners for the drawer
-          backgroundColor: "#080511",
+          backgroundColor: "#120F1B",
+          overflowX: "hidden",
         },
       }}
     >
-      <Box className="p-4 flex justify-center">
+      {/* Sticky header with full-width close button */}
+      <div className="sticky top-0 z-50 bg-[inherit]">
+        {/* Full-width close button */}
+        <button
+          className="w-full flex items-center justify-center bg-[#120F1B] text-white mt-2 "
+          onClick={() => toggleDrawer(false)}
+        >
+          <KeyboardArrowDownIcon />
+        </button>
+      </div>
+
+      <Box className="p-4 flex justify-center overflow-y-auto mt-2">
         {/* Render the content based on route */}
         <div className="side-list-navi pr-8 mb-10 p-4 flex-shrink-0">
           {content}

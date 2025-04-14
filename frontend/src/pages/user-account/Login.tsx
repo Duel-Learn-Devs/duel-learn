@@ -4,12 +4,7 @@ import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import { useAuth } from "../../contexts/AuthContext";
 import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErrorHandler";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
 import useGoogleAuth from "../../hooks/auth.hooks/useGoogleAuth";
 import LoadingScreen from "../../components/LoadingScreen";
@@ -17,15 +12,12 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 
 //import axios from "axios";
-import { signInWithEmailAndPassword} from "firebase/auth";
-import {
-  auth,
-  db,
-} from "../../services/firebase"; // Ensure you have this import for Firebase auth
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth, db } from "../../services/firebase"; // Ensure you have this import for Firebase auth
 // Icons
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { useStoreUser } from '../../hooks/api.hooks/useStoreUser';
+import { useStoreUser } from "../../hooks/api.hooks/useStoreUser";
 import { setAuthToken } from "../../api/apiClient";
 
 const Login = () => {
@@ -60,10 +52,8 @@ const Login = () => {
   };
 
   const validationSchema = Yup.object({
-    username: Yup.string()
-      .required("Username or email is required."),
-    password: Yup.string()
-      .required("Password is required.")
+    username: Yup.string().required("Username or email is required."),
+    password: Yup.string().required("Password is required."),
   });
 
   const formik = useFormik({
@@ -76,39 +66,44 @@ const Login = () => {
       setLoading(true);
       let email = values.username;
       const isEmailFormat = /\S+@\S+\.\S+/.test(values.username);
-      
+
       try {
         // First, determine whether input is email or username
         if (!isEmailFormat) {
           // If username is provided, check first in temp_users collection
           const tempUsersRef = collection(db, "temp_users");
-          const tempUsersQuery = query(tempUsersRef, where("username", "==", values.username));
+          const tempUsersQuery = query(
+            tempUsersRef,
+            where("username", "==", values.username)
+          );
           const tempUsersSnapshot = await getDocs(tempUsersQuery);
-          
+
           if (!tempUsersSnapshot.empty) {
             // User exists in temp_users collection
             const userDoc = tempUsersSnapshot.docs[0];
             const userData = userDoc.data();
             email = userData.email;
-            
-            console.log("Found user in temp_users collection, attempting to sign in with Firebase");
-            
+
+            console.log(
+              "Found user in temp_users collection, attempting to sign in with Firebase"
+            );
+
             // Try to sign in with Firebase using the AuthContext
             const result = await login(email, values.password);
-            
+
             // Get a fresh token and make sure it's set in apiClient
             const token = await result.getIdToken();
             console.log("Got Firebase token:", token.substring(0, 10) + "...");
-            
+
             // Explicitly set the token to ensure it's available for the API call
             setAuthToken(token);
             console.log("Token explicitly set in apiClient");
-            
+
             // Add a small delay to ensure token is properly set
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
             console.log("Firebase sign in successful, storing user data");
-            
+
             // Store user data using storeUser endpoint
             const storeUserResult = await storeUser({
               username: userData.username,
@@ -116,26 +111,29 @@ const Login = () => {
               password: values.password,
               account_type: userData.account_type || "free",
               isNew: true,
-              isSSO: false
+              isSSO: false,
             });
             console.log("Store user result:", storeUserResult);
 
             if (!storeUserResult.success) {
               throw new Error(storeUserResult.error);
             }
-            
+
             console.log("Navigating to email verification page");
             // Navigate to verify email page
             setLoading(true);
             navigate("/verify-email", { state: { token } });
             return;
           }
-          
+
           // If not found in temp_users, check in users collection
           const usersRef = collection(db, "users");
-          const usersQuery = query(usersRef, where("username", "==", values.username));
+          const usersQuery = query(
+            usersRef,
+            where("username", "==", values.username)
+          );
           const usersSnapshot = await getDocs(usersQuery);
-          
+
           if (!usersSnapshot.empty) {
             const userDoc = usersSnapshot.docs[0];
             email = userDoc.data().email;
@@ -145,32 +143,37 @@ const Login = () => {
         } else {
           // If email is provided, check first in temp_users collection
           const tempUsersRef = collection(db, "temp_users");
-          const tempUsersQuery = query(tempUsersRef, where("email", "==", values.username));
+          const tempUsersQuery = query(
+            tempUsersRef,
+            where("email", "==", values.username)
+          );
           const tempUsersSnapshot = await getDocs(tempUsersQuery);
-          
+
           if (!tempUsersSnapshot.empty) {
             // User exists in temp_users collection
             const userDoc = tempUsersSnapshot.docs[0];
             const userData = userDoc.data();
-            
-            console.log("Found user in temp_users collection with email search, attempting to sign in with Firebase");
-            
+
+            console.log(
+              "Found user in temp_users collection with email search, attempting to sign in with Firebase"
+            );
+
             // Try to sign in with Firebase using the AuthContext
             const result = await login(email, values.password);
-            
+
             // Get a fresh token and make sure it's set in apiClient
             const token = await result.getIdToken();
             console.log("Got Firebase token:", token.substring(0, 10) + "...");
-            
+
             // Explicitly set the token to ensure it's available for the API call
             setAuthToken(token);
             console.log("Token explicitly set in apiClient");
-            
+
             // Add a small delay to ensure token is properly set
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
             console.log("Firebase sign in successful, storing user data");
-            
+
             // Store user data using storeUser endpoint
             await storeUser({
               username: userData.username,
@@ -178,39 +181,39 @@ const Login = () => {
               password: values.password,
               account_type: userData.account_type || "free",
               isNew: true,
-              isSSO: false
+              isSSO: false,
             });
-            
+
             console.log("Navigating to email verification page");
             // Navigate to verify email page
             setLoading(true);
             navigate("/verify-email", { state: { token } });
             return;
           }
-          
+
           // If not in temp_users, we proceed with normal login flow
           // The email input will be used directly
         }
-        
+
         // Proceed with standard login using AuthContext
         const result = await login(email, values.password);
-        
+
         // Get a fresh token and make sure it's set in apiClient
         const token = await result.getIdToken();
         console.log("Got Firebase token:", token.substring(0, 10) + "...");
-        
+
         // Explicitly set the token to ensure it's available for the API call
         setAuthToken(token);
         console.log("Token explicitly set in apiClient");
-        
+
         // Add a small delay to ensure token is properly set
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
         // Use the loadUserData function from UserContext
         try {
           const userData = await loadUserData(result.uid);
           console.log("User data after login:", userData);
-          
+
           if (userData?.isNew) {
             setSuccessMessage("Account found successfully!");
             setTimeout(() => {
@@ -223,7 +226,7 @@ const Login = () => {
             navigate("/verify-email", { state: { token } });
           } else {
             console.log("Email verified, navigating to dashboard");
-            
+
             // Check if user is admin and handle special redirection
             if (userData?.account_type === "admin") {
               console.log("Admin user detected, navigating to admin dashboard");
@@ -236,19 +239,23 @@ const Login = () => {
           }
         } catch (loginError: any) {
           console.error("Error during login user data loading:", loginError);
-          
+
           // Check for specific error messages
           if (loginError.message && loginError.message.includes("not found")) {
             // The user exists in Firebase but not in our database yet
-            setSubmitError("Your account exists but needs to be set up. Please complete registration.");
-            
+            setSubmitError(
+              "Your account exists but needs to be set up. Please complete registration."
+            );
+
             // Redirect to verify email page to continue registration process
             setTimeout(() => {
               navigate("/verify-email", { state: { token } });
             }, 2000);
           } else {
             // For other errors, display the specific error message
-            setSubmitError(loginError.message || "An error occurred during login");
+            setSubmitError(
+              loginError.message || "An error occurred during login"
+            );
             setLoading(false);
           }
         }
@@ -256,7 +263,7 @@ const Login = () => {
         handleError(error);
         setLoading(false);
       }
-    }
+    },
   });
 
   const googleSubmit = async () => {
@@ -264,7 +271,7 @@ const Login = () => {
     try {
       const account_type = "free";
       const authResult = await handleGoogleAuth(account_type);
-      
+
       // Load user data using updated UserContext method
       const userData = await loadUserData(authResult.userData.uid);
 
@@ -287,7 +294,7 @@ const Login = () => {
     }
   };
 
-  if (loading || googleLoading) {
+  if (loading) {
     return (
       <PageTransition>
         <LoadingScreen />
@@ -352,7 +359,9 @@ const Login = () => {
                 }`}
               />
               {formik.touched.username && formik.errors.username && (
-                <p className="text-red-500 mt-1 text-sm">{formik.errors.username}</p>
+                <p className="text-red-500 mt-1 text-sm">
+                  {formik.errors.username}
+                </p>
               )}
             </div>
 
@@ -387,7 +396,9 @@ const Login = () => {
                 )}
               </span>
               {formik.touched.password && formik.errors.password && (
-                <p className="text-red-500 mt-1 text-sm">{formik.errors.password}</p>
+                <p className="text-red-500 mt-1 text-sm">
+                  {formik.errors.password}
+                </p>
               )}
             </div>
 
@@ -427,7 +438,7 @@ const Login = () => {
               className="w-5 h-5 mr-3"
               alt="Google Icon"
             />
-            Sign in with Google
+            Log in with Google
           </button>
 
           {/* Footer */}

@@ -2,21 +2,21 @@ import { pool } from "../config/db.js";
 import * as LobbyModel from '../models/LobbyModel.js';
 
 export const getFriendsList = async (req, res) => {
-    const { firebase_uid } = req.params;
+  const { firebase_uid } = req.params;
 
-    if (!firebase_uid) {
-        return res.status(400).json({
-            success: false,
-            message: "firebase_uid is required"
-        });
-    }
+  if (!firebase_uid) {
+    return res.status(400).json({
+      success: false,
+      message: "firebase_uid is required"
+    });
+  }
 
-    try {
-        // Test database connection
-        await pool.getConnection();
+  try {
+    // Test database connection
+    await pool.getConnection();
 
-        // Get friends through accepted friend requests and join with user_info
-        const query = `
+    // Get friends through accepted friend requests and join with user_info
+    const query = `
             SELECT DISTINCT
                 u.firebase_uid,
                 u.username,
@@ -33,42 +33,42 @@ export const getFriendsList = async (req, res) => {
             WHERE fr.status = 'accepted'
         `;
 
-        const [friends] = await pool.query(query, [firebase_uid, firebase_uid]);
-        console.log("Query results:", friends);
+    const [friends] = await pool.query(query, [firebase_uid, firebase_uid]);
+    console.log("Query results:", friends);
 
-        // Format the response using actual level from user_info
-        const formattedFriends = friends.map(friend => ({
-            firebase_uid: friend.firebase_uid,
-            username: friend.username,
-            level: friend.level || 1,
-            display_picture: friend.display_picture || null
-        }));
+    // Format the response using actual level from user_info
+    const formattedFriends = friends.map(friend => ({
+      firebase_uid: friend.firebase_uid,
+      username: friend.username,
+      level: friend.level || 1,
+      display_picture: friend.display_picture || null
+    }));
 
-        return res.status(200).json({
-            success: true,
-            data: formattedFriends
-        });
+    return res.status(200).json({
+      success: true,
+      data: formattedFriends
+    });
 
-    } catch (error) {
-        // More detailed error logging
-        console.error("Error in getFriendsList:");
-        console.error("Error message:", error.message);
-        console.error("Error stack:", error.stack);
-        console.error("Request params:", req.params);
+  } catch (error) {
+    // More detailed error logging
+    console.error("Error in getFriendsList:");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    console.error("Request params:", req.params);
 
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error",
-            error: error.message
-        });
-    }
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
 };
 
 // Create a new lobby
 export const createLobby = async (req, res) => {
   try {
     const lobbyData = req.body;
-    
+
     // Validate the required fields
     if (!lobbyData.lobby_code || !lobbyData.host_id) {
       return res.status(400).json({
@@ -76,10 +76,10 @@ export const createLobby = async (req, res) => {
         message: 'Missing required fields: lobby_code and host_id are required'
       });
     }
-    
+
     // Create the lobby
     const result = await LobbyModel.createLobby(lobbyData);
-    
+
     res.status(201).json({
       success: true,
       data: result
@@ -98,11 +98,11 @@ export const createLobby = async (req, res) => {
 export const validateLobby = async (req, res) => {
   try {
     const { lobbyCode } = req.params;
-    
+
     console.log("Validating lobby code:", lobbyCode);
-    
+
     const lobby = await LobbyModel.getLobbyByCode(lobbyCode);
-    
+
     if (!lobby) {
       console.log("Lobby not found:", lobbyCode);
       return res.status(404).json({
@@ -111,7 +111,7 @@ export const validateLobby = async (req, res) => {
         message: 'Lobby not found'
       });
     }
-    
+
     // Check if lobby is in a valid state to join
     if (lobby.status !== 'waiting') {
       console.log(`Lobby ${lobbyCode} is ${lobby.status}, not accepting new players`);
@@ -121,7 +121,7 @@ export const validateLobby = async (req, res) => {
         message: `Lobby is ${lobby.status}, not accepting new players`
       });
     }
-    
+
     // Check if lobby already has a guest
     if (lobby.guest_id) {
       console.log(`Lobby ${lobbyCode} is already full`);
@@ -131,7 +131,7 @@ export const validateLobby = async (req, res) => {
         message: 'Lobby is already full'
       });
     }
-    
+
     console.log("Lobby validation successful:", lobbyCode);
     res.json({
       success: true,
@@ -158,9 +158,9 @@ export const validateLobby = async (req, res) => {
 export const joinLobby = async (req, res) => {
   try {
     const { lobby_code, player_id, player_username, player_level, player_picture } = req.body;
-    
+
     console.log("Joining lobby with data:", req.body);
-    
+
     // Validate the required fields
     if (!lobby_code || !player_id || !player_username) {
       return res.status(400).json({
@@ -168,7 +168,7 @@ export const joinLobby = async (req, res) => {
         message: 'Missing required fields'
       });
     }
-    
+
     // Check if lobby exists and is in waiting state
     const [existingLobby] = await pool.query(
       `SELECT l.*, 
@@ -178,7 +178,7 @@ export const joinLobby = async (req, res) => {
        WHERE l.lobby_code = ?`,
       [lobby_code]
     );
-    
+
     if (existingLobby.length === 0) {
       return res.status(404).json({
         success: false,
@@ -187,14 +187,14 @@ export const joinLobby = async (req, res) => {
     }
 
     const lobby = existingLobby[0];
-    
+
     if (lobby.status !== 'waiting') {
       return res.status(400).json({
         success: false,
         message: `Lobby is ${lobby.status}, not accepting new players`
       });
     }
-    
+
     if (lobby.guest_id) {
       return res.status(400).json({
         success: false,
@@ -205,7 +205,7 @@ export const joinLobby = async (req, res) => {
     // Start a transaction
     const connection = await pool.getConnection();
     await connection.beginTransaction();
-    
+
     try {
       // First update the pvp_lobbies table
       const updateLobbyQuery = `
@@ -305,16 +305,16 @@ export const joinLobby = async (req, res) => {
 export const updateSettings = async (req, res) => {
   try {
     const { lobby_code, settings } = req.body;
-    
+
     if (!lobby_code || !settings) {
       return res.status(400).json({
         success: false,
         message: 'Missing required fields: lobby_code and settings'
       });
     }
-    
+
     const updatedSettings = await LobbyModel.updateLobbySettings(lobby_code, settings);
-    
+
     res.json({
       success: true,
       data: updatedSettings
@@ -333,14 +333,14 @@ export const updateSettings = async (req, res) => {
 export const updateStatus = async (req, res) => {
   try {
     const { lobby_code, status } = req.body;
-    
+
     if (!lobby_code || !status) {
       return res.status(400).json({
         success: false,
         message: 'Missing required fields: lobby_code and status'
       });
     }
-    
+
     const validStatuses = ['waiting', 'ready', 'in_progress', 'completed', 'abandoned'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
@@ -348,9 +348,9 @@ export const updateStatus = async (req, res) => {
         message: `Invalid status: must be one of ${validStatuses.join(', ')}`
       });
     }
-    
+
     const updatedLobby = await LobbyModel.updateLobbyStatus(lobby_code, status);
-    
+
     res.json({
       success: true,
       data: updatedLobby
@@ -369,7 +369,7 @@ export const updateStatus = async (req, res) => {
 export const setReady = async (req, res) => {
   try {
     const { lobby_code, player_id, is_ready, is_host, is_guest } = req.body;
-    
+
     if (!lobby_code || !player_id || is_ready === undefined) {
       return res.status(400).json({
         success: false,
@@ -378,10 +378,10 @@ export const setReady = async (req, res) => {
     }
 
     // Update pvp_lobbies ready status
-    const updateQuery = is_host 
+    const updateQuery = is_host
       ? 'UPDATE pvp_lobbies SET host_ready = ? WHERE lobby_code = ?'
       : 'UPDATE pvp_lobbies SET guest_ready = ? WHERE lobby_code = ?';
-    
+
     await pool.query(updateQuery, [is_ready ? 1 : 0, lobby_code]);
 
     // Get updated lobby data
@@ -492,16 +492,16 @@ export const updateOrCreateBattleInvitation = async (req, res) => {
 export const getLobbyDetails = async (req, res) => {
   try {
     const { lobbyCode } = req.params;
-    
+
     const lobby = await LobbyModel.getLobbyByCode(lobbyCode);
-    
+
     if (!lobby) {
       return res.status(404).json({
         success: false,
         message: 'Lobby not found'
       });
     }
-    
+
     res.json({
       success: true,
       data: lobby
@@ -514,12 +514,12 @@ export const getLobbyDetails = async (req, res) => {
       error: error.message
     });
   }
-  
+
 };
 export const leaveLobby = async (req, res) => {
   try {
     const { lobby_code, player_id, is_host, is_guest } = req.body;
-    
+
     if (!lobby_code || !player_id) {
       return res.status(400).json({
         success: false,

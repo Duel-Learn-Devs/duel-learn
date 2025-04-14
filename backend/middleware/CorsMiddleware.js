@@ -1,13 +1,17 @@
-import cors from 'cors'; // Import the cors package
+import cors from 'cors';
+import dotenv from 'dotenv';
 
-// Use CORS middleware
-const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.FRONTEND_URL // Use environment variable in production
-    : 'http://localhost:5173', // Default for development
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify the allowed methods
-  allowedHeaders: ['Content-Type', 'Authorization', 'cache-control', 'pragma'], // Added pragma header
-  credentials: true, // Allow credentials (cookies, authorization headers, etc)
-};
+dotenv.config();
 
-export const corsMiddleware = cors(corsOptions);
+const allowedOrigins = [
+  process.env.FRONTEND_URL, 'https://duel-learn.vercel.app', 'https://duel-learn-production.up.railway.app',
+  'http://localhost:5000',
+  'http://localhost:5173',
+];
+
+export const corsMiddleware = cors({
+  origin: allowedOrigins, // Use array instead of function
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'cache-control', 'pragma'],
+  credentials: true,
+});

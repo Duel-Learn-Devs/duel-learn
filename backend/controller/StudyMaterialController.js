@@ -9,22 +9,22 @@ const studyMaterialCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
 // Utility function to handle image conversion
 const formatImageToBase64 = (imageBuffer) => {
   if (!imageBuffer) return null;
-  const base64String = imageBuffer.toString('base64');
+  const base64String = imageBuffer.toString("base64");
   return `data:image/jpeg;base64,${base64String}`;
 };
 
 // Utility function for cache invalidation
 const invalidateCachesForUser = (created_by, created_by_id) => {
   studyMaterialCache.del(`study_materials_${created_by}`);
-  studyMaterialCache.del('top_picks');
+  studyMaterialCache.del("top_picks");
 
   const allKeys = studyMaterialCache.keys();
-  allKeys.forEach(key => {
+  allKeys.forEach((key) => {
     if (
       key.includes(created_by_id) ||
       key.includes(created_by) ||
-      key.includes('bookmarks_') ||
-      key.startsWith('recommended_')
+      key.includes("bookmarks_") ||
+      key.startsWith("recommended_")
     ) {
       studyMaterialCache.del(key);
     }
@@ -38,9 +38,16 @@ const studyMaterialController = {
       connection = await pool.getConnection();
       let studyMaterialId = req.body.studyMaterialId || nanoid();
       const {
-        title, tags, summary, totalItems,
-        visibility = 0, createdBy, createdById,
-        totalView = 1, status = "active", items
+        title,
+        tags,
+        summary,
+        totalItems,
+        visibility = 0,
+        createdBy,
+        createdById,
+        totalView = 1,
+        status = "active",
+        items,
       } = req.body;
 
       const currentTimestamp = manilacurrentTimestamp;
@@ -54,9 +61,18 @@ const studyMaterialController = {
          status, created_by, created_by_id, total_views, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
-          studyMaterialId, title, JSON.stringify(tags), summary,
-          totalItems, visibility, status, createdBy, createdById,
-          totalView, currentTimestamp, currentTimestamp
+          studyMaterialId,
+          title,
+          JSON.stringify(tags),
+          summary,
+          totalItems,
+          visibility,
+          status,
+          createdBy,
+          createdById,
+          totalView,
+          currentTimestamp,
+          currentTimestamp,
         ]
       );
 
@@ -74,7 +90,14 @@ const studyMaterialController = {
           `INSERT INTO study_material_content 
           (study_material_id, item_id, item_number, term, definition, image) 
           VALUES (?, ?, ?, ?, ?, ?);`,
-          [studyMaterialId, itemId, index + 1, item.term, item.definition, imageBuffer]
+          [
+            studyMaterialId,
+            itemId,
+            index + 1,
+            item.term,
+            item.definition,
+            imageBuffer,
+          ]
         );
       });
 
@@ -96,7 +119,9 @@ const studyMaterialController = {
           console.error("Error rolling back transaction:", rollbackError);
         }
       }
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       if (connection) connection.release();
     }
@@ -106,9 +131,8 @@ const studyMaterialController = {
     let connection;
     try {
       connection = await pool.getConnection();
-      const {
-        studyMaterialId, title, tags, totalItems, visibility, items,
-      } = req.body;
+      const { studyMaterialId, title, tags, totalItems, visibility, items } =
+        req.body;
 
       if (!studyMaterialId || !title || !items || !items.length) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -122,7 +146,14 @@ const studyMaterialController = {
         `UPDATE study_material_info 
          SET title = ?, tags = ?, total_items = ?, visibility = ?, updated_at = ? 
          WHERE study_material_id = ?`,
-        [title, JSON.stringify(tags), totalItems, visibility, updatedTimestamp, studyMaterialId]
+        [
+          title,
+          JSON.stringify(tags),
+          totalItems,
+          visibility,
+          updatedTimestamp,
+          studyMaterialId,
+        ]
       );
 
       // Delete existing items
@@ -137,7 +168,9 @@ const studyMaterialController = {
         let imageBuffer = null;
 
         if (item.image) {
-          const base64Data = item.image.toString().replace(/^data:image\/\w+;base64,/, "");
+          const base64Data = item.image
+            .toString()
+            .replace(/^data:image\/\w+;base64,/, "");
           imageBuffer = Buffer.from(base64Data, "base64");
         }
 
@@ -145,7 +178,14 @@ const studyMaterialController = {
           `INSERT INTO study_material_content 
            (study_material_id, item_id, item_number, term, definition, image) 
            VALUES (?, ?, ?, ?, ?, ?);`,
-          [studyMaterialId, itemId, index + 1, item.term, item.definition, imageBuffer]
+          [
+            studyMaterialId,
+            itemId,
+            index + 1,
+            item.term,
+            item.definition,
+            imageBuffer,
+          ]
         );
       });
 
@@ -159,7 +199,10 @@ const studyMaterialController = {
       );
 
       if (creatorInfo.length > 0) {
-        invalidateCachesForUser(creatorInfo[0].created_by, creatorInfo[0].created_by_id);
+        invalidateCachesForUser(
+          creatorInfo[0].created_by,
+          creatorInfo[0].created_by_id
+        );
       }
 
       studyMaterialCache.del(`study_material_${studyMaterialId}`);
@@ -167,12 +210,15 @@ const studyMaterialController = {
       res.status(200).json({
         message: "Study material updated successfully",
         studyMaterialId,
-        updated_at: updatedTimestamp
+        updated_at: updatedTimestamp,
       });
     } catch (error) {
       console.error("Error editing study material:", error);
-      if (connection) await connection.rollback().catch(e => console.error(e));
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      if (connection)
+        await connection.rollback().catch((e) => console.error(e));
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       if (connection) connection.release();
     }
@@ -200,12 +246,16 @@ const studyMaterialController = {
         const { created_by, created_by_id } = studyMaterialInfo[0];
         studyMaterialCache.del(`study_material_${studyMaterialId}`);
         studyMaterialCache.del(`study_materials_${created_by}`);
-        studyMaterialCache.del('top_picks');
+        studyMaterialCache.del("top_picks");
 
         const allKeys = studyMaterialCache.keys();
-        allKeys.forEach(key => {
-          if (key.includes(studyMaterialId) || key.includes(created_by_id) ||
-            key.includes(created_by) || key.includes('bookmarks')) {
+        allKeys.forEach((key) => {
+          if (
+            key.includes(studyMaterialId) ||
+            key.includes(created_by_id) ||
+            key.includes(created_by) ||
+            key.includes("bookmarks")
+          ) {
             studyMaterialCache.del(key);
           }
         });
@@ -213,11 +263,13 @@ const studyMaterialController = {
 
       res.status(200).json({
         message: "Study material archived successfully",
-        studyMaterialId
+        studyMaterialId,
       });
     } catch (error) {
       console.error("Error archiving study material:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -249,11 +301,13 @@ const studyMaterialController = {
 
       res.status(200).json({
         message: "Study material restored successfully",
-        studyMaterialId
+        studyMaterialId,
       });
     } catch (error) {
       console.error("Error restoring study material:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -304,11 +358,13 @@ const studyMaterialController = {
 
       res.status(200).json({
         message: "Study material deleted successfully",
-        studyMaterialId
+        studyMaterialId,
       });
     } catch (error) {
       console.error("Error deleting study material:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -355,12 +411,12 @@ const studyMaterialController = {
         created_at: rows[0].created_at,
         status: rows[0].status,
         visibility: rows[0].visibility,
-        items: rows.map(row => ({
+        items: rows.map((row) => ({
           term: row.term,
           definition: row.definition,
           image: formatImageToBase64(row.image),
-          item_number: row.item_number
-        }))
+          item_number: row.item_number,
+        })),
       };
 
       // Cache the result
@@ -369,7 +425,9 @@ const studyMaterialController = {
       res.status(200).json(result);
     } catch (error) {
       console.error("Error fetching study material:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -428,8 +486,8 @@ const studyMaterialController = {
             items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
-              image: formatImageToBase64(item.image)
-            }))
+              image: formatImageToBase64(item.image),
+            })),
           };
         })
       );
@@ -441,7 +499,9 @@ const studyMaterialController = {
       res.status(200).json(studyMaterials);
     } catch (error) {
       console.error("Error fetching study materials by creator:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -487,20 +547,25 @@ const studyMaterialController = {
       const [infoRows] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
                  FROM study_material_info 
-                 WHERE created_by != ?; `,
+                 WHERE created_by != ? AND visibility = 1; `,
         [username]
       );
 
       if (infoRows.length === 0) {
-        return res
-          .json({ message: "No study materials found with matching tags" });
+        return res.json({
+          message: "No study materials found with matching tags",
+        });
       }
 
       // Process study materials in parallel
       const studyMaterials = await Promise.all(
         infoRows.map(async (info) => {
-          const materialTags = JSON.parse(info.tags).map((tag) => tag.toLowerCase());
-          const hasMatchingTags = materialTags.some((tag) => userTags.includes(tag));
+          const materialTags = JSON.parse(info.tags).map((tag) =>
+            tag.toLowerCase()
+          );
+          const hasMatchingTags = materialTags.some((tag) =>
+            userTags.includes(tag)
+          );
 
           if (!hasMatchingTags) {
             return null;
@@ -525,12 +590,14 @@ const studyMaterialController = {
               term: item.term,
               definition: item.definition,
               image: formatImageToBase64(item.image),
-            }))
+            })),
           };
         })
       );
 
-      const filteredMaterials = studyMaterials.filter(material => material !== null);
+      const filteredMaterials = studyMaterials.filter(
+        (material) => material !== null
+      );
 
       // Cache results
       if (!skipCache) {
@@ -540,7 +607,9 @@ const studyMaterialController = {
       res.status(200).json(filteredMaterials);
     } catch (error) {
       console.error("Error fetching recommended cards:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -563,11 +632,13 @@ const studyMaterialController = {
       res.status(200).json({
         message: "Visibility updated successfully",
         studyMaterialId,
-        visibility
+        visibility,
       });
     } catch (error) {
       console.error("Error updating visibility:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -586,14 +657,16 @@ const studyMaterialController = {
       res.status(200).json({ message: "View count updated successfully" });
     } catch (error) {
       console.error("Error updating total views:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
   },
 
   getTopPicks: async (req, res) => {
-    const cacheKey = 'top_picks';
+    const cacheKey = "top_picks";
     // Skip cache if timestamp parameter is present
     const skipCache = req.query.timestamp !== undefined;
     const cachedData = studyMaterialCache.get(cacheKey);
@@ -610,7 +683,7 @@ const studyMaterialController = {
       i.study_material_id, i.title, i.tags, i.total_items,
         i.created_by, i.total_views, i.created_at
         FROM study_material_info i
-        WHERE i.status = 'active' AND i.visibility = 0
+        WHERE i.status = 'active' AND i.visibility = 1
         ORDER BY i.total_views DESC
         LIMIT 9; `
       );
@@ -638,11 +711,11 @@ const studyMaterialController = {
             created_by: info.created_by,
             total_views: info.total_views,
             created_at: info.created_at,
-            items: contentRows.map(item => ({
+            items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
-              image: formatImageToBase64(item.image)
-            }))
+              image: formatImageToBase64(item.image),
+            })),
           };
         })
       );
@@ -655,7 +728,9 @@ const studyMaterialController = {
       res.status(200).json(studyMaterials);
     } catch (error) {
       console.error("Error fetching top picks:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -689,17 +764,20 @@ const studyMaterialController = {
       );
 
       console.log(`Found ${friendsQuery.length} friends with accepted status`);
-      console.log("Friend IDs:", friendsQuery.map(row => row.friend_id));
+      console.log(
+        "Friend IDs:",
+        friendsQuery.map((row) => row.friend_id)
+      );
 
       if (friendsQuery.length === 0) {
         return res.status(200).json([]);
       }
 
       // Extract friend IDs
-      const friendIds = friendsQuery.map(row => row.friend_id);
+      const friendIds = friendsQuery.map((row) => row.friend_id);
 
       // Use IN clause with prepared statement
-      const placeholders = friendIds.map(() => '?').join(',');
+      const placeholders = friendIds.map(() => "?").join(",");
 
       // Enhanced direct query for debugging
       const [directCheckQuery] = await connection.execute(
@@ -716,20 +794,25 @@ const studyMaterialController = {
       console.log("Direct check results:", directCheckQuery);
 
       // Log the query that will be executed
-      console.log(`Query to execute: SELECT * FROM study_material_info WHERE created_by IN(${placeholders})`);
+      console.log(
+        `Query to execute: SELECT * FROM study_material_info WHERE created_by IN(${placeholders})`
+      );
       console.log("With parameters:", friendIds);
 
       // Fetch study materials created by friends
       const [infoRows] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at, status
          FROM study_material_info 
-         WHERE created_by_id IN(${placeholders}) AND status != 'archived'
+         WHERE created_by_id IN(${placeholders}) AND status != 'archived AND visibility = 1'
          ORDER BY created_at DESC`,
         [...friendIds]
       );
 
       console.log(`Found ${infoRows.length} study materials from friends`);
-      console.log("Created_by values:", infoRows.map(row => row.created_by));
+      console.log(
+        "Created_by values:",
+        infoRows.map((row) => row.created_by)
+      );
 
       if (infoRows.length === 0) {
         return res.status(200).json([]);
@@ -794,8 +877,8 @@ const studyMaterialController = {
 
       // Parse and flatten user's tags
       const userTags = userTagRows
-        .flatMap(row => JSON.parse(row.tags))
-        .map(tag => tag.toLowerCase());
+        .flatMap((row) => JSON.parse(row.tags))
+        .map((tag) => tag.toLowerCase());
 
       console.log("User's tags:", userTags);
 
@@ -805,7 +888,7 @@ const studyMaterialController = {
         total_views, created_at, visibility
              FROM study_material_info 
              WHERE created_by != ?
-        AND visibility = 0
+        AND visibility = 1
              ORDER BY created_at DESC
              LIMIT 10`,
         [username]
@@ -858,12 +941,11 @@ const studyMaterialController = {
       }
 
       res.status(200).json(sortedMaterials);
-
     } catch (error) {
       console.error("Error in discover endpoint:", error);
       res.status(500).json({
         error: "Internal server error",
-        details: error.message
+        details: error.message,
       });
     } finally {
       connection.release();
@@ -875,14 +957,17 @@ const studyMaterialController = {
     try {
       const { study_material_id, bookmarked_by_id } = req.body;
 
-      console.log("Received bookmark request:", { study_material_id, bookmarked_by_id });
+      console.log("Received bookmark request:", {
+        study_material_id,
+        bookmarked_by_id,
+      });
 
       if (!study_material_id || !bookmarked_by_id) {
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
       // Get current timestamp - Make sure this is formatted correctly
-      const bookmarked_at = manilacurrentTimestamp;  // If this is a function, call it
+      const bookmarked_at = manilacurrentTimestamp; // If this is a function, call it
 
       // Check if study material exists
       const [studyMaterialRows] = await connection.execute(
@@ -1020,7 +1105,9 @@ const studyMaterialController = {
         [bookmarked_by_id]
       );
 
-      console.log(`Found ${bookmarkIds.length} bookmarked materials for user ${bookmarked_by_id}`);
+      console.log(
+        `Found ${bookmarkIds.length} bookmarked materials for user ${bookmarked_by_id}`
+      );
 
       if (bookmarkIds.length === 0) {
         return res.status(200).json([]);
@@ -1032,17 +1119,22 @@ const studyMaterialController = {
 
       // Process in batches
       for (let i = 0; i < bookmarkIds.length; i += batchSize) {
-        const batchIds = bookmarkIds.slice(i, i + batchSize).map(item => item.study_material_id);
-        const placeholders = batchIds.map(() => '?').join(',');
+        const batchIds = bookmarkIds
+          .slice(i, i + batchSize)
+          .map((item) => item.study_material_id);
+        const placeholders = batchIds.map(() => "?").join(",");
 
-        console.log(`Processing batch ${i / batchSize + 1} with IDs: `, batchIds);
+        console.log(
+          `Processing batch ${i / batchSize + 1} with IDs: `,
+          batchIds
+        );
 
         // Fetch info for this batch
         const [infoRows] = await connection.execute(
           `SELECT
       i.study_material_id, i.title, i.tags, i.total_items,
         i.created_by, i.created_by_id, i.total_views,
-        i.created_at, i.visibility, i.status
+        i.created_at, i.updated_at, i.visibility, i.status
           FROM study_material_info i
           WHERE i.study_material_id IN(${placeholders})`,
           [...batchIds]
@@ -1081,6 +1173,7 @@ const studyMaterialController = {
                 created_by_id: info.created_by_id,
                 total_views: info.total_views,
                 created_at: info.created_at,
+                updated_at: info.updated_at,
                 visibility: info.visibility,
                 status: info.status,
                 items: contentRows.map((item) => ({
@@ -1099,7 +1192,9 @@ const studyMaterialController = {
         studyMaterialCache.set(cacheKey, validStudyMaterials, 300);
       }
 
-      console.log(`Returning ${validStudyMaterials.length} bookmarked study materials`);
+      console.log(
+        `Returning ${validStudyMaterials.length} bookmarked study materials`
+      );
       res.status(200).json(validStudyMaterials);
     } catch (error) {
       console.error("Error fetching bookmarks by user:", error);
@@ -1163,7 +1258,7 @@ const studyMaterialController = {
       if (!studyMaterialId) {
         return res.status(400).json({
           success: false,
-          message: "Study material ID is required"
+          message: "Study material ID is required",
         });
       }
 
@@ -1174,7 +1269,7 @@ const studyMaterialController = {
       if (cachedInfo) {
         return res.json({
           success: true,
-          data: cachedInfo
+          data: cachedInfo,
         });
       }
 
@@ -1191,7 +1286,7 @@ const studyMaterialController = {
       if (result.length === 0) {
         return res.status(404).json({
           success: false,
-          message: "Study material not found"
+          message: "Study material not found",
         });
       }
 
@@ -1200,20 +1295,99 @@ const studyMaterialController = {
 
       return res.json({
         success: true,
-        data: result[0]
+        data: result[0],
       });
-
     } catch (error) {
       console.error("Error fetching study material info:", error);
       return res.status(500).json({
         success: false,
         message: "Failed to fetch study material info",
-        error: error.message
+        error: error.message,
       });
     } finally {
       if (connection) connection.release();
     }
-  }
+  },
+
+  getPersonalizedStudyMaterials: async (req, res) => {
+    const { username } = req.params;
+    const connection = await pool.getConnection();
+
+    try {
+      // Get user's personalization preferences
+      const [userInfo] = await connection.execute(
+        `SELECT personalization FROM user_info WHERE username = ?`,
+        [username]
+      );
+
+      if (!userInfo || !userInfo.length || !userInfo[0].personalization) {
+        return res.json([]);
+      }
+
+      const userPreferences = JSON.parse(userInfo[0].personalization);
+
+      // Get study materials where tags match user preferences
+      const [materials] = await connection.execute(
+        `
+        SELECT 
+          study_material_id,
+          title,
+          tags,
+          total_items,
+          created_by,
+          total_views,
+          created_at,
+          visibility,
+          status
+        FROM study_material_info 
+        WHERE visibility = 1 
+        AND status = 'active'
+        AND created_by != ?
+        AND JSON_OVERLAPS(JSON_ARRAY(?${",?".repeat(
+          userPreferences.length - 1
+        )}), JSON_EXTRACT(tags, '$'))
+        ORDER BY created_at DESC
+        LIMIT 10
+      `,
+        [username, ...userPreferences]
+      );
+
+      // Process each study material to get its content
+      const personalizedMaterials = await Promise.all(
+        materials.map(async (material) => {
+          // Get content for this material
+          const [contentRows] = await connection.execute(
+            `SELECT term, definition, image 
+             FROM study_material_content 
+             WHERE study_material_id = ?`,
+            [material.study_material_id]
+          );
+
+          return {
+            study_material_id: material.study_material_id,
+            title: material.title,
+            tags: JSON.parse(material.tags),
+            total_items: material.total_items,
+            created_by: material.created_by,
+            total_views: material.total_views,
+            created_at: material.created_at,
+            items: contentRows.map((item) => ({
+              term: item.term,
+              definition: item.definition,
+              image: formatImageToBase64(item.image),
+            })),
+          };
+        })
+      );
+
+      res.json(personalizedMaterials);
+    } catch (error) {
+      console.error("Error in getPersonalizedStudyMaterials:", error);
+      res.status(500).json({ error: "Internal server error" });
+    } finally {
+      connection.release();
+    }
+  },
 };
 
 export default studyMaterialController;

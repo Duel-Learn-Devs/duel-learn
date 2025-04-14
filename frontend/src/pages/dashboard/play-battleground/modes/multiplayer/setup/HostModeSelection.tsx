@@ -2,12 +2,24 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button, IconButton } from '@mui/material';
-import { socket, PlayerLeftData, LobbyStatusUpdate } from "../../../../../../../src/socket";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button,
+  IconButton,
+} from "@mui/material";
+import {
+  socket,
+  PlayerLeftData,
+  LobbyStatusUpdate,
+} from "../../../../../../../src/socket";
 import axios from "axios";
-import CardBackImg from "../../../../../../assets/General/CardDesignBack.png";
-import DefaultBackHoverCard from "../../../../../../assets/cards/DefaultCardInside.png";
+import CardBackImg from "/General/CardDesignBack.png";
+import DefaultBackHoverCard from "/cards/DefaultCardInside.png";
 import "./styles/animations.css";
 import NormalCardQuickDraw from "/GameBattle/NormalCardQuickDraw.png";
 import NormalCardTimeManipulation from "/GameBattle/NormalCardTimeManipulation.png"
@@ -29,7 +41,7 @@ export default function DifficultySelection() {
     hostId,
     guestId,
     material,
-    questionTypes
+    questionTypes,
   } = location.state || {};
 
   console.log("DifficultySelection state:", {
@@ -40,11 +52,14 @@ export default function DifficultySelection() {
     guestId,
     material,
     questionTypes,
-    locationState: location.state
+    locationState: location.state,
   });
 
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Easy Mode");
-  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 0);
+  const [selectedDifficulty, setSelectedDifficulty] =
+    useState<string>("Easy Mode");
+  const [windowWidth, setWindowWidth] = useState<number>(
+    typeof window !== "undefined" ? window.innerWidth : 0
+  );
   const [openLeaveModal, setOpenLeaveModal] = useState(false);
   const [guestLeft, setGuestLeft] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
@@ -53,14 +68,20 @@ export default function DifficultySelection() {
   // Add debug info
   const addDebugInfo = (info: string) => {
     console.log(`[HOST DEBUG] ${info}`);
-    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${info}`].slice(-10));
+    setDebugInfo((prev) =>
+      [...prev, `${new Date().toLocaleTimeString()}: ${info}`].slice(-10)
+    );
   };
 
   // Add socket event tracking
   const trackSocketEvent = (event: string, data?: any) => {
-    const eventInfo = `${event}: ${data ? JSON.stringify(data).substring(0, 100) : 'no data'}`;
+    const eventInfo = `${event}: ${
+      data ? JSON.stringify(data).substring(0, 100) : "no data"
+    }`;
     console.log(`[SOCKET EVENT] ${eventInfo}`);
-    setSocketEvents(prev => [...prev, `${new Date().toLocaleTimeString()}: ${eventInfo}`].slice(-5));
+    setSocketEvents((prev) =>
+      [...prev, `${new Date().toLocaleTimeString()}: ${eventInfo}`].slice(-5)
+    );
   };
 
   // Socket debug setup
@@ -80,13 +101,13 @@ export default function DifficultySelection() {
   // Debug connection status
   useEffect(() => {
     const updateConnectionStatus = () => {
-      const status = document.body.getAttribute('data-socket-status');
+      const status = document.body.getAttribute("data-socket-status");
       addDebugInfo(`Socket status: ${status}`);
     };
     updateConnectionStatus();
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'data-socket-status') {
+        if (mutation.attributeName === "data-socket-status") {
           updateConnectionStatus();
         }
       });
@@ -100,28 +121,30 @@ export default function DifficultySelection() {
     if (lobbyCode) {
       addDebugInfo(`Joining lobby: ${lobbyCode}`);
       // Join using socket.io room
-      socket.emit('join', lobbyCode);
+      socket.emit("join", lobbyCode);
     }
 
     return () => {
       if (lobbyCode) {
-        socket.emit('leave', lobbyCode);
+        socket.emit("leave", lobbyCode);
       }
     };
   }, [lobbyCode]);
 
   useEffect(() => {
     addDebugInfo(`Component mounted with lobbyCode: ${lobbyCode}`);
-    addDebugInfo(`Host: ${hostUsername}, Guest: ${guestUsername}, GuestId: ${guestId}`);
+    addDebugInfo(
+      `Host: ${hostUsername}, Guest: ${guestUsername}, GuestId: ${guestId}`
+    );
 
     const handleGuestLeave = () => {
-      addDebugInfo('Guest left, showing notification...');
+      addDebugInfo("Guest left, showing notification...");
       setGuestLeft(true);
 
       // Force navigation after delay
       const timer = setTimeout(() => {
-        addDebugInfo('Forcing navigation to dashboard...');
-        window.location.href = '/dashboard/home';
+        addDebugInfo("Forcing navigation to dashboard...");
+        window.location.href = "/dashboard/home";
       }, 3000);
 
       return () => clearTimeout(timer);
@@ -153,7 +176,7 @@ export default function DifficultySelection() {
       trackSocketEvent("lobby_status_update", data);
       addDebugInfo(`Lobby status update: ${JSON.stringify(data)}`);
 
-      if (data.status === 'player_left' && !data.isHost) {
+      if (data.status === "player_left" && !data.isHost) {
         // Any non-host player leaving should trigger our notification
         addDebugInfo(`Player left from lobby status: ${data.leavingPlayerId}`);
         handleGuestLeave();
@@ -164,26 +187,31 @@ export default function DifficultySelection() {
     const checkGuestConnection = setInterval(() => {
       if (lobbyCode && guestId && !guestLeft) {
         // Poll server to check if guest is still in lobby
-        axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/battle/check-player/${lobbyCode}/${guestId}`)
-          .then(response => {
-            if (response.data && response.data.status === 'left') {
-              addDebugInfo('Guest detected as left via API check');
+        axios
+          .get(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/battle/check-player/${lobbyCode}/${guestId}`
+          )
+          .then((response) => {
+            if (response.data && response.data.status === "left") {
+              addDebugInfo("Guest detected as left via API check");
               handleGuestLeave();
             }
           })
-          .catch(err => {
-            console.error('Error checking guest status', err);
+          .catch((err) => {
+            console.error("Error checking guest status", err);
           });
       }
     }, 10000); // Check every 10 seconds
 
     // Handle direct client disconnection
     const handleDisconnect = () => {
-      addDebugInfo('Socket disconnected, checking guest status');
+      addDebugInfo("Socket disconnected, checking guest status");
       // Extra logic could be added here
     };
 
-    socket.on('disconnect', handleDisconnect);
+    socket.on("disconnect", handleDisconnect);
 
     // Cleanup function
     return () => {
@@ -191,7 +219,7 @@ export default function DifficultySelection() {
       socket.off("lobby_status_update");
       socket.off("disconnect", handleDisconnect);
       clearInterval(checkGuestConnection);
-      addDebugInfo('Cleaned up socket listeners');
+      addDebugInfo("Cleaned up socket listeners");
     };
   }, [lobbyCode, guestId, hostUsername, guestUsername, guestLeft]);
 
@@ -206,9 +234,9 @@ export default function DifficultySelection() {
   }, []);
 
   const handleLeavePage = () => {
-    addDebugInfo('Handling leave action...');
+    addDebugInfo("Handling leave action...");
     if (!hostId || !lobbyCode) {
-      addDebugInfo('Error: Missing hostId or lobbyCode');
+      addDebugInfo("Error: Missing hostId or lobbyCode");
       return;
     }
 
@@ -216,14 +244,14 @@ export default function DifficultySelection() {
       socket.emit("leave_difficulty_selection", {
         lobbyCode,
         leavingPlayerId: hostId,
-        isHost: true
+        isHost: true,
       });
-      addDebugInfo('Emitted leave event, navigating...');
-      window.location.href = '/dashboard/home';
+      addDebugInfo("Emitted leave event, navigating...");
+      window.location.href = "/dashboard/home";
     } catch (err) {
       const error = err as Error;
       addDebugInfo(`Error leaving: ${error.message}`);
-      window.location.href = '/dashboard/home';
+      window.location.href = "/dashboard/home";
     }
   };
 
@@ -270,30 +298,40 @@ export default function DifficultySelection() {
         difficulty: selectedDifficulty,
         studyMaterialId,
         material,
-        questionTypes
+        questionTypes,
       });
 
       // First update difficulty in battle_invitations
-      await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/difficulty`, {
-        lobby_code: lobbyCode,
-        difficulty: selectedDifficulty,
-      });
+      await axios.put(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/battle/invitations-lobby/difficulty`,
+        {
+          lobby_code: lobbyCode,
+          difficulty: selectedDifficulty,
+        }
+      );
 
       // Then initialize entry in battle_sessions with all required fields
-      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize-session`, {
-        lobby_code: lobbyCode,
-        host_id: hostId,
-        guest_id: guestId,
-        host_username: hostUsername,
-        guest_username: guestUsername,
-        total_rounds: 30,
-        is_active: true,
-        host_in_battle: true,
-        guest_in_battle: false,
-        difficulty_mode: selectedDifficulty,
-        study_material_id: studyMaterialId,
-        question_types: questionTypes // Add question types to the initialization
-      });
+      await axios.post(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/gameplay/battle/initialize-session`,
+        {
+          lobby_code: lobbyCode,
+          host_id: hostId,
+          guest_id: guestId,
+          host_username: hostUsername,
+          guest_username: guestUsername,
+          total_rounds: 30,
+          is_active: true,
+          host_in_battle: true,
+          guest_in_battle: false,
+          difficulty_mode: selectedDifficulty,
+          study_material_id: studyMaterialId,
+          question_types: questionTypes, // Add question types to the initialization
+        }
+      );
 
       navigate(`/dashboard/pvp-battle/${lobbyCode}`, {
         state: {
@@ -305,8 +343,8 @@ export default function DifficultySelection() {
           hostId,
           guestId,
           material,
-          questionTypes // Pass question types to the battle screen
-        }
+          questionTypes, // Pass question types to the battle screen
+        },
       });
     } catch (error) {
       console.error("Error starting game:", error);
@@ -316,7 +354,10 @@ export default function DifficultySelection() {
   const handleDifficultyChange = (direction: "left" | "right") => {
     const difficulties = ["Easy Mode", "Average Mode", "Hard Mode"];
     const currentIndex = difficulties.indexOf(selectedDifficulty);
-    const newIndex = direction === "left" ? (currentIndex - 1 + difficulties.length) % difficulties.length : (currentIndex + 1) % difficulties.length;
+    const newIndex =
+      direction === "left"
+        ? (currentIndex - 1 + difficulties.length) % difficulties.length
+        : (currentIndex + 1) % difficulties.length;
     setSelectedDifficulty(difficulties[newIndex]);
   };
 
@@ -365,18 +406,18 @@ export default function DifficultySelection() {
       {/* Back Button */}
       <IconButton
         onClick={() => {
-          addDebugInfo('Back button clicked');
+          addDebugInfo("Back button clicked");
           setOpenLeaveModal(true);
         }}
         disabled={guestLeft}
         sx={{
-          position: 'absolute',
-          top: '20px',
-          left: '20px',
-          color: 'white',
-          backgroundColor: 'rgba(107, 33, 168, 0.1)',
-          '&:hover': {
-            backgroundColor: 'rgba(107, 33, 168, 0.2)',
+          position: "absolute",
+          top: "20px",
+          left: "20px",
+          color: "white",
+          backgroundColor: "rgba(107, 33, 168, 0.1)",
+          "&:hover": {
+            backgroundColor: "rgba(107, 33, 168, 0.2)",
           },
           zIndex: 1000,
           opacity: guestLeft ? 0.5 : 1,
@@ -389,20 +430,20 @@ export default function DifficultySelection() {
       <Dialog
         open={openLeaveModal}
         onClose={() => {
-          addDebugInfo('Modal closed');
+          addDebugInfo("Modal closed");
           setOpenLeaveModal(false);
         }}
         PaperProps={{
           style: {
-            backgroundColor: '#1a1a1a',
-            color: 'white',
-            border: '1px solid #333',
+            backgroundColor: "#1a1a1a",
+            color: "white",
+            border: "1px solid #333",
           },
         }}
       >
         <DialogTitle>Leave Game Setup?</DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ color: 'gray' }}>
+          <DialogContentText sx={{ color: "gray" }}>
             {guestLeft
               ? "The guest has left. You will be redirected shortly."
               : "Are you sure you want to leave? This will end the game setup process for both players."}
@@ -411,29 +452,29 @@ export default function DifficultySelection() {
         <DialogActions sx={{ padding: 2 }}>
           <Button
             onClick={() => {
-              addDebugInfo('Leave cancelled');
+              addDebugInfo("Leave cancelled");
               setOpenLeaveModal(false);
             }}
             disabled={guestLeft}
             sx={{
-              color: 'white',
+              color: "white",
               opacity: guestLeft ? 0.5 : 1,
-              '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
+              "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.1)" },
             }}
           >
             Cancel
           </Button>
           <Button
             onClick={() => {
-              addDebugInfo('Leave confirmed');
+              addDebugInfo("Leave confirmed");
               handleLeavePage();
             }}
             disabled={guestLeft}
             variant="contained"
             sx={{
-              backgroundColor: '#6B21A8',
+              backgroundColor: "#6B21A8",
               opacity: guestLeft ? 0.5 : 1,
-              '&:hover': { backgroundColor: '#5B1C98' }
+              "&:hover": { backgroundColor: "#5B1C98" },
             }}
           >
             Leave
@@ -447,8 +488,12 @@ export default function DifficultySelection() {
           <div className="flex items-center">
             <div className="mr-4 text-2xl">⚠️</div>
             <div>
-              <p className="font-bold text-xl">{guestUsername} has left the game!</p>
-              <p className="text-base mt-2">Redirecting to dashboard in a few seconds...</p>
+              <p className="font-bold text-xl">
+                {guestUsername} has left the game!
+              </p>
+              <p className="text-base mt-2">
+                Redirecting to dashboard in a few seconds...
+              </p>
             </div>
           </div>
         </div>
@@ -459,8 +504,12 @@ export default function DifficultySelection() {
           {/* Left Column - Difficulty Selection */}
           <div className="flex flex-col items-center lg:items-start gap-4 px-4 md:px-8 order-2 lg:order-1">
             <div className="w-full text-center lg:text-left mb-4 md:mb-8">
-              <h1 className="text-3xl md:text-4xl lg:text-[40px] font-bold mb-2">SELECT DIFFICULTY</h1>
-              <p className="text-gray-400 text-base md:text-lg">Choose a difficulty level that matches your skill!</p>
+              <h1 className="text-3xl md:text-4xl lg:text-[40px] font-bold mb-2">
+                SELECT DIFFICULTY
+              </h1>
+              <p className="text-gray-400 text-base md:text-lg">
+                Choose a difficulty level that matches your skill!
+              </p>
             </div>
 
             <div className="w-full space-y-3 md:space-y-5 mb-4 md:mb-7">
@@ -471,7 +520,9 @@ export default function DifficultySelection() {
                   disabled={guestLeft}
                   className={cn(
                     "w-full md:max-w-[550px] py-6 md:py-10 pl-5 md:pl-10 rounded-xl text-lg md:text-xl font-medium text-left transition-all duration-200",
-                    selectedDifficulty === difficulty ? "bg-[#49347e] border-2 md:border-4 border-[#3d2577]" : "bg-[#3B354D]",
+                    selectedDifficulty === difficulty
+                      ? "bg-[#49347e] border-2 md:border-4 border-[#3d2577]"
+                      : "bg-[#3B354D]",
                     guestLeft ? "opacity-50 cursor-not-allowed" : ""
                   )}
                 >

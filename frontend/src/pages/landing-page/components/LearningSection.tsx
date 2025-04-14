@@ -36,7 +36,7 @@ const LearningSection = () => {
             }}
           >
             <img
-              src="src/assets/landing-page/overwhelmed-cat.png"
+              src="/landing-page/overwhelmed-cat.png"
               alt="Overwhelmed Cat"
               style={{
                 width: "100%",

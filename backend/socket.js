@@ -511,14 +511,16 @@ const setupSocket = (server) => {
       (data) => {
         const { userIds } = data;
         const lobbyStatuses = {};
-
-        if (Array.isArray(userIds)) {
-          userIds.forEach(userId => {
-            lobbyStatuses[userId] = isUserInLobby(userId);
-          });
-        }
-
-        socket.emit("lobbyStatusResponse", lobbyStatuses);
+        
+        userIds.forEach(userId => {
+          const lobbyCode = usersInLobby.get(userId);
+          lobbyStatuses[userId] = {
+            inLobby: !!lobbyCode,
+            lobbyCode: lobbyCode || null
+          };
+        });
+        
+        socket.emit('lobbyStatusResponse', lobbyStatuses);
       }
     );
 
@@ -530,17 +532,18 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { userId, inLobby, lobbyCode } = data;
-
+        
         if (inLobby && lobbyCode) {
           usersInLobby.set(userId, lobbyCode);
         } else {
           usersInLobby.delete(userId);
         }
-
+        
         // Broadcast to all clients
-        socket.broadcast.emit("userLobbyStatusChanged", {
+        socket.broadcast.emit('userLobbyStatusChanged', {
           userId,
-          inLobby
+          inLobby,
+          lobbyCode
         });
       }
     );
@@ -553,12 +556,12 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { playerId, lobbyCode } = data;
-
+        
         // Store in the map
         usersInLobby.set(playerId, lobbyCode);
-
+        
         // Broadcast to all clients
-        socket.broadcast.emit("player_joined_lobby", {
+        socket.broadcast.emit('player_joined_lobby', {
           playerId,
           lobbyCode
         });
@@ -573,12 +576,12 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { playerId } = data;
-
+        
         // Remove from the map
         usersInLobby.delete(playerId);
-
+        
         // Broadcast to all clients
-        socket.broadcast.emit("player_left_lobby", {
+        socket.broadcast.emit('player_left_lobby', {
           playerId
         });
       }
@@ -667,17 +670,16 @@ const setupSocket = (server) => {
       (data) => {
         const { userIds } = data;
         const gameStatuses = {};
-
-        if (Array.isArray(userIds)) {
-          userIds.forEach(userId => {
-            gameStatuses[userId] = {
-              inGame: isUserInGame(userId),
-              mode: getUserGameMode(userId)
-            };
-          });
-        }
-
-        socket.emit("gameStatusResponse", gameStatuses);
+        
+        userIds.forEach(userId => {
+          const userGame = usersInGame.get(userId);
+          gameStatuses[userId] = {
+            inGame: !!userGame,
+            mode: userGame ? userGame.mode : null
+          };
+        });
+        
+        socket.emit('gameStatusResponse', gameStatuses);
       }
     );
 
@@ -689,18 +691,16 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { userId, inGame, mode } = data;
-
+        
         if (inGame && mode) {
-          // Store the game mode with the user ID
           usersInGame.set(userId, { mode });
-          // Remove from lobby if in game
           usersInLobby.delete(userId);
         } else {
           usersInGame.delete(userId);
         }
-
+        
         // Broadcast to all clients
-        socket.broadcast.emit("userGameStatusChanged", {
+        socket.broadcast.emit('userGameStatusChanged', {
           userId,
           inGame,
           mode

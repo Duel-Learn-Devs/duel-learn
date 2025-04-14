@@ -5,11 +5,11 @@ import { usePendingFriendRequests } from "../../../../hooks/friends.hooks/usePen
 import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
 import { useUser } from "../../../../contexts/UserContext";
 import { useSnackbar } from "../../../../contexts/SnackbarContext"; // Import the context
-import cauldronGif from "../../../../assets/General/Cauldron.gif";
-import noFriend from "../../../../assets/images/NoFriend.svg";
+import cauldronGif from "/General/Cauldron.gif";
+import noFriend from "/images/NoFriend.svg";
 import ErrorSnackbar from "../../../ErrorsSnackbar";
 import { Box, Tooltip, Stack } from "@mui/material";
-import defaultPicture from "../../../../assets/profile-picture/default-picture.svg";
+import DefaultPicture from "/profile-picture/default-picture.svg";
 
 interface FriendRequestsProps {
   onFriendRequestHandled?: () => void; // New prop to notify parent of changes
@@ -146,7 +146,7 @@ const FriendRequests: React.FC<FriendRequestsProps> = ({
                     level: number;
                     display_picture?: string;
                   }
-                )?.display_picture || defaultPicture
+                )?.display_picture || DefaultPicture
               }
               alt=""
               className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"

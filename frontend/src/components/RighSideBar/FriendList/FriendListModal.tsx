@@ -1,9 +1,9 @@
 import React, { useEffect } from "react";
-import CloseIcon from "@mui/icons-material/CancelOutlined";
+import CloseIcon from "@mui/icons-material/ClearRounded";
 import YourFriends from "./Modals/YourFriends";
 import FriendRequests from "./Modals/FriendRequest";
 import FindFriends from "./Modals/FindFriends";
-import ModalIconFriendList from "../../../assets/General/ModalFriendList.png";
+import ModalIconFriendList from "/General/ModalFriendList.png";
 import { Box, Tooltip, IconButton, Modal, Backdrop, Fade } from "@mui/material";
 
 interface ModalProps {
@@ -85,9 +85,9 @@ const FriendListModal: React.FC<ModalProps> = ({
           >
             <IconButton
               onClick={onClose}
-              className="self-end hover:scale-110 transition-all duration-300"
+              className="self-end hover:scale-110 transition-all duration-300 ease-in"
             >
-              <CloseIcon className="text-[#6F658D]" fontSize="large" />
+              <CloseIcon className="text-[#6F658D]" />
             </IconButton>
           </Tooltip>
 

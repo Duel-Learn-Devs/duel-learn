@@ -227,16 +227,17 @@ const ViewStudyMaterial = () => {
         mode,
         material: studyMaterial,
         preSelectedMaterial: studyMaterial,
-        skipMaterialSelection: true
-      }
+        skipMaterialSelection: true,
+      },
     });
   };
 
   return (
     <PageTransition>
-      <Box className="min-h-screen w-full px-4 md:px-8">
+      <Box className="min-h-screen w-full ">
         <DocumentHead title={studyMaterial?.title + " | Duel Learn"} />
-        <Stack spacing={2} sx={{ pt: { xs: 2, md: 3 } }}>
+
+        <Stack spacing={2}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={2}
@@ -279,6 +280,21 @@ const ViewStudyMaterial = () => {
                     {loading ? "Loading..." : studyMaterial?.total_views} People
                   </strong>
                 </Typography>
+
+                {!loading && studyMaterial?.visibility?.toString() === "1" && (
+                  <>
+                    <Typography
+                      variant="subtitle2"
+                      className="text-[#9F9BAE]"
+                      sx={{ display: { xs: "none", sm: "block" } }}
+                    >
+                      •
+                    </Typography>
+                    <Typography variant="subtitle2" className="text-[#9F9BAE]">
+                      <strong>Public</strong>
+                    </Typography>
+                  </>
+                )}
 
                 {!loading &&
                   studyMaterial?.status?.toLowerCase() === "archived" && (
@@ -503,7 +519,7 @@ const ViewStudyMaterial = () => {
         />
 
         {/* Add ChooseModeModal */}
-        <ChooseModeModal 
+        <ChooseModeModal
           open={showModeModal}
           handleClose={() => setShowModeModal(false)}
           preSelectedMaterial={studyMaterial}

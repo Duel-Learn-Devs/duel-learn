@@ -77,9 +77,14 @@ const ItemComponent: FC<ItemComponentProps> = ({
 
     // For mobile view, ensure the width is properly constrained
     if (isMobile) {
-      // Force the width to match the container width
-      // This prevents horizontal scrolling issues on mobile
+      // Setting width to 100% and box-sizing to border-box ensures
+      // the textarea respects the container boundaries
       textarea.style.width = "100%";
+      textarea.style.boxSizing = "border-box";
+      textarea.style.maxWidth = "100%"; // Ensure it doesn't overflow
+
+      // Additional reset for any potentially problematic styles
+      textarea.style.minWidth = "0";
     }
 
     // Restore scroll position (prevents page jumping)
@@ -341,10 +346,12 @@ const ItemComponent: FC<ItemComponentProps> = ({
               spacing={{ xs: 1, sm: 2 }}
               className="flex items-start w-full"
             >
-              <Stack className="w-full sm:w-1/3">
+              <Stack className="w-full sm:w-1/3 min-w-0">
+                {" "}
+                {/* added min-w-0 to prevent overflow */}
                 <textarea
                   id="term"
-                  className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full content-stretch text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-all ease-in-out duration-200"
+                  className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full content-stretch text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-all ease-in-out duration-200 box-border"
                   rows={1}
                   placeholder="Term"
                   onInput={(e) =>
@@ -376,11 +383,13 @@ const ItemComponent: FC<ItemComponentProps> = ({
                 </Typography>
               </Stack>
 
-              <Stack className="w-full sm:w-2/3">
-                <div className="relative">
+              <Stack className="w-full sm:w-2/3 min-w-0">
+                {" "}
+                {/* added min-w-0 to prevent overflow */}
+                <div className="relative w-full">
                   <textarea
                     id="definition"
-                    className={`border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full content-stretch text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-colors duration-200 ${
+                    className={`border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full content-stretch text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-colors duration-200 box-border ${
                       scanningEffect ? "opacity-80" : ""
                     }`}
                     rows={1}
@@ -406,7 +415,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                       animate={{ opacity: 0.7 }}
                     >
                       <motion.div
-                        className="w-full h-[1px] bg-[#A38CE6] absolute"
+                        className="w-full h-[1px] bg-[#A38CE6] absolute top-0 left-0"
                         initial={{ top: 0 }}
                         animate={{ top: ["0%", "100%", "0%"] }}
                         transition={{
@@ -419,7 +428,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                     </motion.div>
                   )}
                 </div>
-
+                <Box flex={1} />
                 <Box
                   sx={{
                     display: "flex",
@@ -437,119 +446,15 @@ const ItemComponent: FC<ItemComponentProps> = ({
                           : "#6F658D",
                       transition: "color 0.3s ease-in-out",
                       fontSize: "0.75rem",
+                      textAlign: "right",
+                      marginTop: "0.2rem",
                     }}
                   >
                     {item.definition.length}/{MAX_DEFINITION_LENGTH} characters
                   </Typography>
 
                   {/* Fact check button */}
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    {factCheckError && (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "#F44336",
-                          mr: 1,
-                          fontSize: "0.75rem",
-                        }}
-                      >
-                        {factCheckError}
-                      </Typography>
-                    )}
-
-                    {factCheckResult && (
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mr: 1 }}
-                      >
-                        <Tooltip title={factCheckResult.assessment} arrow>
-                          <Box
-                            onClick={() =>
-                              setShowFactCheckDetails(!showFactCheckDetails)
-                            }
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              cursor: "pointer",
-                              bgcolor: "rgba(0,0,0,0.1)",
-                              px: 1,
-                              py: 0.2,
-                              borderRadius: 1,
-                            }}
-                          >
-                            {factCheckResult.isAccurate ? (
-                              <VerifiedIcon
-                                sx={{
-                                  fontSize: "16px",
-                                  mr: 0.5,
-                                  color: getScoreColor(
-                                    factCheckResult.accuracyScore
-                                  ),
-                                }}
-                              />
-                            ) : (
-                              <ErrorOutlineIcon
-                                sx={{
-                                  fontSize: "16px",
-                                  mr: 0.5,
-                                  color: getScoreColor(
-                                    factCheckResult.accuracyScore
-                                  ),
-                                }}
-                              />
-                            )}
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: getScoreColor(
-                                  factCheckResult.accuracyScore
-                                ),
-                                fontWeight: "medium",
-                              }}
-                            >
-                              {getAccuracyBadgeText(
-                                factCheckResult.isAccurate,
-                                factCheckResult.accuracyScore
-                              )}
-                            </Typography>
-                          </Box>
-                        </Tooltip>
-                      </Box>
-                    )}
-
-                    <Tooltip
-                      title={
-                        isFactChecking
-                          ? "Checking..."
-                          : "AI Fact Check - Identifies only definitively incorrect parts of your definition"
-                      }
-                      arrow
-                      placement="top"
-                    >
-                      <IconButton
-                        size="small"
-                        onClick={handleFactCheck}
-                        disabled={isFactChecking}
-                        sx={{
-                          color: "#A38CE6",
-                          p: 0.5,
-                          "&:hover": {
-                            backgroundColor: "rgba(163, 140, 230, 0.08)",
-                          },
-                        }}
-                      >
-                        {isFactChecking ? (
-                          <CircularProgress
-                            size={16}
-                            sx={{ color: "#A38CE6" }}
-                          />
-                        ) : (
-                          <FactCheckIcon sx={{ fontSize: 16 }} />
-                        )}
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
                 </Box>
-
                 {/* Fact Check Details Section */}
                 <AnimatePresence>
                   {showFactCheckDetails && factCheckResult && (
@@ -563,7 +468,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                         sx={{
                           mt: 1,
                           p: 1.5,
-                          borderRadius: 1,
+                          borderRadius: "0.8rem",
                           bgcolor: "#211D2F",
                           border: "1px solid #3B354D",
                         }}
@@ -754,6 +659,102 @@ const ItemComponent: FC<ItemComponentProps> = ({
               </Typography>
             )}
 
+            <Box flex={1} />
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              {factCheckError && (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "#F44336",
+                    mr: 1,
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  {factCheckError}
+                </Typography>
+              )}
+
+              {factCheckResult && (
+                <Box sx={{ display: "flex", alignItems: "center", mr: 1 }}>
+                  <Tooltip title={factCheckResult.assessment} arrow>
+                    <Box
+                      onClick={() =>
+                        setShowFactCheckDetails(!showFactCheckDetails)
+                      }
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        cursor: "pointer",
+                        bgcolor: "rgba(0,0,0,0.1)",
+                        px: 1,
+                        py: 0.2,
+                        borderRadius: 1,
+                      }}
+                    >
+                      {factCheckResult.isAccurate ? (
+                        <VerifiedIcon
+                          sx={{
+                            fontSize: "16px",
+                            mr: 0.5,
+                            color: getScoreColor(factCheckResult.accuracyScore),
+                          }}
+                        />
+                      ) : (
+                        <ErrorOutlineIcon
+                          sx={{
+                            fontSize: "16px",
+                            mr: 0.5,
+                            color: getScoreColor(factCheckResult.accuracyScore),
+                          }}
+                        />
+                      )}
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: getScoreColor(factCheckResult.accuracyScore),
+                          fontWeight: "medium",
+                        }}
+                      >
+                        {getAccuracyBadgeText(
+                          factCheckResult.isAccurate,
+                          factCheckResult.accuracyScore
+                        )}
+                      </Typography>
+                    </Box>
+                  </Tooltip>
+                </Box>
+              )}
+            </Box>
+
+            <Tooltip
+              title={
+                isFactChecking
+                  ? "Checking..."
+                  : "AI Fact Check - Identifies only definitively incorrect parts of your definition"
+              }
+              arrow
+              placement="top"
+            >
+              <IconButton
+                size="small"
+                onClick={handleFactCheck}
+                disabled={isFactChecking}
+                sx={{
+                  color: "#A38CE6",
+                  p: 0.5,
+                  "&:hover": {
+                    backgroundColor: "rgba(163, 140, 230, 0.08)",
+                  },
+                }}
+              >
+                {isFactChecking ? (
+                  <CircularProgress size={16} sx={{ color: "#A38CE6" }} />
+                ) : (
+                  <FactCheckIcon sx={{ fontSize: 16 }} />
+                )}
+              </IconButton>
+            </Tooltip>
+
             {/* Add photo button */}
             <Tooltip title="Add Photo" arrow>
               <IconButton
@@ -792,11 +793,6 @@ const ItemComponent: FC<ItemComponentProps> = ({
           </Stack>
         </Stack>
       </Stack>
-
-      {/* Mobile visual drag indicator */}
-      {isMobile && (
-        <div className="absolute top-1/2 -right-1 transform -translate-y-1/2 h-10 w-1.5 bg-[#3B354D] rounded-full opacity-70"></div>
-      )}
     </Box>
   );
 };

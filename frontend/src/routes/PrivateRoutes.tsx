@@ -7,7 +7,7 @@ import Explore from "../pages/dashboard/explore/ExplorePage";
 import YourLibrary from "../pages/dashboard/my-library/MyLibrary";
 import Profile from "../pages/dashboard/profile/ProfilePage";
 import Shop from "../pages/dashboard/shop/ShopPage";
-import BuyPremium from "../components/BuyPremium";
+import BuyPremium from "../components/premium/BuyPremium";
 import CreateStudyMaterial from "../pages/dashboard/study-material/material-create/CreateStudyMaterial";
 import ViewStudyMaterial from "../pages/dashboard/study-material/view-study-material/ViewStudyMaterial";
 import SetUpQuestionType from "../pages/dashboard/play-battleground/components/setup/SetUpQuestionType";
@@ -25,7 +25,7 @@ import SetUpTimeQuestion from "../pages/dashboard/play-battleground/components/s
 import PVPLobby from "../pages/dashboard/play-battleground/modes/multiplayer/PVPLobby";
 import { useState, useEffect } from "react";
 import LoadingScreen from "../pages/dashboard/play-battleground/screens/LoadingScreen";
-import GeneralLoadingScreen from "../components/LoadingScreen"
+import GeneralLoadingScreen from "../components/LoadingScreen";
 import SessionReport from "../pages/dashboard/play-battleground/screens/SessionReport";
 import PeacefulMode from "../pages/dashboard/play-battleground/modes/peaceful/PeacefulMode";
 import TimePressuredMode from "../pages/dashboard/play-battleground/modes/time-pressured/TimePressuredMode";
@@ -35,19 +35,24 @@ import HostModeSelection from "../pages/dashboard/play-battleground/modes/multip
 import Player2ModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/Player2ModeSelection";
 import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/PvpBattle";
 import PvpSessionReport from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/screens/PvpSessionReport";
+import Checkout from "../components/premium/Checkout";
+import PaymentSuccess from "../components/premium/PaymentSuccess";
 import SearchPage from "../pages/dashboard/search/SearchPage";
 import SocketService from "../services/socketService";
-import { GameStatusProvider, useGameStatus } from "../contexts/GameStatusContext";
+import {
+  GameStatusProvider,
+  useGameStatus,
+} from "../contexts/GameStatusContext";
 import { GameMode } from "../hooks/useLobbyStatus";
 import CardSelectionTest from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/CardSelectionTest";
 
 // Create a wrapper component that handles game status changes
 const GameModeStatusWrapper = ({
   children,
-  gameMode
+  gameMode,
 }: {
-  children: React.ReactNode,
-  gameMode: GameMode
+  children: React.ReactNode;
+  gameMode: GameMode;
 }) => {
   const { setInGame } = useGameStatus();
 
@@ -66,7 +71,12 @@ const GameModeStatusWrapper = ({
 };
 
 const PrivateRoutes = () => {
-  const { user, loading: userLoading, refreshUserData, socketConnected } = useUser();
+  const {
+    user,
+    loading: userLoading,
+    refreshUserData,
+    socketConnected,
+  } = useUser();
   const { isAuthenticated, isLoading: authLoading, currentUser } = useAuth();
   const [_selectedIndex, setSelectedIndex] = useState<number | null>(1);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
@@ -86,42 +96,36 @@ const PrivateRoutes = () => {
 
   // Monitor and maintain socket connection throughout protected routes
   useEffect(() => {
-    // Only attempt to connect if we have a valid user and authentication
-    if (user && currentUser && !socketConnected) {
-      console.log("PrivateRoutes: Socket connection not detected, reconnecting...");
-
-      // Connect using the user's firebase_uid
-      socketService.connect(user.firebase_uid);
-
-      // Log connection status after a short delay
-      setTimeout(() => {
-        const socket = socketService.getSocket();
-        console.log(`Socket connection status check: ${socket?.connected ? 'Connected' : 'Disconnected'}`);
-      }, 1000);
-    }
-
-    // Set up periodic connection check 
-    const connectionMonitor = setInterval(() => {
+    const checkAndReconnect = () => {
       if (user && currentUser) {
         const socket = socketService.getSocket();
 
-        // If socket exists but is disconnected, attempt reconnection
-        if (socket && !socket.connected) {
-          console.log("Socket disconnected, attempting to reconnect...");
-          socketService.connect(user.firebase_uid);
-        }
-        // If no socket at all, create new connection
-        else if (!socket) {
-          console.log("No socket instance found, creating new connection");
+        // If no socket or socket is disconnected, attempt to reconnect
+        if (!socket || !socket.connected) {
+          console.log(
+            "Socket connection not detected or disconnected, reconnecting..."
+          );
           socketService.connect(user.firebase_uid);
         }
       }
-    }, 30000); // Check every 30 seconds
+    };
+
+    // Initial check
+    checkAndReconnect();
+
+    // Set up periodic connection check with exponential backoff
+    let checkInterval = 5000; // Start with 5 seconds
+    const maxInterval = 30000; // Max 30 seconds
+    const intervalId = setInterval(() => {
+      checkAndReconnect();
+      // Increase interval up to max
+      checkInterval = Math.min(checkInterval * 1.5, maxInterval);
+    }, checkInterval);
 
     return () => {
-      clearInterval(connectionMonitor);
+      clearInterval(intervalId);
     };
-  }, [user, currentUser, socketConnected]);
+  }, [user, currentUser]);
 
   // Show loading screen if both auth and user data are still loading and timeout hasn't occurred
   if ((authLoading || userLoading) && !loadingTimeout) {
@@ -149,8 +153,6 @@ const PrivateRoutes = () => {
 
   return (
     <GameStatusProvider>
-
-
       <Routes>
         {/* Onboarding and Tutorial Routes */}
         <Route path="welcome" element={<WelcomePage />} />
@@ -164,7 +166,14 @@ const PrivateRoutes = () => {
         <Route path="my-preferences" element={<Personalization />} />
 
         {/* Routes for the main dashboard after onboarding */}
-        <Route element={<DashboardLayout />}>
+        <Route
+          element={
+            <>
+              <BattleInvitationCenter />
+              <DashboardLayout />
+            </>
+          }
+        >
           <Route
             path="home"
             element={<Home setSelectedIndex={setSelectedIndex} />}
@@ -173,7 +182,14 @@ const PrivateRoutes = () => {
           <Route path="my-library" element={<YourLibrary />} />
           <Route path="profile" element={<Profile />} />
           <Route path="shop" element={<Shop />} />
-          <Route path="study-material/create" element={<CreateStudyMaterial />} />
+          <Route
+            path="study-material/create"
+            element={
+              <GameModeStatusWrapper gameMode="creating-study-material">
+                <CreateStudyMaterial />
+              </GameModeStatusWrapper>
+            }
+          />
           <Route
             path="study-material/view/:studyMaterialId"
             element={<ViewStudyMaterial />}
@@ -183,13 +199,15 @@ const PrivateRoutes = () => {
         </Route>
 
         {/* Premium Routes */}
-        <Route path="/buy-premium-account" element={<BuyPremium />} />
+        <Route path="buy-premium-account" element={<BuyPremium />} />
+        <Route path="checkout" element={<Checkout />} />
+        <Route path="payment-success" element={<PaymentSuccess />} />
 
         {/* Game Setup Routes */}
-        <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
-        <Route path="/setup/questions" element={<SetUpQuestionType />} />
-        <Route path="/setup/timer" element={<SetUpTimeQuestion />} />
-        <Route path="/loading-screen" element={<LoadingScreen />} />
+        <Route path="welcome-game-mode" element={<WelcomeGameMode />} />
+        <Route path="setup/questions" element={<SetUpQuestionType />} />
+        <Route path="setup/timer" element={<SetUpTimeQuestion />} />
+        <Route path="loading-screen" element={<LoadingScreen />} />
 
         {/* Game Mode Routes */}
         <Route

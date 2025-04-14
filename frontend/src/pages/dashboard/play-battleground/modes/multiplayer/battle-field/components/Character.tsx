@@ -1,18 +1,18 @@
 import React from "react";
 
 export interface CharacterProps {
-    imageSrc: string;
-    alt: string;
-    isRight?: boolean;
+  imageSrc: string;
+  alt: string;
+  isRight?: boolean;
 }
 
 /**
  * Character component displays a battle character with responsive positioning
  */
 const Character: React.FC<CharacterProps> = ({
-    imageSrc,
-    alt,
-    isRight = false
+  imageSrc,
+  alt,
+  isRight = false,
 }) => (
     <div className={`absolute top-[60%] ${isRight
         ? 'right-[15%] sm:right-[20%] lg:right-[27%] transform translate-x-1/2'
@@ -26,6 +26,7 @@ const Character: React.FC<CharacterProps> = ({
             />
         </div>
     </div>
+  </div>
 );
 
-export default Character; 
+export default Character;

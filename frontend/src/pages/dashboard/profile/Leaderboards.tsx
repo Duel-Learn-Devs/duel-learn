@@ -1,23 +1,14 @@
 import { useState, useEffect } from "react";
-import GoldMedal from "../../../assets/General/gold-medal.svg";
-import SilverMedal from "../../../assets/General/silver-medal.svg";
-import BronzeMedal from "../../../assets/General/bronze-medal.svg";
+import GoldMedal from "/General/gold-medal.svg";
+import SilverMedal from "/General/silver-medal.svg";
+import BronzeMedal from "/General/bronze-medal.svg";
 import "./media-queries/LeaderboardResponsive.css";
 import { useUser } from "../../../contexts/UserContext";
 import axios from "axios";
 import { CircularProgress } from "@mui/material";
-import defaultProfile from "../../../assets/profile-picture/default-picture.svg";
-import noLeaderboard from "../../../assets/images/noLeaderboard.svg";
-
-interface LeaderboardPlayer {
-  firebase_uid: string;
-  username: string;
-  level: number;
-  exp: number;
-  display_picture: string;
-  isCurrentUser: boolean;
-  rank: number;
-}
+import defaultProfile from "/profile-picture/default-picture.svg";
+import noLeaderboard from "/images/noLeaderboard.svg";
+import { LeaderboardPlayer } from "../../../types/leaderboardObject";
 
 const Leaderboards = () => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardPlayer[]>(
@@ -142,7 +133,11 @@ const Leaderboards = () => {
 
                 {/* Profile Picture */}
                 <div className="profile-icon">
-                  <img src={getDefaultAvatar(player)} alt="Profile" />
+                  <img
+                    src={getDefaultAvatar(player)}
+                    alt="Profile"
+                    className="w-12 h-auto sm:w-4 rounded-[0.8rem] object-cover"
+                  />
                 </div>
               </div>
 
@@ -163,12 +158,14 @@ const Leaderboards = () => {
             </div>
           ))}
 
-          <button
-            className="w-full cursor-pointersm:py-2.5 md:py-3 lg:py-4 rounded-b-[0.8rem] bg-[#120F1D] text-[#5b5277] text-md border-t-2 border-[#3B354C] hover:text-white"
-            onClick={openModal}
-          >
-            VIEW MORE
-          </button>
+          {leaderboardData.length > 3 && (
+            <button
+              className="w-full cursor-pointer sm:py-2.5 md:py-3 lg:py-4 rounded-b-[0.8rem] bg-[#120F1D] text-[#5b5277] text-md border-t-2 border-[#3B354C] hover:text-white"
+              onClick={openModal}
+            >
+              VIEW MORE
+            </button>
+          )}
         </div>
       ) : (
         // Show "No Friends More Than 5" section

@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Button, Fab, Box, Typography } from "@mui/material";
 import { ArrowBackIos, ArrowForwardIos } from "@mui/icons-material";
-import PersonalizationBG from "../../assets/UserOnboarding/PersonalizationBG.png";
-import PurpleGem from "../../assets/General/PurpleGem.png";
+import PersonalizationBG from "/UserOnboarding/PersonalizationBG.png";
+import PurpleGem from "/General/PurpleGem.png";
 import { useNavigate } from "react-router-dom";
 import { topics } from "./data/topics";
 import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext";
-import { useAuth } from "../../contexts/AuthContext";
+import { useUser } from "../../contexts/UserContext";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
+import DocumentHead from "../../components/DocumentHead";
 
 const MIN_SUBJECTS = 3;
 const MAX_SUBJECTS = 5;
@@ -119,9 +120,10 @@ const Personalization: React.FC = () => {
   const [visibleIndices, setVisibleIndices] = useState(topics.map(() => 0));
   const [isSaving, setIsSaving] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const navigate = useNavigate();
   const { playUserOnboardingAudio } = useAudio();
-  const { currentUser } = useAuth();
+  const { user } = useUser();
   const subjectsPerView = 5;
 
   // Memoize the stars so they don't regenerate on re-renders
@@ -131,15 +133,19 @@ const Personalization: React.FC = () => {
   // Load existing personalization data
   useEffect(() => {
     const loadPersonalization = async () => {
-      if (currentUser?.uid) {
+      if (user?.firebase_uid) {
         try {
           const response = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL}/api/user-info/details/${
-              currentUser.uid
-            }`
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/user-info/user-personalization/${user.firebase_uid}`
           );
-          if (response.data?.user?.personalization) {
-            setSelectedSubjects(response.data.user.personalization);
+          if (response.data?.success && Array.isArray(response.data.data)) {
+            setSelectedSubjects(response.data.data);
+            // If we loaded existing subjects, then we're in edit mode
+            if (response.data.data.length > 0) {
+              setIsEditMode(true);
+            }
           }
         } catch (error) {
           console.error("Error loading personalization:", error);
@@ -147,7 +153,7 @@ const Personalization: React.FC = () => {
       }
     };
     loadPersonalization();
-  }, [currentUser?.uid]);
+  }, [user?.firebase_uid]);
 
   useEffect(() => {
     const img = new Image();
@@ -182,7 +188,7 @@ const Personalization: React.FC = () => {
   }, []);
 
   const handleClickDone = async () => {
-    if (!currentUser?.uid) {
+    if (!user?.firebase_uid) {
       console.error("No user ID found");
       return;
     }
@@ -193,9 +199,14 @@ const Personalization: React.FC = () => {
 
     setIsSaving(true);
     try {
+      // Use different endpoint when editing vs initial setup
+      const endpoint = isEditMode
+        ? "update-personalization"
+        : "personalization";
+
       await axios.put(
-        `${import.meta.env.VITE_BACKEND_URL}/api/user-info/personalization/${
-          currentUser.uid
+        `${import.meta.env.VITE_BACKEND_URL}/api/user-info/${endpoint}/${
+          user.firebase_uid
         }`,
         {
           selectedSubjects,
@@ -205,9 +216,12 @@ const Personalization: React.FC = () => {
       setIsExiting(true);
       await playUserOnboardingAudio();
 
-      // Add a small delay to allow the fade-out animation to complete
+      // Different navigation path based on edit mode
       setTimeout(() => {
-        navigate("/dashboard/tutorial/step-two");
+        // If editing, go back to dashboard instead of tutorial
+        navigate(
+          isEditMode ? "/dashboard/home" : "/dashboard/tutorial/step-two"
+        );
       }, 500);
     } catch (error) {
       console.error("Error saving personalization:", error);
@@ -216,12 +230,12 @@ const Personalization: React.FC = () => {
   };
 
   const handleSkip = async () => {
-    if (currentUser?.uid) {
+    if (user?.firebase_uid) {
       try {
         // Save empty preferences when skipping
         await axios.put(
           `${import.meta.env.VITE_BACKEND_URL}/api/user-info/personalization/${
-            currentUser.uid
+            user.firebase_uid
           }`,
           {
             selectedSubjects: [],
@@ -259,7 +273,7 @@ const Personalization: React.FC = () => {
         remaining === 1 ? "one" : remaining === 2 ? "two" : "three"
       } more`;
     }
-    return "Done";
+    return isEditMode ? "Save Changes" : "Done";
   };
 
   if (!isLoaded) {
@@ -294,6 +308,7 @@ const Personalization: React.FC = () => {
 
   return (
     <PageTransition>
+      <DocumentHead title="Personalization" />
       <AnimatePresence>
         {!isExiting && (
           <motion.div
@@ -316,13 +331,14 @@ const Personalization: React.FC = () => {
             />
 
             {/* Done Button */}
-            <div className="mt-8 mr-20 flex justify-end w-full z-10">
+            <div className="mt-8 mr-10 flex justify-end w-full z-10 fixed top-0 right-0">
               <Button
                 sx={{
                   textTransform: "none",
                   minWidth: "180px",
                   padding: "10px 24px",
                   fontSize: "1rem",
+                  borderRadius: "0.8rem",
                   backgroundColor:
                     selectedSubjects.length >= MIN_SUBJECTS
                       ? "#4D18E8"
@@ -357,7 +373,7 @@ const Personalization: React.FC = () => {
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl font-bold mb-5 mt-36 z-10">
+            <h1 className="text-3xl font-bold mb-5 mt-60 z-10">
               Your Magical Journey Starts Here!
             </h1>
             <p className="text-lg mb-20 text-center text-[#786d99] z-10">
@@ -434,14 +450,15 @@ const Personalization: React.FC = () => {
                               key={idx}
                               sx={{
                                 flex: `0 0 ${100 / subjectsPerView}%`, // Fixed width based on subjectsPerView
-                                padding: "0 0.5rem",
+                                paddingY: "0.5rem",
+                                paddingRight: "0.5rem",
                               }}
                             >
                               <button
-                                className={`p-4 border rounded-lg transition-all h-[204px] w-full ${
+                                className={`p-4 rounded-[0.8rem] transition-all duration-300 ease-in-out h-[204px] w-full ${
                                   isSelected
-                                    ? "bg-[#A28CE2] border-indigo-400 font-bold text-[#322168]"
-                                    : "bg-white text-[#322168] font-bold hover:bg-gray-200"
+                                    ? "bg-[#A28CE2] text-[#322168] font-bold -translate-y-2"
+                                    : "bg-white text-[#322168] font-bold hover:bg-[#A28CE2] transform ease-in-out hover:-translate-y-2"
                                 } ${
                                   !canSelect && !isSelected
                                     ? "opacity-40 hover:bg-white"

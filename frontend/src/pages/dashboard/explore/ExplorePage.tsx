@@ -14,7 +14,7 @@ import ExploreCards from "./ExploreCards";
 import { useUser } from "../../../contexts/UserContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
-import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
+import NoStudyMaterial from "/images/noStudyMaterial.svg";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { Tooltip } from "@mui/material";
 
@@ -434,7 +434,7 @@ const ExplorePage = () => {
     <PageTransition>
       <Box className="h-full w-full">
         <DocumentHead title="Explore | Duel Learn" />
-        <Stack spacing={2} className="px-3 sm:px-5 md:px-8">
+        <Stack spacing={2}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={{ xs: 1, sm: 1 }}
@@ -452,6 +452,8 @@ const ExplorePage = () => {
                 alignItems: "center",
                 flexWrap: { xs: "wrap", sm: "nowrap" },
                 mb: { xs: 1, sm: 0 },
+                width: { xs: "100%", sm: "auto" },
+                justifyContent: { xs: "space-between", sm: "flex-start" },
               }}
             >
               {["Top picks", "Recommended for you", "Made by friends"].map(
@@ -462,24 +464,27 @@ const ExplorePage = () => {
                       textTransform: "none",
                       borderRadius: "0.8rem",
                       padding: {
-                        xs: "0.4rem 0.6rem",
+                        xs: "0.3rem 0.8rem",
                         sm: "0.5rem 0.8rem",
                         md: "0.5rem 1rem",
                       },
-                      // Fix the font size scaling
                       fontSize: "inherit",
                       color: selected === index ? "#E2DDF3" : "#3B354D",
                       transition: "all 0.3s ease",
                       backgroundColor:
                         selected === index ? "#3B354C" : "transparent",
                       "&:hover": {
-                        color: "inherit",
+                        color: selected === index ? "#E2DDF3" : "inherit",
                         transform: "scale(1.01)",
-                        backgroundColor: "#3B354C",
+                        backgroundColor:
+                          selected === index
+                            ? "#3B354C"
+                            : "rgba(59, 53, 76, 0.1)",
                       },
-                      // Add margin bottom for better mobile layout when wrapped
                       mb: { xs: 0.5, sm: 0 },
-                      minWidth: { xs: "auto", sm: "auto" },
+                      flex: { xs: "1 1 auto", sm: "0 0 auto" },
+                      minWidth: { xs: "30%", sm: "auto" },
+                      maxWidth: { xs: "32%", sm: "none" },
                     }}
                     onClick={() => setSelected(index)}
                   >
@@ -487,13 +492,18 @@ const ExplorePage = () => {
                       variant="h6"
                       sx={{
                         fontSize: {
-                          xs: "0.8rem",
+                          xs: "0.7rem",
                           sm: "0.9rem",
                           md: "1.1rem",
                           lg: "1.25rem",
                         },
                         whiteSpace: { xs: "normal", sm: "nowrap" },
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                         textAlign: "center",
+                        width: "100%",
+                        lineHeight: { xs: "1.1", sm: "normal" },
+                        height: { xs: "auto", sm: "auto" },
                       }}
                     >
                       {label}
@@ -601,7 +611,7 @@ const ExplorePage = () => {
               minHeight={{ xs: "40vh", sm: "60vh" }}
             >
               <img
-                src={noStudyMaterial}
+                src={NoStudyMaterial}
                 alt="No Study Materials"
                 style={{
                   width: "100%",

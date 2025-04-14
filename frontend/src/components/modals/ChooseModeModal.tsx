@@ -9,7 +9,7 @@ import {
   IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import ModalFriendList from "../../assets/General/ModalFriendList.png";
+import ModalFriendList from "/General/ModalFriendList.png";
 import SelectStudyMaterialModal from "./SelectStudyMaterialModal"; // Assuming it's in the same folder
 import PvPOptionsModal from "./PvPOptionsModal"; // Add this import
 import { useAudio } from "../../contexts/AudioContext";

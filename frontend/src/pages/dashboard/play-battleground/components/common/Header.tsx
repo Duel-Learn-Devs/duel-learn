@@ -45,6 +45,7 @@ const commonButtonStyles = {
       backgroundColor: "#080511",
       color: "#FFFFFF",
     },
+    borderRadius: "0.8rem",
   },
   confirmButton: {
     backgroundColor: "#4D1EE3",
@@ -54,6 +55,7 @@ const commonButtonStyles = {
     "&:hover": {
       backgroundColor: "#6A3EEA",
     },
+    borderRadius: "0.8rem",
   },
 };
 
@@ -94,7 +96,7 @@ export default function Header({
 
   const handleConfirmEndGame = async () => {
     setOpenEndGameDialog(false);
-    
+
     if (onEndGame) {
       try {
         await onEndGame();
@@ -148,8 +150,17 @@ export default function Header({
                 {mode} Mode - {material?.title || "No Material Selected"}
               </span>
               <div className="flex items-center gap-4 text-[12px] sm:text-[14px] text-[#6F658D]">
-                <div>Mastered {masteredCount}</div>
-                <div>Unmastered {unmasteredCount}</div>
+                {mode.toLowerCase() === "peaceful" ? (
+                  <>
+                    <div>Mastered {masteredCount}</div>
+                    <div>Unmastered {unmasteredCount}</div>
+                  </>
+                ) : (
+                  <>
+                    <div>Correct {correct}</div>
+                    <div>Incorrect {incorrect}</div>
+                  </>
+                )}
               </div>
             </div>
           </div>
