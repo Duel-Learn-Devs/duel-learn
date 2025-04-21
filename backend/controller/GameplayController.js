@@ -814,7 +814,7 @@ export const updateBattleRound = async (req, res) => {
             session_uuid,
             player_type,
             card_id,
-            is_correct, // Add this new parameter
+            is_correct,
             lobby_code
         } = req.body;
 
@@ -960,61 +960,41 @@ export const updateBattleRound = async (req, res) => {
             // Set card_id appropriately
             let finalCardId = card_id;
             if (card_id === "no-card-selected") {
-                // Use a standardized value for no card selected
                 finalCardId = "no-card-selected";
-
-                // Log that no card was selected
                 console.log(`${player_type} did not select a card within the time limit`);
             }
 
             // Check if the card_effect columns exist
-            let updateRoundQuery;
-            let updateRoundParams;
-
             const [columns] = await connection.query(`
                 SHOW COLUMNS FROM battle_rounds 
-                WHERE Field IN ('host_card_effect', 'guest_card_effect')
+                WHERE Field IN ('host_card_effect', 'guest_card_effect', 'question_count_total')
             `);
 
-            if (columns.length >= 2) {
-                // Columns exist, include them in the update
-                updateRoundQuery = `
-                    UPDATE battle_rounds 
-                    SET ${updateField} = ?,
-                        ${answerField} = ?,
-                        ${cardEffectField} = ?
-                    WHERE session_uuid = ?
-                `;
-                updateRoundParams = [
-                    finalCardId,
-                    is_correct,
-                    cardEffect ? JSON.stringify(cardEffect) : null,
-                    session_uuid
-                ];
-            } else {
-                // Add the columns first
-                console.log("Adding card effect columns to battle_rounds table");
+            // Add question_count_total column if it doesn't exist
+            if (!columns.some(col => col.Field === 'question_count_total')) {
+                console.log("Adding question_count_total column to battle_rounds table");
                 await connection.query(`
                     ALTER TABLE battle_rounds 
-                    ADD COLUMN host_card_effect JSON NULL,
-                    ADD COLUMN guest_card_effect JSON NULL
+                    ADD COLUMN question_count_total INT DEFAULT 0
                 `);
-
-                // Then perform the update
-                updateRoundQuery = `
-                    UPDATE battle_rounds 
-                    SET ${updateField} = ?,
-                        ${answerField} = ?,
-                        ${cardEffectField} = ?
-                    WHERE session_uuid = ?
-                `;
-                updateRoundParams = [
-                    finalCardId,
-                    is_correct,
-                    cardEffect ? JSON.stringify(cardEffect) : null,
-                    session_uuid
-                ];
             }
+
+            // Update battle rounds with card selection, answer result, and increment question count
+            const updateRoundQuery = `
+                UPDATE battle_rounds 
+                SET ${updateField} = ?,
+                    ${answerField} = ?,
+                    ${cardEffectField} = ?,
+                    question_count_total = COALESCE(question_count_total, 0) + 1
+                WHERE session_uuid = ?
+            `;
+
+            const updateRoundParams = [
+                finalCardId,
+                is_correct,
+                cardEffect ? JSON.stringify(cardEffect) : null,
+                session_uuid
+            ];
 
             await connection.query(updateRoundQuery, updateRoundParams);
 

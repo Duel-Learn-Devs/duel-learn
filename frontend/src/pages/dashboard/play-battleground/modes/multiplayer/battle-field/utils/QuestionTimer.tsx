@@ -4,6 +4,22 @@
  * @returns Formatted time string in MM:SS format
  */
 import { useState, useEffect } from "react";
+import axios from "axios";
+
+// Add interface for battle round response
+interface BattleRoundResponse {
+  id: number;
+  session_uuid: string;
+  round_number: number;
+  host_card: string;
+  guest_card: string;
+  host_card_effect: string | null;
+  guest_card_effect: string | null;
+  host_answer_correct: number;
+  guest_answer_correct: number;
+  question_count_total: number;
+  question_ids_done: string[] | null;
+}
 
 export const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60)
@@ -21,6 +37,7 @@ interface QuestionTimerProps {
   totalQuestions: number;
   difficultyMode?: string | null;
   randomizationDone?: boolean;
+  sessionUuid?: string;
 }
 
 export default function QuestionTimer({
@@ -29,6 +46,7 @@ export default function QuestionTimer({
   totalQuestions,
   difficultyMode,
   randomizationDone = false,
+  sessionUuid
 }: QuestionTimerProps) {
   const [matchStartTime, setMatchStartTime] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());

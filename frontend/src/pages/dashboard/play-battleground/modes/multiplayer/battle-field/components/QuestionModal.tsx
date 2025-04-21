@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import BattleFlashCard from "./BattleFlashCard";
 import axios from "axios";
 import { Question } from "../../../../types";
+import { BattleState } from '../BattleState';
+import { BattleRoundData } from '../PvpBattle';
 
 /**
  * TIME MANIPULATION VISUAL INDICATORS:
@@ -40,11 +42,17 @@ interface CardEffect {
   min_time?: number;
 }
 
+// Add this interface after the CardEffect interface
+interface BattleRoundResponse {
+  question_ids_done?: string;
+  [key: string]: any;
+}
+
 interface QuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAnswerSubmit: (isCorrect: boolean) => Promise<void>;
-  onAnswerSubmitRound?: (isCorrect: boolean) => Promise<void>;
+  onAnswerSubmitRound?: (isCorrect: boolean, questionId: string) => Promise<void>;
   difficultyMode: string | null;
   questionTypes: string[];
   selectedCardId: string | null;
@@ -54,6 +62,7 @@ interface QuestionModalProps {
   shownQuestionIds: Set<string>;
   currentQuestionNumber: number;
   totalQuestions: number;
+  battleState?: { session_uuid?: string };
 }
 
 const QuestionModal: React.FC<QuestionModalProps> = ({
@@ -69,7 +78,8 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   onGameEnd,
   shownQuestionIds,
   currentQuestionNumber,
-  totalQuestions
+  totalQuestions,
+  battleState
 }) => {
   const [hasAnswered, setHasAnswered] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -79,6 +89,51 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   const [isFlipped, setIsFlipped] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [timerProgress, setTimerProgress] = useState(100);
+  const [shownQuestionIdsState, setShownQuestionIds] = useState<Set<string>>(new Set());
+
+  // Initialize shownQuestionIds from round data when component mounts
+  useEffect(() => {
+    if (!battleState?.session_uuid) return;
+
+    const fetchShownQuestionIds = async () => {
+      try {
+        const response = await axios.get<{data: BattleRoundData}>(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${battleState.session_uuid}`
+        );
+
+        if (response.data.data.question_ids_done) {
+          try {
+            const questionIdsDone = response.data.data.question_ids_done;
+            const shownIds = Array.isArray(questionIdsDone) 
+              ? questionIdsDone 
+              : JSON.parse(questionIdsDone as string);
+            
+            if (Array.isArray(shownIds)) {
+              const newSet = new Set(shownIds);
+              if (newSet.size !== shownQuestionIdsState.size || 
+                  !Array.from(newSet).every(id => shownQuestionIdsState.has(id))) {
+                console.log('Updating shownQuestionIds from round data:', {
+                  oldIds: Array.from(shownQuestionIdsState),
+                  newIds: shownIds
+                });
+                setShownQuestionIds(newSet);
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing question_ids_done from round data:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching shown question IDs from round data:', error);
+      }
+    };
+
+    // Poll for shown question IDs every second
+    const interval = setInterval(fetchShownQuestionIds, 1000);
+    fetchShownQuestionIds(); // Initial fetch
+
+    return () => clearInterval(interval);
+  }, [battleState?.session_uuid, shownQuestionIdsState]);
 
   // Reset states when modal closes
   useEffect(() => {
@@ -99,26 +154,47 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       isOpen,
       hasCurrentQuestion: !!currentQuestion,
       isGeneratingAI,
-      aiQuestionsCount: aiQuestions?.length ?? 0
+      aiQuestionsCount: aiQuestions?.length ?? 0,
+      currentQuestionNumber,
+      totalQuestions,
+      shownQuestionIds: Array.from(shownQuestionIdsState)
     });
 
     if (isOpen && !currentQuestion && !isGeneratingAI && aiQuestions?.length > 0) {
       // Filter out questions that have already been shown
-      const availableQuestions = aiQuestions.filter(q => !shownQuestionIds.has(q.id));
+      const availableQuestions = aiQuestions.filter(q => !shownQuestionIdsState.has(q.id));
 
-      if (availableQuestions.length > 0) {
-        // Select a random question from available questions
+      console.log('Available questions:', {
+        total: aiQuestions.length,
+        available: availableQuestions.length,
+        shownIds: Array.from(shownQuestionIdsState),
+        currentQuestionNumber,
+        totalQuestions
+      });
+
+      if (availableQuestions.length > 0 && currentQuestionNumber < totalQuestions) {
         const randomIndex = Math.floor(Math.random() * availableQuestions.length);
         const selectedQuestion = availableQuestions[randomIndex];
-        console.log('Selected question:', selectedQuestion);
-        setCurrentQuestion(selectedQuestion);
+        
+        // Double check that the selected question hasn't been shown
+        if (!shownQuestionIdsState.has(selectedQuestion.id)) {
+          console.log('Selected new question:', {
+            id: selectedQuestion.id,
+            question: selectedQuestion.question
+          });
+          setCurrentQuestion(selectedQuestion);
+        } else {
+          console.log('Selected question was already shown, trying again');
+          // If the selected question was already shown, try again
+          setCurrentQuestion(null);
+        }
       } else {
-        // If no more questions available, end the game
-        console.log('No more questions available, ending game');
+        console.log('No more questions available or reached total, ending game');
+        onClose();
         onGameEnd?.();
       }
     }
-  }, [isOpen, aiQuestions, isGeneratingAI, currentQuestion, shownQuestionIds]);
+  }, [isOpen, aiQuestions, isGeneratingAI, currentQuestion, shownQuestionIdsState, currentQuestionNumber, totalQuestions, onGameEnd, onClose]);
 
   // Timer logic
   useEffect(() => {
@@ -153,7 +229,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
         setTimeout(() => {
           if (onAnswerSubmitRound) {
-            onAnswerSubmitRound(false);
+            onAnswerSubmitRound(false, currentQuestion.id);
           } else {
             onAnswerSubmit(false);
           }
@@ -173,22 +249,21 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   };
 
   const handleAnswerSubmit = async (answer: string) => {
-    console.log('Answer submitted:', { answer, hasCurrentQuestion: !!currentQuestion, hasAnswered });
+    console.log('Answer submitted:', { 
+      answer, 
+      hasCurrentQuestion: !!currentQuestion, 
+      hasAnswered,
+      currentQuestionNumber,
+      totalQuestions,
+      currentQuestionId: currentQuestion?.id
+    });
+    
     if (!currentQuestion || hasAnswered) return;
 
     let correctAnswer = currentQuestion.correctAnswer;
-
-    // For identification questions, the correctAnswer is already properly set
-    // from the backend (term is used as correctAnswer)
     const answerString = String(answer || "").toLowerCase().trim();
     const correctAnswerString = String(correctAnswer).toLowerCase().trim();
     const isAnswerCorrect = answerString === correctAnswerString;
-
-    console.log('Answer evaluation:', {
-      submitted: answerString,
-      correct: correctAnswerString,
-      isCorrect: isAnswerCorrect
-    });
 
     setIsCorrect(isAnswerCorrect);
     setShowResult(true);
@@ -196,16 +271,22 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     setSelectedAnswer(answer);
     setIsFlipped(true);
 
-    // Check if this was the last question
-    if (currentQuestionNumber === totalQuestions) {
+    // Check if this will be the last question
+    if (currentQuestionNumber >= totalQuestions - 1) {
       console.log('Last question answered, ending game after delay');
       setTimeout(() => {
+        if (onAnswerSubmitRound) {
+          onAnswerSubmitRound(isAnswerCorrect, currentQuestion.id);
+        } else {
+          onAnswerSubmit(isAnswerCorrect);
+        }
+        onClose();
         onGameEnd?.();
       }, 1500);
     } else {
       setTimeout(() => {
         if (onAnswerSubmitRound) {
-          onAnswerSubmitRound(isAnswerCorrect);
+          onAnswerSubmitRound(isAnswerCorrect, currentQuestion.id);
         } else {
           onAnswerSubmit(isAnswerCorrect);
         }
