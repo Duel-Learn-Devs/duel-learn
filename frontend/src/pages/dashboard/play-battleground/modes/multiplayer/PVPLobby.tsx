@@ -121,7 +121,7 @@ const PVPLobby: React.FC = () => {
     console.log("Using lobby code:", code, { urlLobbyCode, stateLobbyCode });
     return code;
   });
-
+  const [isRan, setIsRan] = useState(false);
   // Add this effect to handle lobby code changes
   useEffect(() => {
     if (urlLobbyCode && urlLobbyCode !== lobbyCode) {
@@ -377,11 +377,13 @@ const PVPLobby: React.FC = () => {
           }/api/battle/invitations-lobby/battle-status/${lobbyCode}`
         );
 
-        if (response.data.success && response.data.data.battle_started) {
+        if (response.data.success && response.data.data.battle_started  && isRan===false) {
+        setIsRan(true);
           console.log(
             "Battle has started! Navigating to difficulty selection..."
           );
           setBattleStarted(true);
+          
 
           // Get host and guest IDs
           const hostId = players[0]?.firebase_uid;
@@ -400,6 +402,7 @@ const PVPLobby: React.FC = () => {
               guestId: guestId, // Pass the actual guest ID
             },
           });
+          console.log(isRan,"Navigated to difficulty selection");
         }
       } catch (error) {
         console.error("Error checking battle status:", error);

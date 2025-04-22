@@ -46,6 +46,7 @@ import {
 import { GameMode } from "../hooks/useLobbyStatus";
 import CardSelectionTest from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/CardSelectionTest";
 import BattleInvitationCenter from "../components/battle/BattleInvitationCenter";
+import { BattleSetupProvider } from "../contexts/BattleSetupContext";
 // Create a wrapper component that handles game status changes
 const GameModeStatusWrapper = ({
   children,
@@ -236,11 +237,25 @@ const PrivateRoutes = () => {
         />
         <Route path="/pvp-lobby/:lobbyCode?" element={<PVPLobby />} />
         <Route path="/study/session-summary" element={<SessionReport />} />
-        <Route path="/select-difficulty/pvp" element={<HostModeSelection />} />
+        
+        {/* Wrap difficulty selection routes with BattleSetupProvider */}
+        <Route
+          path="/select-difficulty/pvp"
+          element={
+            <BattleSetupProvider>
+              <HostModeSelection />
+            </BattleSetupProvider>
+          }
+        />
         <Route
           path="/select-difficulty/pvp/player2"
-          element={<Player2ModeSelection />}
+          element={
+            <BattleSetupProvider>
+              <Player2ModeSelection />
+            </BattleSetupProvider>
+          }
         />
+        
         <Route
           path="/pvp-battle/:lobbyCode?"
           element={

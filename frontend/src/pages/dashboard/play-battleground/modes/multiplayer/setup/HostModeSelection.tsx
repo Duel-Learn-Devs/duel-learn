@@ -27,36 +27,34 @@ import EpicCardAnswerShield from "/GameBattle/EpicCardAnswerShield.png";
 import EpicCardRegeneration from "/GameBattle/EpicCardRegeneration.png";
 import RareCardMindControl from "/GameBattle/RareCardMindControl.png";
 import RareCardPoisonType from "/GameBattle/RareCardPoisonType.png";
+import { useBattleSetup } from '../../../../../../contexts/BattleSetupContext';
 
 // Utility function for conditional class names
 const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
 
-export default function DifficultySelection() {
-  const location = useLocation();
-  const navigate = useNavigate();
+export default function HostModeSelection() {
   const {
     lobbyCode,
     hostUsername,
     guestUsername,
     hostId,
     guestId,
-    material,
+    selectedMaterial,
     questionTypes,
-  } = location.state || {};
+    setDifficulty,
+    setLobbyCode,
+    setHostUsername,
+    setGuestUsername,
+    setHostId,
+    setGuestId,
+    setSelectedMaterial,
+    setQuestionTypes,
+    setIsHost
+  } = useBattleSetup();
 
-  console.log("DifficultySelection state:", {
-    lobbyCode,
-    hostUsername,
-    guestUsername,
-    hostId,
-    guestId,
-    material,
-    questionTypes,
-    locationState: location.state,
-  });
-
-  const [selectedDifficulty, setSelectedDifficulty] =
-    useState<string>("Easy Mode");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Easy Mode");
   const [windowWidth, setWindowWidth] = useState<number>(
     typeof window !== "undefined" ? window.innerWidth : 0
   );
@@ -64,6 +62,42 @@ export default function DifficultySelection() {
   const [guestLeft, setGuestLeft] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const [socketEvents, setSocketEvents] = useState<string[]>([]);
+
+  // Initialize context from location state
+  useEffect(() => {
+    if (location.state) {
+      const {
+        lobbyCode: stateLobbyCode,
+        material,
+        questionTypes: stateQuestionTypes,
+        isHost,
+        hostUsername: stateHostUsername,
+        guestUsername: stateGuestUsername,
+        hostId: stateHostId,
+        guestId: stateGuestId
+      } = location.state;
+
+      setLobbyCode(stateLobbyCode);
+      setSelectedMaterial(material);
+      setQuestionTypes(stateQuestionTypes);
+      setIsHost(isHost);
+      setHostUsername(stateHostUsername);
+      setGuestUsername(stateGuestUsername);
+      setHostId(stateHostId);
+      setGuestId(stateGuestId);
+
+      console.log('HostModeSelection context initialized:', {
+        lobbyCode: stateLobbyCode,
+        material,
+        questionTypes: stateQuestionTypes,
+        isHost,
+        hostUsername: stateHostUsername,
+        guestUsername: stateGuestUsername,
+        hostId: stateHostId,
+        guestId: stateGuestId
+      });
+    }
+  }, [location.state]);
 
   // Add debug info
   const addDebugInfo = (info: string) => {
@@ -291,35 +325,44 @@ export default function DifficultySelection() {
   };
 
   const handleStartGame = async () => {
-    if (!selectedDifficulty || !lobbyCode) return;
+    if (!selectedDifficulty || !lobbyCode) {
+      console.error("Missing required data:", { selectedDifficulty, lobbyCode });
+      return;
+    }
 
     try {
       // Get study material ID from material object
-      const studyMaterialId = material?.study_material_id || material?.id;
+      const studyMaterialId = selectedMaterial?.study_material_id || selectedMaterial?.id;
+      if (!studyMaterialId) {
+        console.error("Missing study material ID");
+        return;
+      }
 
       console.log("Starting game with:", {
         difficulty: selectedDifficulty,
         studyMaterialId,
-        material,
+        material: selectedMaterial,
         questionTypes,
+        lobbyCode,
+        hostId,
+        guestId,
+        hostUsername,
+        guestUsername
       });
 
       // First update difficulty in battle_invitations
-      await axios.put(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/battle/invitations-lobby/difficulty`,
+      const difficultyResponse = await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/difficulty`,
         {
           lobby_code: lobbyCode,
           difficulty: selectedDifficulty,
         }
       );
+      console.log("Difficulty update response:", difficultyResponse.data);
 
       // Then initialize entry in battle_sessions with all required fields
-      await axios.post(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/gameplay/battle/initialize-session`,
+      const sessionResponse = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize-session`,
         {
           lobby_code: lobbyCode,
           host_id: hostId,
@@ -332,10 +375,15 @@ export default function DifficultySelection() {
           guest_in_battle: false,
           difficulty_mode: selectedDifficulty,
           study_material_id: studyMaterialId,
-          question_types: questionTypes, // Add question types to the initialization
+          question_types: questionTypes,
         }
       );
+      console.log("Session initialization response:", sessionResponse.data);
 
+      // Update the difficulty in context
+      setDifficulty(selectedDifficulty);
+
+      // Navigate to battle page
       navigate(`/dashboard/pvp-battle/${lobbyCode}`, {
         state: {
           lobbyCode,
@@ -345,12 +393,19 @@ export default function DifficultySelection() {
           guestUsername,
           hostId,
           guestId,
-          material,
-          questionTypes, // Pass question types to the battle screen
+          material: selectedMaterial,
+          questionTypes,
         },
       });
     } catch (error) {
       console.error("Error starting game:", error);
+      if (axios.isAxiosError(error)) {
+        console.error("Error details:", {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message
+        });
+      }
     }
   };
 

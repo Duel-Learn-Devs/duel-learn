@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./styles/HostModeSelection.css";
@@ -31,14 +31,33 @@ import EpicCardAnswerShield from "/GameBattle/EpicCardAnswerShield.png";
 import EpicCardRegeneration from "/GameBattle/EpicCardRegeneration.png";
 import RareCardMindControl from "/GameBattle/RareCardMindControl.png";
 import RareCardPoisonType from "/GameBattle/RareCardPoisonType.png";
+import { useBattleSetup } from '../../../../../../contexts/BattleSetupContext';
 
 export default function Player2ModeSelection() {
+  const {
+    lobbyCode,
+    hostUsername,
+    guestUsername,
+    hostId,
+    guestId,
+    selectedMaterial,
+    questionTypes,
+    difficulty,
+    setDifficulty,
+    setLobbyCode,
+    setHostUsername,
+    setGuestUsername,
+    setHostId,
+    setGuestId,
+    setSelectedMaterial,
+    setQuestionTypes,
+    setIsHost
+  } = useBattleSetup();
+
   const location = useLocation();
   const navigate = useNavigate();
-  const { hostUsername, guestUsername, lobbyCode, hostId, guestId } =
-    location.state || {};
-  const [selectedDifficulty, setSelectedDifficulty] =
-    useState<string>("Easy Mode");
+  const initializedRef = useRef(false);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>(difficulty || "Easy Mode");
   const [hostSelectedDifficulty, setHostSelectedDifficulty] = useState<
     string | null
   >(null);
@@ -47,6 +66,44 @@ export default function Player2ModeSelection() {
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const [isNavigating, setIsNavigating] = useState(false);
   const [isJoiningBattle, setIsJoiningBattle] = useState(false);
+
+  // Initialize context from location state only on first load
+  useEffect(() => {
+    if (location.state && !initializedRef.current) {
+      const {
+        lobbyCode: stateLobbyCode,
+        material,
+        questionTypes: stateQuestionTypes,
+        isGuest,
+        hostUsername: stateHostUsername,
+        guestUsername: stateGuestUsername,
+        hostId: stateHostId,
+        guestId: stateGuestId
+      } = location.state;
+
+      setLobbyCode(stateLobbyCode);
+      setSelectedMaterial(material);
+      setQuestionTypes(stateQuestionTypes);
+      setIsHost(!isGuest); // Set isHost to false since this is player 2
+      setHostUsername(stateHostUsername);
+      setGuestUsername(stateGuestUsername);
+      setHostId(stateHostId);
+      setGuestId(stateGuestId);
+
+      console.log('Player2ModeSelection context initialized:', {
+        lobbyCode: stateLobbyCode,
+        material,
+        questionTypes: stateQuestionTypes,
+        isHost: !isGuest,
+        hostUsername: stateHostUsername,
+        guestUsername: stateGuestUsername,
+        hostId: stateHostId,
+        guestId: stateGuestId
+      });
+
+      initializedRef.current = true;
+    }
+  }, [location.state]);
 
   // Add debug info
   const addDebugInfo = (info: string) => {
@@ -220,9 +277,8 @@ export default function Player2ModeSelection() {
           ) {
             console.log("Host has entered the battle, joining now...");
 
-            // Set navigating state to prevent multiple attempts
+            // Set both states atomically to prevent flickering
             setIsNavigating(true);
-            // Show joining UI immediately
             setIsJoiningBattle(true);
 
             // Clear the interval before doing anything else
@@ -239,8 +295,8 @@ export default function Player2ModeSelection() {
                 }
               );
 
-              // Add slightly longer delay before navigation to ensure UI shows properly and data is synchronized
-              setTimeout(() => {
+              // Use a single timeout for both UI and navigation
+              const navigationTimeout = setTimeout(() => {
                 // Navigate to battle
                 navigate(`/dashboard/pvp-battle/${lobbyCode}`, {
                   state: {
@@ -255,10 +311,16 @@ export default function Player2ModeSelection() {
                   replace: true, // Use replace instead of push to prevent back navigation
                 });
               }, 1500);
+
+              // Cleanup function to clear timeout if component unmounts
+              return () => {
+                clearTimeout(navigationTimeout);
+              };
             } catch (err) {
               console.error("Error updating session:", err);
-              setIsNavigating(false); // Reset if there's an error
-              setIsJoiningBattle(false); // Hide the joining UI
+              // Reset states only if there's an error
+              setIsNavigating(false);
+              setIsJoiningBattle(false);
             }
           } else {
             console.log(
@@ -274,7 +336,7 @@ export default function Player2ModeSelection() {
     // Check immediately 
     checkDifficulty();
 
-    // Then check every 3 seconds (was 3000)
+    // Then check every 3 seconds
     const interval = setInterval(checkDifficulty, 3000);
 
     return () => {
@@ -366,6 +428,91 @@ export default function Player2ModeSelection() {
         return [RareCardMindControl, RareCardPoisonType];
       default:
         return [NormalCardQuickDraw, NormalCardTimeManipulation];
+    }
+  };
+
+  const handleStartGame = async () => {
+    if (!selectedDifficulty || !lobbyCode) {
+      console.error("Missing required data:", { selectedDifficulty, lobbyCode });
+      return;
+    }
+
+    try {
+      // Get study material ID from material object
+      const studyMaterialId = selectedMaterial?.study_material_id || selectedMaterial?.id;
+      if (!studyMaterialId) {
+        console.error("Missing study material ID");
+        return;
+      }
+
+      console.log("Starting game with:", {
+        difficulty: selectedDifficulty,
+        studyMaterialId,
+        material: selectedMaterial,
+        questionTypes,
+        lobbyCode,
+        hostId,
+        guestId,
+        hostUsername,
+        guestUsername
+      });
+
+      // First update difficulty in battle_invitations
+      const difficultyResponse = await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/difficulty`,
+        {
+          lobby_code: lobbyCode,
+          difficulty: selectedDifficulty,
+        }
+      );
+      console.log("Difficulty update response:", difficultyResponse.data);
+
+      // Then initialize entry in battle_sessions with all required fields
+      const sessionResponse = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize-session`,
+        {
+          lobby_code: lobbyCode,
+          host_id: hostId,
+          guest_id: guestId,
+          host_username: hostUsername,
+          guest_username: guestUsername,
+          total_rounds: 30,
+          is_active: true,
+          host_in_battle: true,
+          guest_in_battle: false,
+          difficulty_mode: selectedDifficulty,
+          study_material_id: studyMaterialId,
+          question_types: questionTypes,
+        }
+      );
+      console.log("Session initialization response:", sessionResponse.data);
+
+      // Update the difficulty in context
+      setDifficulty(selectedDifficulty);
+
+      // Navigate to battle page
+      navigate(`/dashboard/pvp-battle/${lobbyCode}`, {
+        state: {
+          lobbyCode,
+          difficulty: selectedDifficulty,
+          isHost: false,
+          hostUsername,
+          guestUsername,
+          hostId,
+          guestId,
+          material: selectedMaterial,
+          questionTypes,
+        },
+      });
+    } catch (error) {
+      console.error("Error starting game:", error);
+      if (axios.isAxiosError(error)) {
+        console.error("Error details:", {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message
+        });
+      }
     }
   };
 
