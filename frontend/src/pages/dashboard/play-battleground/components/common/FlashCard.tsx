@@ -17,8 +17,12 @@ interface FlashCardProps {
       term?: string;
       definition?: string;
       itemId?: number;
+      itemNumber?: number;
+      studyMaterialId?: string;
     };
     correctAnswer?: string;
+    options?: { [key: string]: string } | string[];
+    questionType?: "multiple-choice" | "identification" | "true-false";
   } | null;
   isTransitioning?: boolean;
   questionId?: string;
@@ -43,20 +47,61 @@ const FlashCard: React.FC<FlashCardProps> = memo(
     const [isLoading, setIsLoading] = useState(true);
     const [displayedQuestion, setDisplayedQuestion] = useState(question);
     const [displayedAnswer, setDisplayedAnswer] = useState(correctAnswer);
-    const [displayedImageUrl, setDisplayedImageUrl] = useState<string | null>(
-      null
-    );
+    const [displayedImageUrl, setDisplayedImageUrl] = useState<string | null>(null);
     const [cardOpacity, setCardOpacity] = useState(1);
-    const [isTransitioningInternal, setIsTransitioningInternal] =
-      useState(false);
+    const [isTransitioningInternal, setIsTransitioningInternal] = useState(false);
     const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const previousQuestionIdRef = useRef<string>(questionId);
     const isInitialMountRef = useRef(true);
 
     // Get image URL from currentQuestion.itemInfo and validate it's not null/undefined
     const imageUrl = currentQuestion?.itemInfo?.image || null;
-    const hasValidImage =
-      imageUrl && imageUrl !== "null" && !imageUrl.includes("undefined");
+    const hasValidImage = imageUrl && imageUrl !== "null" && !imageUrl.includes("undefined");
+
+    // Add image prefetch check
+    useEffect(() => {
+      if (hasValidImage && imageUrl) {
+        // Try to fetch the image first to check if it's accessible
+        fetch(imageUrl)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.blob();
+          })
+          .then(() => {
+            console.log("FlashCard: Image prefetch successful:", imageUrl);
+            setDisplayedImageUrl(imageUrl);
+            setImageError(false);
+          })
+          .catch(error => {
+            console.error("FlashCard: Image prefetch failed:", {
+              imageUrl,
+              error: error.message,
+              status: error.status,
+              statusText: error.statusText
+            });
+            setImageError(true);
+            setDisplayedImageUrl(null);
+          });
+      }
+    }, [imageUrl, hasValidImage]);
+
+    // Add debug logging for image URL
+    useEffect(() => {
+      if (imageUrl) {
+        console.log("FlashCard: Image details:", {
+          imageUrl,
+          hasValidImage,
+          questionInfo: {
+            term: currentQuestion?.itemInfo?.term,
+            itemNumber: currentQuestion?.itemInfo?.itemNumber,
+            studyMaterialId: currentQuestion?.itemInfo?.studyMaterialId
+          },
+          displayedImageUrl
+        });
+      }
+    }, [imageUrl, currentQuestion, displayedImageUrl]);
 
     // Clear any existing timeouts when component unmounts
     useEffect(() => {
@@ -117,20 +162,22 @@ const FlashCard: React.FC<FlashCardProps> = memo(
       }
     }, [question, correctAnswer, imageUrl, questionId]);
 
-    // Handle image loading
-    useEffect(() => {
-      if (imageUrl) {
-        setImageLoaded(false);
-        setImageError(false);
-      }
-    }, [imageUrl]);
-
     const handleImageLoad = () => {
+      console.log("FlashCard: Image loaded successfully:", displayedImageUrl);
       setImageLoaded(true);
       setImageError(false);
     };
 
-    const handleImageError = () => {
+    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+      const imgElement = e.target as HTMLImageElement;
+      console.error("FlashCard: Image load failed:", {
+        imageUrl: displayedImageUrl,
+        naturalWidth: imgElement.naturalWidth,
+        naturalHeight: imgElement.naturalHeight,
+        error: e,
+        currentSrc: imgElement.currentSrc,
+        complete: imgElement.complete
+      });
       setImageError(true);
       setImageLoaded(false);
     };
@@ -181,12 +228,11 @@ const FlashCard: React.FC<FlashCardProps> = memo(
                     }`}
                     onLoad={handleImageLoad}
                     onError={handleImageError}
+                    crossOrigin="anonymous"
                   />
                   {imageError && (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
-                      <span className="text-gray-400">
-                        Failed to load image
-                      </span>
+                      <span className="text-gray-400">Failed to load image</span>
                     </div>
                   )}
                 </div>

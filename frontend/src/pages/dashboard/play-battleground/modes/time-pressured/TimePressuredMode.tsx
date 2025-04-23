@@ -295,12 +295,35 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         const generatedQuestions = [];
         for (const type of selectedTypes) {
           const questionsOfThisType = distribution[type];
-          console.log(
-            `\nGenerating ${questionsOfThisType} questions of type "${type}":`
-          );
+          console.log(`\nGenerating ${questionsOfThisType} questions of type "${type}":`);
 
           for (let i = 0; i < questionsOfThisType; i++) {
             const item = shuffledItems[currentItemIndex];
+
+            // For identification type, create question directly without AI
+            if (type === 'identification') {
+              const directQuestion = {
+                question: item.definition,
+                answer: item.term,
+                correctAnswer: item.term,
+                questionType: 'identification',
+                type: 'identification',
+                item_id: item.item_id,
+                item_number: item.item_number,
+                itemInfo: {
+                  term: item.term,
+                  definition: item.definition,
+                  itemId: item.item_id,
+                  itemNumber: item.item_number,
+                  studyMaterialId: material.study_material_id,
+                  image: item.image && item.image.startsWith('data:image') ? item.image : null
+                }
+              };
+              generatedQuestions.push(directQuestion);
+              console.log(`✓ Created direct identification question for "${item.term}"`);
+              currentItemIndex++;
+              continue; // Skip AI generation for identification questions
+            }
 
             console.log("Processing item:", {
               item_id: item.item_id,
@@ -308,20 +331,12 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               term: item.term,
               definition: item.definition,
               image: item.image,
-              originalItemId: material.items[currentItemIndex].item_id, // Log the original item ID from material
-              materialItemsStructure: typeof material.items[currentItemIndex],
+              originalItemId: material.items[currentItemIndex].item_id,
+              materialItemsStructure: typeof material.items[currentItemIndex]
             });
 
-            // Add this logging when processing items
-            console.log("Processing item with image:", {
-              term: item.term,
-              image: item.image,
-              fullItem: item,
-            });
-
-            const endpoint = `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/openai/generate-${type}`;
+            // Rest of the existing code for other question types
+            const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
             const requestPayload = {
               term: item.term,
               definition: item.definition,
@@ -574,40 +589,43 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       case "multiple-choice":
         return (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-[1000px] mx-auto">
-            {currentQuestion.options &&
-            typeof currentQuestion.options === "object"
+            {currentQuestion.options && typeof currentQuestion.options === 'object'
               ? // Handle options as an object (like {A: "option1", B: "option2"})
-                Object.entries(currentQuestion.options).map(
-                  ([key, value], index) => (
+                Object.entries(currentQuestion.options).map(([key, value], index) => {
+                  // Convert numeric index to letter
+                  const letter = String.fromCharCode(65 + index); // 65 is ASCII for 'A'
+                  return (
                     <button
-                      key={index}
+                      key={letter}
                       onClick={() => handleAnswerSubmit(value as string)}
                       disabled={showResult}
                       className={`h-[100px] w-full bg-transparent 
-                    ${getButtonStyle(value as string)}
-                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                    disabled:cursor-not-allowed px-4 text-center`}
+                        ${getButtonStyle(value as string)}
+                        rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                        disabled:cursor-not-allowed px-4 text-center`}
                     >
-                      <span className="font-bold mr-2">{key}:</span>{" "}
-                      {value as string}
+                      <span className="font-bold mr-2">{letter}:</span> {value as string}
                     </button>
-                  )
-                )
+                  );
+                })
               : // Handle options as an array (for backward compatibility)
                 Array.isArray(currentQuestion.options) &&
-                currentQuestion.options.map((option: string, index: number) => (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSubmit(option)}
-                    disabled={showResult}
-                    className={`h-[100px] w-full bg-transparent 
-                    ${getButtonStyle(option)}
-                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                    disabled:cursor-not-allowed px-4 text-center`}
-                  >
-                    {option}
-                  </button>
-                ))}
+                currentQuestion.options.map((option: string, index: number) => {
+                  const letter = String.fromCharCode(65 + index); // 65 is ASCII for 'A'
+                  return (
+                    <button
+                      key={letter}
+                      onClick={() => handleAnswerSubmit(option)}
+                      disabled={showResult}
+                      className={`h-[100px] w-full bg-transparent 
+                        ${getButtonStyle(option)}
+                        rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                        disabled:cursor-not-allowed px-4 text-center`}
+                    >
+                      <span className="font-bold mr-2">{letter}:</span> {option}
+                    </button>
+                  );
+                })}
           </div>
         );
 

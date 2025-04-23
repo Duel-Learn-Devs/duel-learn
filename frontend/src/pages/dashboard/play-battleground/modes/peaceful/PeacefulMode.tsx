@@ -153,7 +153,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         const items = [...material.items].map((item, index) => {
           // Use the original item_id if available, otherwise fallback to the sequential ID
           const itemNumber = index + 1;
-          const hasImage = item.image && item.image.startsWith('data:image');
+          const hasImage = item.image && item.image !== 'NULL' && item.image.startsWith('data:image'); // Check if image is base64 data
           
           return {
             ...item,
@@ -162,9 +162,9 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
             item_number: itemNumber, // Keep item_number as sequential for display purposes
             term: item.term,
             definition: item.definition,
-            // Only include image URL if the item has an image
+            // Only include image if it's base64 data
             ...(hasImage ? {
-              image: `${import.meta.env.VITE_BACKEND_URL}/api/study-material/image/${itemNumber}`
+              image: item.image
             } : {
               image: null
             })
@@ -218,20 +218,39 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 
           for (let i = 0; i < questionsOfThisType; i++) {
             const item = shuffledItems[currentItemIndex];
-            
-            if (!item.definition) {
-              console.error(`Missing definition for item:`, item);
+
+            // For identification type, create question directly without AI
+            if (type === 'identification') {
+              const directQuestion = {
+                question: item.definition,
+                answer: item.term,
+                correctAnswer: item.term,
+                questionType: 'identification',
+                type: 'identification',
+                item_id: item.item_id,
+                item_number: item.item_number,
+                itemInfo: {
+                  term: item.term,
+                  definition: item.definition,
+                  itemId: item.item_id,
+                  itemNumber: item.item_number,
+                  studyMaterialId: material.study_material_id,
+                  image: item.image && item.image.startsWith('data:image') ? item.image : null
+                }
+              };
+              generatedQuestions.push(directQuestion);
+              console.log(`✓ Created direct identification question for "${item.term}"`);
               currentItemIndex++;
-              continue;
+              continue; // Skip AI generation for identification questions
             }
 
-            console.log(`Processing item:`, {
+            console.log("Processing item:", {
               item_id: item.item_id,
               item_number: item.item_number,
               term: item.term,
               definition: item.definition,
               image: item.image,
-              originalItemId: material.items[currentItemIndex].item_id, // Log the original item ID from material
+              originalItemId: material.items[currentItemIndex].item_id,
               materialItemsStructure: typeof material.items[currentItemIndex]
             });
 
@@ -278,26 +297,34 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
               const response = await axios.post<any[]>(endpoint, requestPayload);
               
               if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-                const questionsWithItemInfo = response.data.map(q => ({
-                  ...q,
-                  item_id: item.item_id,
-                  item_number: item.item_number,
-                  itemInfo: {
+                const questionsWithItemInfo = response.data.map(q => {
+                  // First, create the base question with item info
+                  const questionWithInfo = {
+                    ...q,
+                    item_id: item.item_id,
+                    item_number: item.item_number,
+                    itemInfo: {
+                      term: item.term,
+                      definition: item.definition,
+                      itemId: item.item_id,
+                      itemNumber: item.item_number,
+                      studyMaterialId: material.study_material_id,
+                      // Use base64 image data directly if available
+                      image: item.image && item.image.startsWith('data:image') ? item.image : null
+                    }
+                  };
+
+                  // Add debug logging for each question
+                  console.log("Generated question with image data:", {
                     term: item.term,
-                    definition: item.definition,
+                    hasImage: item.image !== 'NULL',
+                    imageUrl: questionWithInfo.itemInfo.image,
                     itemId: item.item_id,
                     itemNumber: item.item_number,
-                    // Only include image if it exists
-                    ...(item.image ? { image: item.image } : {})
-                  }
-                }));
-                
-                // Add debug logging
-                console.log("Created question with full data:", {
-                  question: questionsWithItemInfo[0],
-                  hasImage: !!questionsWithItemInfo[0].itemInfo?.image,
-                  imageUrl: questionsWithItemInfo[0].itemInfo?.image,
-                  fullItem: item
+                    studyMaterialId: material.study_material_id
+                  });
+
+                  return questionWithInfo;
                 });
                 
                 generatedQuestions.push(...questionsWithItemInfo);
@@ -339,20 +366,37 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         console.log("Setting AI questions:", shuffledQuestions);
         
         // When setting the AI questions state
-        const finalQuestions = shuffledQuestions.map(q => ({
-          ...q,
-          // Ensure itemInfo is preserved
-          itemInfo: {
-            ...q.itemInfo,
-            image: q.itemInfo?.image || null
-          }
-        }));
+        const finalQuestions = shuffledQuestions.map(q => {
+          // Create a new question object with preserved image data
+          const finalQuestion = {
+            ...q,
+            itemInfo: {
+              ...q.itemInfo,
+              // Ensure image is preserved from the original question
+              image: q.itemInfo?.image || null,
+              studyMaterialId: material.study_material_id
+            }
+          };
 
-        console.log("Final questions before setting state:", finalQuestions.map(q => ({
+          // Add debug logging for final question
+          console.log("Final question image data:", {
+            term: finalQuestion.itemInfo?.term,
+            hasImage: !!finalQuestion.itemInfo?.image,
+            imageUrl: finalQuestion.itemInfo?.image
+          });
+
+          return finalQuestion;
+        });
+
+        // Add comprehensive debug logging
+        console.log("Final questions with detailed image data:", finalQuestions.map(q => ({
           question: q.question,
-          answer: q.answer,
+          term: q.itemInfo?.term,
           hasImage: !!q.itemInfo?.image,
-          imageUrl: q.itemInfo?.image
+          imageUrl: q.itemInfo?.image,
+          studyMaterialId: q.itemInfo?.studyMaterialId,
+          itemNumber: q.itemInfo?.itemNumber,
+          fullItemInfo: q.itemInfo
         })));
 
         setAiQuestions(finalQuestions);
@@ -478,21 +522,21 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     const timeSpent = calculateTimeSpent(startTime, new Date());
     const navigationState = {
       timeSpent,
-      correctCount,
-      incorrectCount,
+      mastered: masteredCount,
+      unmastered: retakeQuestionsCount,
       mode,
       material: material?.title || "Unknown Material",
       earlyEnd: true,
       highestStreak,
       masteredCount,
-      unmasteredCount,
+      unmasteredCount: retakeQuestionsCount,
       earnedXP: 0 // Always 0 for early end
     };
 
     try {
       const sessionData: SessionData = {
-        correctCount,
-        incorrectCount,
+        correctCount: masteredCount,
+        incorrectCount: retakeQuestionsCount,
         highestStreak,
         earnedXP: 0, // Force 0 XP for early end
         timeSpent
@@ -549,8 +593,8 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       // Log the values we're about to send
       console.log("Preparing session report with values:", {
         timeSpent: sessionData.timeSpent,
-        correctCount: sessionData.correctCount,
-        incorrectCount: sessionData.incorrectCount,
+        mastered: sessionData.correctCount,
+        unmastered: retakeQuestionsCount,
         isComplete,
         retakeMode: isInRetakeMode,
         retakeQuestionsCount
@@ -575,8 +619,8 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         coins_gained: null,
         game_mode: mode.toLowerCase(),
         total_time: sessionData.timeSpent,
-        mastered: isComplete ? totalItems : sessionData.correctCount, // If complete, all items are mastered
-        unmastered: isComplete ? 0 : sessionData.incorrectCount // If complete, no items are unmastered
+        mastered: isComplete ? totalItems : sessionData.correctCount,
+        unmastered: isComplete ? 0 : retakeQuestionsCount
       };
 
       console.log("Sending payload to server:", payload);
@@ -704,37 +748,24 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
           <div className="w-full flex flex-col items-center gap-4">
             <div className="w-full max-w-[1000px] mx-auto">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {currentQuestion.options && typeof currentQuestion.options === 'object' ? (
-                  // Handle options as an object (like {A: "option1", B: "option2"})
-                  Object.entries(currentQuestion.options).map(([key, value], index) => (
-                    <button
-                      key={index}
-                      onClick={() => !showResult && handleAnswerSubmit(value as string)}
-                      disabled={showResult}
-                      className={`h-[100px] w-full bg-transparent 
-                        ${getButtonStyle(value as string)}
-                        rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                        disabled:cursor-not-allowed px-4 text-center`}
-                    >
-                      <span className="font-bold mr-2">{key}:</span> {value as string}
-                    </button>
-                  ))
-                ) : (
-                  // Handle options as an array (for backward compatibility)
-                  Array.isArray(currentQuestion.options) && currentQuestion.options.map((option: string, index: number) => (
-                    <button
-                      key={index}
-                      onClick={() => !showResult && handleAnswerSubmit(option)}
-                      disabled={showResult}
-                      className={`h-[100px] w-full bg-transparent 
-                        ${getButtonStyle(option)}
-                        rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                        disabled:cursor-not-allowed px-4 text-center`}
-                    >
-                      {option}
-                    </button>
-                  ))
-                )}
+                {currentQuestion.options && typeof currentQuestion.options === 'object' && 
+                  Object.entries(currentQuestion.options as Record<string, string>).map(([key, value], index) => {
+                    const letter = String.fromCharCode(65 + index); // 65 is ASCII for 'A'
+                    return (
+                      <button
+                        key={letter}
+                        onClick={() => !showResult && handleAnswerSubmit(value)}
+                        disabled={showResult}
+                        className={`h-[100px] w-full bg-transparent 
+                          ${getButtonStyle(value)}
+                          rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                          disabled:cursor-not-allowed px-4 text-center`}
+                      >
+                        <span className="font-bold mr-2">{letter}:</span> {value}
+                      </button>
+                    );
+                  })
+                }
               </div>
             </div>
             {showResult && !isCorrect && (
@@ -823,12 +854,12 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       <Header
         material={material}
         mode={mode}
-        correct={correctCount}
-        incorrect={incorrectCount}
+        correct={masteredCount}
+        incorrect={retakeQuestionsCount}
         startTime={startTime}
         highestStreak={highestStreak}
         masteredCount={masteredCount}
-        unmasteredCount={unmasteredCount}
+        unmasteredCount={retakeQuestionsCount}
         onEndGame={handleEndGame}
       />
       <main className="pt-24 px-4">

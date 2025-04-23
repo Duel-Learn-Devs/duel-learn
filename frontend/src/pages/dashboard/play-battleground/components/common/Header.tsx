@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -74,6 +74,12 @@ export default function Header({
   const [openGameOptionsDialog, setOpenGameOptionsDialog] = useState(false);
   const [openLeaveConfirmDialog, setOpenLeaveConfirmDialog] = useState(false);
   const [openEndGameDialog, setOpenEndGameDialog] = useState(false);
+  const [timeSpent, setTimeSpent] = useState("00:00");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Determine labels based on mode
+  const correctLabel = mode === "Time Pressured" ? "Correct" : "Mastered";
+  const incorrectLabel = mode === "Time Pressured" ? "Incorrect" : "Unmastered";
 
   const handleBackClick = () => {
     setOpenGameOptionsDialog(true);
@@ -128,6 +134,10 @@ export default function Header({
     });
   };
 
+  useEffect(() => {
+    // ... existing timer code ...
+  }, [startTime]);
+
   return (
     <>
       <header className="absolute top-0 left-0 w-full sm:px-8 md:px-16 lg:px-32 px-12 mt-5 py-12">
@@ -157,8 +167,8 @@ export default function Header({
                   </>
                 ) : (
                   <>
-                    <div>Correct {correct}</div>
-                    <div>Incorrect {incorrect}</div>
+                    <div>{correctLabel} {correct}</div>
+                    <div>{incorrectLabel} {incorrect}</div>
                   </>
                 )}
               </div>
@@ -179,7 +189,7 @@ export default function Header({
         <DialogTitle className="text-center pb-6">
           <div className="text-2xl font-bold text-white mb-3">Pause Menu</div>
           <div className="text-sm text-gray-400 mb-2">
-            Current Progress: {correct} Mastered • {incorrect} Unmastered
+            Current Progress: {correct} {correctLabel} • {incorrect} {incorrectLabel}
           </div>
           <div className="w-3/3 mx-auto border-b border-gray-800/50" />
         </DialogTitle>

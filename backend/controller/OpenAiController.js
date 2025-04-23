@@ -13,208 +13,145 @@ let answerDistribution = { A: 0, B: 0, C: 0, D: 0 };
 let trueFalseDistribution = { True: 0, False: 0 };
 
 // Updated helper function to fetch item_id from study_material_content with corrected column names
-const getItemIdFromStudyMaterial = async (
-  studyMaterialId,
-  term,
-  itemNumber
-) => {
+const getItemIdFromStudyMaterial = async (studyMaterialId, term, itemNumber) => {
   try {
-    const { pool } = await import("../config/db.js");
-
-    console.log(`=== FETCHING ITEM ID FOR "${term}" ===`);
-    console.log(`- Study Material ID: ${studyMaterialId}`);
-    console.log(`- Term: "${term}"`);
-    console.log(`- Item Number: ${itemNumber}`);
-
-
-    // Try exact term match
-    const [exactTermResults] = await pool.query(
-      `SELECT item_id, item_number FROM study_material_content 
-       WHERE study_material_id = ? AND term = ? 
-       LIMIT 1`,
-      [studyMaterialId, term]
-    );
-
-    if (exactTermResults && exactTermResults.length > 0) {
-      console.log(
-        `✓ EXACT MATCH: Found item_id ${exactTermResults[0].item_id} for term "${term}" in study_material_content`
-      );
-      return {
-        itemId: exactTermResults[0].item_id,
-        itemNumber: exactTermResults[0].item_number,
-      };
+    if (!studyMaterialId || !term) {
+      console.error('Missing required parameters:', { studyMaterialId, term });
+      throw new Error('Missing required parameters: studyMaterialId and term');
     }
 
-    // If no exact match, try case-insensitive match
-    console.log(`No exact match for "${term}", trying case-insensitive match`);
-    const [caseInsensitiveResults] = await pool.query(
-      `SELECT item_id, item_number, term FROM study_material_content 
-       WHERE study_material_id = ? AND LOWER(term) = LOWER(?) 
-       LIMIT 1`,
-      [studyMaterialId, term]
-    );
+    const { pool } = await import('../config/db.js');
 
-    if (caseInsensitiveResults && caseInsensitiveResults.length > 0) {
-      console.log(
-        `✓ CASE-INSENSITIVE MATCH: Found item_id ${caseInsensitiveResults[0].item_id} for term "${term}"`
-      );
-      return {
-        itemId: caseInsensitiveResults[0].item_id,
-        itemNumber: caseInsensitiveResults[0].item_number,
-      };
+    let query = `
+      SELECT item_id, item_number
+      FROM study_material_content 
+      WHERE study_material_id = ? 
+      AND term = ?
+    `;
+    let params = [studyMaterialId, term];
+
+    // If item_number is provided, add it to the query
+    if (itemNumber !== undefined && itemNumber !== null) {
+      query += ` AND item_number = ?`;
+      params.push(itemNumber);
     }
 
-    // If no match by term, try by item_number
-    if (itemNumber) {
-      console.log(
-        `No term match for "${term}", trying to match by item_number ${itemNumber}`
-      );
-      const [numResults] = await pool.query(
-        `SELECT item_id, term FROM study_material_content 
-         WHERE study_material_id = ? AND item_number = ? 
-         LIMIT 1`,
-        [studyMaterialId, itemNumber]
-      );
+    // Add ordering and limit
+    query += ` ORDER BY item_number ASC LIMIT 1`;
+    
+    console.log('Executing query:', query, 'with params:', params);
+    
+    const [rows] = await pool.query(query, params);
+    
+    if (rows && rows.length > 0) {
+      console.log('Found item:', rows[0]);
+      return rows[0].item_id;
+    }
 
-      if (numResults && numResults.length > 0) {
-        console.log(
-          `✓ ITEM NUMBER MATCH: Found item_id ${numResults[0].item_id} for item_number ${itemNumber}`
-        );
-        return {
-          itemId: numResults[0].item_id,
-          itemNumber: itemNumber,
-        };
+    // If no exact match found, try without item_number
+    if (itemNumber !== undefined && itemNumber !== null) {
+      query = `
+        SELECT item_id, item_number
+        FROM study_material_content 
+        WHERE study_material_id = ? 
+        AND term = ?
+        ORDER BY item_number ASC
+        LIMIT 1
+      `;
+      params = [studyMaterialId, term];
+      
+      console.log('Retrying query without item_number:', query, 'with params:', params);
+      
+      const [retryRows] = await pool.query(query, params);
+      
+      if (retryRows && retryRows.length > 0) {
+        console.log('Found item on retry:', retryRows[0]);
+        return retryRows[0].item_id;
       }
     }
 
-    // If we got here, try to look up all items for this study material to see what's available
-    const [allItems] = await pool.query(
-      `SELECT item_id, item_number, term FROM study_material_content 
-       WHERE study_material_id = ? 
-       LIMIT 20`,
-      [studyMaterialId]
-    );
-
-    if (allItems && allItems.length > 0) {
-      console.log(`Found ${allItems.length} total items for study material ${studyMaterialId}:`);
-      allItems.forEach(item => {
-        console.log(`- Item ${item.item_number}: ID=${item.item_id}, Term="${item.term}"`);
-      });
-
-      // Try to find a match by position/index
-      if (itemNumber && itemNumber <= allItems.length) {
-        const indexMatch = allItems[itemNumber - 1];
-        console.log(`Using item at position ${itemNumber}: ID=${indexMatch.item_id}, Term="${indexMatch.term}"`);
-        return {
-          itemId: indexMatch.item_id,
-          itemNumber: indexMatch.item_number
-        };
-      }
-    } else {
-      console.log(`No items found at all for study material ${studyMaterialId}`);
-    }
-
-    // Log failure and return null if no match found
-    console.warn(
-      `❌ NO MATCHING CONTENT FOUND in study_material_content for "${term}" or item_number ${itemNumber}`
-    );
-
-    // Fallback to using the itemNumber as the ID if all else fails
-    console.log(`FALLBACK: Using item_number ${itemNumber} as item_id`);
-    return {
-      itemId: itemNumber.toString(),
-      itemNumber: itemNumber
-    };
+    console.error(`No item found for study_material_id: ${studyMaterialId}, term: ${term}, item_number: ${itemNumber}`);
+    throw new Error('Item not found in study_material_content');
   } catch (error) {
-    console.error("Error fetching item_id from study_material_content:", error);
-    // Fallback to using the itemNumber as the ID
-    return {
-      itemId: itemNumber?.toString() || "0",
-      itemNumber: itemNumber || 0
-    };
+    console.error('Error in getItemIdFromStudyMaterial:', error);
+    throw error;
   }
 };
 
 // Helper function to store generated questions in the database
-const storeGeneratedQuestions = async (studyMaterialId, itemId, itemNumber, term, definition, question, gameMode = "peaceful") => {
-  console.log("=== STORING GENERATED QUESTION ===");
-  console.log(`Study Material ID: ${studyMaterialId}`);
-  console.log(`Item ID: ${itemId}, Item Number: ${itemNumber}`);
-  console.log(`Term: ${term}, Definition: ${definition}`);
-  console.log(`Question Type: ${question.type || question.questionType}`);
-  console.log(`Game Mode: ${gameMode}`);
-
-  const normalizedGameMode = gameMode.toLowerCase().trim();
-
+const storeGeneratedQuestions = async (studyMaterialId, term, definition, itemNumber, question, gameMode) => {
   try {
+    if (!studyMaterialId || !term || !definition || !itemNumber) {
+      console.error("Missing required parameters in storeGeneratedQuestions:", { studyMaterialId, term, definition, itemNumber });
+      throw new Error('Missing required parameters');
+    }
+
+    // Use itemNumber as item_id if no match found
+    let item_id;
+    try {
+      item_id = await getItemIdFromStudyMaterial(studyMaterialId, term, itemNumber);
+    } catch (error) {
+      console.warn('Could not find item_id, using itemNumber as fallback:', itemNumber);
+      item_id = itemNumber;
+    }
+
+    // Format the choices if they exist
+    let choicesString = null;
+    if (question.options) {
+      choicesString = JSON.stringify(question.options);
+    }
+
+    // Handle image if it exists
+    let imageBuffer = null;
+    if (question.image) {
+      // Convert base64 to buffer if image exists
+      const base64Data = question.image.replace(/^data:image\/\w+;base64,/, '');
+      imageBuffer = Buffer.from(base64Data, 'base64');
+    }
+
     const { pool } = await import('../config/db.js');
-
-    // Determine the question type
-    const questionType = question.type || question.questionType;
-
-    // First delete any existing question for this study material, item, and question type
-    const deleteQuery = `
-      DELETE FROM generated_material 
-      WHERE study_material_id = ? 
-      AND item_id = ? 
-      AND item_number = ? 
-      AND question_type = ? 
-      AND game_mode = ?
-    `;
-
-    const deleteParams = [
-      studyMaterialId,
-      itemId,
-      itemNumber,
-      questionType,
-      normalizedGameMode
-    ];
-
-    // Execute the delete to remove any existing questions
-    const [deleteResult] = await pool.query(deleteQuery, deleteParams);
-    if (deleteResult.affectedRows > 0) {
-      console.log(`Deleted ${deleteResult.affectedRows} existing ${questionType} questions for study material ID ${studyMaterialId}, item ID ${itemId}`);
-    }
-
-    // Process question data based on type
-    let questionText = question.question;
-    let choicesJSON = null;
-    let answer = question.answer || question.correctAnswer;
-
-    // Handle choices for multiple-choice questions
-    if ((questionType === 'multiple-choice' || questionType === 'Multiple Choice') && question.options) {
-      choicesJSON = JSON.stringify(question.options);
-    }
-
-    // Insert the question
+    
+    // Use REPLACE INTO to handle duplicates
     const insertQuery = `
-      INSERT INTO generated_material 
-      (study_material_id, item_id, item_number, term, definition, 
-       question_type, question, answer, choices, game_mode) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      REPLACE INTO generated_material 
+      (study_material_id, item_id, item_number, term, definition, image, 
+       question_type, question, answer, choices, game_mode)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    const values = [
+    const [result] = await pool.query(insertQuery, [
       studyMaterialId,
-      itemId,
+      item_id,
       itemNumber,
       term,
       definition,
-      questionType,
-      questionText,
-      answer,
-      choicesJSON,
-      normalizedGameMode
-    ];
+      imageBuffer,
+      question.type || question.questionType || 'identification',
+      question.question,
+      question.answer || question.correctAnswer,
+      choicesString,
+      gameMode || "peaceful"
+    ]);
 
-    console.log("Inserting question with values:", values);
+    console.log(`Successfully stored question in generated_material:`, {
+      study_material_id: studyMaterialId,
+      item_id,
+      item_number: itemNumber,
+      term,
+      question_type: question.type || question.questionType,
+      game_mode: gameMode
+    });
 
-    const [result] = await pool.query(insertQuery, values);
-    console.log(`✅ Question stored successfully, ID: ${result.insertId}`);
-
-    return true;
+    return {
+      success: true,
+      data: {
+        ...result,
+        item_id,
+        item_number: itemNumber
+      }
+    };
   } catch (error) {
-    console.error("Error in storeGeneratedQuestions:", error);
+    console.error('Error in storeGeneratedQuestions:', error);
     throw error;
   }
 };
@@ -534,51 +471,195 @@ const generateIdentificationQuestionHelper = async (term, definition, context) =
 // Route handlers that use the helper functions
 const generateTrueFalse = async (req, res) => {
   try {
-    const { term, definition } = req.body;
-    const result = await generateTrueFalseQuestionHelper(term, definition, req.body);
-    if (result.success) {
-      res.json(result);
-    } else {
-      res.status(500).json(result);
+    const { term, definition, studyMaterialId, itemNumber, gameMode } = req.body;
+    
+    if (!term || !definition || !studyMaterialId || !itemNumber) {
+      console.error('Missing required parameters:', { term, definition, studyMaterialId, itemNumber });
+      return res.status(400).json({
+        success: false,
+        error: "Missing required parameters",
+        data: null
+      });
+    }
+
+    console.log("Generating true/false question for:", { term, definition, studyMaterialId, itemNumber });
+    
+    try {
+      const result = await generateTrueFalseQuestionHelper(term, definition, studyMaterialId, itemNumber);
+      
+      if (!result.success) {
+        console.error("Failed to generate true/false question:", result.error);
+        return res.status(500).json({
+          success: false,
+          error: result.error,
+          data: null
+        });
+      }
+
+      // Store the generated question
+      const storeResult = await storeGeneratedQuestions(
+        studyMaterialId,
+        term,
+        definition,
+        itemNumber,
+        result.data,
+        gameMode || 'peaceful'
+      );
+
+      console.log("Successfully generated and stored true/false question");
+      
+      // Return the question data in an array as expected by the frontend
+      return res.json([{
+        ...result.data,
+        ...storeResult.data,
+        type: 'true-false',
+        questionType: 'true-false'
+      }]);
+
+    } catch (generationError) {
+      console.error("Error generating true/false question:", generationError);
+      return res.status(500).json({
+        success: false,
+        error: generationError.message || "Failed to generate true/false question",
+        data: null
+      });
     }
   } catch (error) {
-    res.status(500).json({
+    console.error("Error in generateTrueFalse:", error);
+    return res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message || "Internal server error",
+      data: null
     });
   }
 };
 
 const generateMultipleChoice = async (req, res) => {
   try {
-    const { term, definition } = req.body;
-    const result = await generateMultipleChoiceQuestionHelper(term, definition, req.body);
-    if (result.success) {
-      res.json(result);
-    } else {
-      res.status(500).json(result);
+    const { term, definition, studyMaterialId, itemNumber, gameMode } = req.body;
+    
+    if (!term || !definition || !studyMaterialId || !itemNumber) {
+      console.error('Missing required parameters:', { term, definition, studyMaterialId, itemNumber });
+      return res.status(400).json({
+        success: false,
+        error: "Missing required parameters",
+        data: null
+      });
+    }
+
+    console.log("Generating multiple-choice question for:", { term, definition, studyMaterialId, itemNumber });
+    
+    try {
+      const result = await generateMultipleChoiceQuestionHelper(term, definition, studyMaterialId, itemNumber);
+      
+      if (!result.success) {
+        console.error("Failed to generate multiple-choice question:", result.error);
+        return res.status(500).json({
+          success: false,
+          error: result.error,
+          data: null
+        });
+      }
+
+      // Store the generated question
+      const storeResult = await storeGeneratedQuestions(
+        studyMaterialId,
+        term,
+        definition,
+        itemNumber,
+        result.data,
+        gameMode || 'peaceful'
+      );
+
+      console.log("Successfully generated and stored multiple-choice question");
+      
+      // Return the question data in an array as expected by the frontend
+      return res.json([{
+        ...result.data,
+        ...storeResult.data,
+        type: 'multiple-choice',
+        questionType: 'multiple-choice'
+      }]);
+
+    } catch (generationError) {
+      console.error("Error generating multiple-choice question:", generationError);
+      return res.status(500).json({
+        success: false,
+        error: generationError.message || "Failed to generate multiple-choice question",
+        data: null
+      });
     }
   } catch (error) {
-    res.status(500).json({
+    console.error("Error in generateMultipleChoice:", error);
+    return res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message || "Internal server error",
+      data: null
     });
   }
 };
 
 const generateIdentification = async (req, res) => {
   try {
-    const { term, definition } = req.body;
-    const result = await generateIdentificationQuestionHelper(term, definition, req.body);
-    if (result.success) {
-      res.json(result);
-    } else {
-      res.status(500).json(result);
+    const { term, definition, studyMaterialId, itemNumber, gameMode } = req.body;
+    
+    if (!term || !definition || !studyMaterialId || !itemNumber) {
+      console.error('Missing required parameters:', { term, definition, studyMaterialId, itemNumber });
+      return res.status(400).json({
+        success: false,
+        error: "Missing required parameters",
+        data: null
+      });
+    }
+
+    console.log("Generating identification question for:", { term, definition, studyMaterialId, itemNumber });
+    
+    try {
+      const result = await generateIdentificationQuestionHelper(term, definition, studyMaterialId, itemNumber);
+      
+      if (!result.success) {
+        console.error("Failed to generate identification question:", result.error);
+        return res.status(500).json({
+          success: false,
+          error: result.error,
+          data: null
+        });
+      }
+
+      // Store the generated question
+      const storeResult = await storeGeneratedQuestions(
+        studyMaterialId,
+        term,
+        definition,
+        itemNumber,
+        result.data,
+        gameMode || 'peaceful'
+      );
+
+      console.log("Successfully generated and stored identification question");
+      
+      // Return the question data in an array as expected by the frontend
+      return res.json([{
+        ...result.data,
+        ...storeResult.data,
+        type: 'identification',
+        questionType: 'identification'
+      }]);
+
+    } catch (generationError) {
+      console.error("Error generating identification question:", generationError);
+      return res.status(500).json({
+        success: false,
+        error: generationError.message || "Failed to generate identification question",
+        data: null
+      });
     }
   } catch (error) {
-    res.status(500).json({
+    console.error("Error in generateIdentification:", error);
+    return res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message || "Internal server error",
+      data: null
     });
   }
 };
@@ -862,8 +943,7 @@ Important:
         );
 
         console.log(
-          `Found ${identificationQuestions.length} identification questions in request`
-        );
+          `Found ${identificationQuestions.length} identification questions in request`        );
         if (identificationQuestions.length > 0) {
           console.log(
             "Identification question samples:",
