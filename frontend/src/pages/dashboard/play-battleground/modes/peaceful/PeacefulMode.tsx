@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useGameLogic } from "../../hooks/useGameLogic";
 import FlashCard from "../../components/common/FlashCard";
 import Header from "../../components/common/Header";
@@ -72,6 +72,41 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 
   // Add state to track if game is ended by user
   const [isGameEndedByUser, setIsGameEndedByUser] = useState(false);
+
+  // Add audio refs
+  const backgroundMusicRef = useRef<HTMLAudioElement>(null);
+  const correctAnswerSoundRef = useRef<HTMLAudioElement>(null);
+  const incorrectAnswerSoundRef = useRef<HTMLAudioElement>(null);
+  const sessionIncompleteRef = useRef<HTMLAudioElement>(null);
+  const sessionCompleteRef = useRef<HTMLAudioElement>(null);
+
+  // Add state for volume control
+  const [masterVolume, setMasterVolume] = useState(() => {
+    const savedSettings = localStorage.getItem('duel-learn-audio-settings');
+    if (savedSettings) {
+      const { master } = JSON.parse(savedSettings);
+      return master || 100;
+    }
+    return 100;
+  });
+
+  const [musicVolume, setMusicVolume] = useState(() => {
+    const savedSettings = localStorage.getItem('duel-learn-audio-settings');
+    if (savedSettings) {
+      const { music } = JSON.parse(savedSettings);
+      return music || 100;
+    }
+    return 100;
+  });
+
+  const [soundEffectsVolume, setSoundEffectsVolume] = useState(() => {
+    const savedSettings = localStorage.getItem('duel-learn-audio-settings');
+    if (savedSettings) {
+      const { effects } = JSON.parse(savedSettings);
+      return effects || 100;
+    }
+    return 100;
+  });
 
   // Generate AI questions when component mounts
   useEffect(() => {
@@ -443,6 +478,59 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 
   const [startTime] = useState(new Date());
 
+  // Add audio elements to the component
+  useEffect(() => {
+    // Create and configure audio elements
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.src = '/sounds-sfx/peaceful-mode.mp3';
+      backgroundMusicRef.current.loop = true; // Music should loop
+      // Set initial volume
+      const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
+      backgroundMusicRef.current.volume = actualMusicVolume;
+    }
+
+    const soundEffects = [
+      { ref: correctAnswerSoundRef, src: '/sounds-sfx/right-answer.mp3' },
+      { ref: incorrectAnswerSoundRef, src: '/sounds-sfx/wrong-answer.mp3' },
+      { ref: sessionIncompleteRef, src: '/sounds-sfx/session-incomplete.wav' },
+      { ref: sessionCompleteRef, src: '/sounds-sfx/session_report_completed.mp3' }
+    ];
+
+    // Configure sound effects
+    soundEffects.forEach(({ ref, src }) => {
+      if (ref.current) {
+        ref.current.src = src;
+        const actualVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
+        ref.current.volume = actualVolume;
+      }
+    });
+
+    // Start playing background music when component mounts
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.play().catch(error => {
+        console.log("Audio autoplay was prevented:", error);
+      });
+    }
+
+    // Cleanup function to stop all sounds when component unmounts
+    return () => {
+      const allRefs = [
+        backgroundMusicRef,
+        correctAnswerSoundRef,
+        incorrectAnswerSoundRef,
+        sessionIncompleteRef,
+        sessionCompleteRef
+      ];
+
+      allRefs.forEach(ref => {
+        if (ref.current) {
+          ref.current.pause();
+          ref.current.currentTime = 0;
+        }
+      });
+    };
+  }, [masterVolume, musicVolume, soundEffectsVolume]);
+
   // Custom answer submit handler with sound effects
   const handleAnswerSubmit = (answer: string) => {
     let isAnswerCorrect = false;
@@ -484,10 +572,10 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     isAnswerCorrect = answerString === correctAnswerString;
 
     // Play appropriate sound using AudioContext
-    if (isAnswerCorrect) {
-      playCorrectAnswerSound();
-    } else {
-      playIncorrectAnswerSound();
+    if (isAnswerCorrect && correctAnswerSoundRef.current) {
+      correctAnswerSoundRef.current.play();
+    } else if (!isAnswerCorrect && incorrectAnswerSoundRef.current) {
+      incorrectAnswerSoundRef.current.play();
     }
 
     // Call the original handler
@@ -517,6 +605,11 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     if (hasSessionSaved) {
       console.log("Session already saved, skipping save");
       return;
+    }
+
+    // Play session incomplete sound
+    if (sessionIncompleteRef.current) {
+      sessionIncompleteRef.current.play();
     }
 
     const timeSpent = calculateTimeSpent(startTime, new Date());
@@ -630,6 +723,14 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       if (response.data.success) {
         console.log("Session report saved successfully:", response.data);
         setHasSessionSaved(true);
+
+        // Play appropriate sound based on completion status
+        if (isComplete && sessionCompleteRef.current) {
+          sessionCompleteRef.current.play();
+        } else if (!isComplete && sessionIncompleteRef.current) {
+          sessionIncompleteRef.current.play();
+        }
+
         return response.data;
       } else {
         console.error("Failed to save session report:", response.data);
@@ -851,6 +952,13 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 
   return (
     <div className="min-h-screen relative">
+      {/* Audio elements */}
+      <audio ref={backgroundMusicRef} preload="auto" />
+      <audio ref={correctAnswerSoundRef} preload="auto" />
+      <audio ref={incorrectAnswerSoundRef} preload="auto" />
+      <audio ref={sessionIncompleteRef} preload="auto" />
+      <audio ref={sessionCompleteRef} preload="auto" />
+
       <Header
         material={material}
         mode={mode}
@@ -861,6 +969,18 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         masteredCount={masteredCount}
         unmasteredCount={retakeQuestionsCount}
         onEndGame={handleEndGame}
+        backgroundMusicRef={backgroundMusicRef}
+        attackSoundRef={null}
+        correctAnswerSoundRef={correctAnswerSoundRef}
+        incorrectAnswerSoundRef={incorrectAnswerSoundRef}
+        correctSfxRef={sessionCompleteRef}
+        incorrectSfxRef={sessionIncompleteRef}
+        masterVolume={masterVolume}
+        musicVolume={musicVolume}
+        soundEffectsVolume={soundEffectsVolume}
+        setMasterVolume={setMasterVolume}
+        setMusicVolume={setMusicVolume}
+        setSoundEffectsVolume={setSoundEffectsVolume}
       />
       <main className="pt-24 px-4">
         <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">

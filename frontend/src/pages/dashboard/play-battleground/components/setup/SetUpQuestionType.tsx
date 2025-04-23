@@ -30,7 +30,7 @@ const SetUpQuestionType: React.FC = () => {
     fromWelcome,
   } = location.state || {};
   const [isComponentReady, setIsComponentReady] = useState(false);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["identification"]);
   const [questionTypes] = useState([
     {
       display: "Identification",
@@ -249,9 +249,6 @@ const SetUpQuestionType: React.FC = () => {
               </>
             )}
 
-            <span className="animate-spin text-[14px] sm:text-[16px] text-purple-400">
-              ⚙️
-            </span>
           </div>
         </div>
 

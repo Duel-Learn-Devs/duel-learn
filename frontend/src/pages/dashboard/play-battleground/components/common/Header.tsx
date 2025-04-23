@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from "@mui/material";
 import IconButton from "@mui/material/IconButton";
+import AudioModal from "../../modes/multiplayer/battle-field/components/AudioModal";
+import { useAudio } from "../../../../../contexts/AudioContext";
 
 interface HeaderProps {
   mode: string;
@@ -24,6 +26,18 @@ interface HeaderProps {
   masteredCount: number;
   unmasteredCount: number;
   onEndGame?: () => Promise<void>;
+  backgroundMusicRef?: React.RefObject<HTMLAudioElement>;
+  attackSoundRef?: React.RefObject<HTMLAudioElement>;
+  correctAnswerSoundRef?: React.RefObject<HTMLAudioElement>;
+  incorrectAnswerSoundRef?: React.RefObject<HTMLAudioElement>;
+  correctSfxRef?: React.RefObject<HTMLAudioElement>;
+  incorrectSfxRef?: React.RefObject<HTMLAudioElement>;
+  masterVolume?: number;
+  musicVolume?: number;
+  soundEffectsVolume?: number;
+  setMasterVolume?: React.Dispatch<React.SetStateAction<number>>;
+  setMusicVolume?: React.Dispatch<React.SetStateAction<number>>;
+  setSoundEffectsVolume?: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const commonDialogStyle = {
@@ -69,14 +83,26 @@ export default function Header({
   masteredCount,
   unmasteredCount,
   onEndGame,
+  backgroundMusicRef,
+  attackSoundRef,
+  correctAnswerSoundRef,
+  incorrectAnswerSoundRef,
+  correctSfxRef,
+  incorrectSfxRef,
+  masterVolume = 100,
+  musicVolume = 100,
+  soundEffectsVolume = 100,
+  setMasterVolume = () => {},
+  setMusicVolume = () => {},
+  setSoundEffectsVolume = () => {},
 }: HeaderProps) {
   const navigate = useNavigate();
   const [openGameOptionsDialog, setOpenGameOptionsDialog] = useState(false);
   const [openLeaveConfirmDialog, setOpenLeaveConfirmDialog] = useState(false);
   const [openEndGameDialog, setOpenEndGameDialog] = useState(false);
   const [timeSpent, setTimeSpent] = useState("00:00");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
+  const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
+  
   // Determine labels based on mode
   const correctLabel = mode === "Time Pressured" ? "Correct" : "Mastered";
   const incorrectLabel = mode === "Time Pressured" ? "Incorrect" : "Unmastered";
@@ -134,6 +160,10 @@ export default function Header({
     });
   };
 
+  const handleSettingsClick = () => {
+    setIsAudioModalOpen(true);
+  };
+
   useEffect(() => {
     // ... existing timer code ...
   }, [startTime]);
@@ -174,11 +204,36 @@ export default function Header({
               </div>
             </div>
           </div>
-          <button className="text-gray-400 hover:text-white transition-colors">
+          <button 
+            className="text-gray-400 hover:text-white transition-colors"
+            onClick={handleSettingsClick}
+          >
             <SettingsIcon sx={{ fontSize: 24 }} />
           </button>
         </div>
       </header>
+
+      {/* Audio Settings Modal */}
+      <AudioModal
+        isOpen={isAudioModalOpen}
+        onClose={() => setIsAudioModalOpen(false)}
+        onLeaveGame={() => {
+          setIsAudioModalOpen(false);
+          handleLeaveGame();
+        }}
+        backgroundMusicRef={backgroundMusicRef}
+        attackSoundRef={attackSoundRef}
+        correctAnswerSoundRef={correctAnswerSoundRef}
+        incorrectAnswerSoundRef={incorrectAnswerSoundRef}
+        correctSfxRef={correctSfxRef}
+        incorrectSfxRef={incorrectSfxRef}
+        masterVolume={masterVolume}
+        musicVolume={musicVolume}
+        soundEffectsVolume={soundEffectsVolume}
+        setMasterVolume={setMasterVolume}
+        setMusicVolume={setMusicVolume}
+        setSoundEffectsVolume={setSoundEffectsVolume}
+      />
 
       {/* Game Options Dialog - Keep the new centered design */}
       <Dialog
