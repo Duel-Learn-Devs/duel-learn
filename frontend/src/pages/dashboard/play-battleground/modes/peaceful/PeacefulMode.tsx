@@ -81,6 +81,12 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
   const sessionIncompleteRef = useRef<HTMLAudioElement>(null);
   const sessionCompleteRef = useRef<HTMLAudioElement>(null);
 
+  // Add audio context and gain node refs
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const musicGainNodeRef = useRef<GainNode | null>(null);
+  const effectsGainNodeRef = useRef<GainNode | null>(null);
+  const connectedElementsRef = useRef<Set<HTMLAudioElement>>(new Set());
+
   // Add state for volume control
   const [masterVolume, setMasterVolume] = useState(() => {
     const savedSettings = localStorage.getItem("duel-learn-audio-settings");
@@ -110,6 +116,199 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
   });
 
   const [isAudioInitialized, setIsAudioInitialized] = useState(false);
+
+  // Initialize audio context and gain nodes
+  useEffect(() => {
+    console.log("[Audio] Starting audio context initialization");
+    // Create audio context if it doesn't exist
+    if (!audioContextRef.current) {
+      console.log("[Audio] Creating new AudioContext");
+      audioContextRef.current = new AudioContext();
+    }
+
+    // Create gain nodes if they don't exist
+    if (!musicGainNodeRef.current) {
+      console.log("[Audio] Creating music gain node");
+      musicGainNodeRef.current = audioContextRef.current.createGain();
+      musicGainNodeRef.current.connect(audioContextRef.current.destination);
+    }
+    if (!effectsGainNodeRef.current) {
+      console.log("[Audio] Creating effects gain node");
+      effectsGainNodeRef.current = audioContextRef.current.createGain();
+      effectsGainNodeRef.current.connect(audioContextRef.current.destination);
+    }
+
+    // Connect audio elements to gain nodes if not already connected
+    const connectAudioElement = (element: HTMLAudioElement | null, gainNode: GainNode) => {
+      if (!element || connectedElementsRef.current.has(element)) return;
+      
+      try {
+        console.log("[Audio] Connecting audio element to gain node");
+        const source = audioContextRef.current!.createMediaElementSource(element);
+        source.connect(gainNode);
+        connectedElementsRef.current.add(element);
+      } catch (error) {
+        console.error("[Audio] Error connecting audio element:", error);
+      }
+    };
+
+    // Connect background music
+    if (backgroundMusicRef.current) {
+      console.log("[Audio] Connecting background music");
+      connectAudioElement(backgroundMusicRef.current, musicGainNodeRef.current);
+    }
+
+    // Connect sound effects
+    const soundRefs = [
+      correctAnswerSoundRef.current,
+      incorrectAnswerSoundRef.current,
+      sessionIncompleteRef.current,
+      sessionCompleteRef.current
+    ].filter(Boolean);
+
+    soundRefs.forEach(ref => {
+      if (ref) {
+        console.log("[Audio] Connecting sound effect");
+        connectAudioElement(ref, effectsGainNodeRef.current!);
+      }
+    });
+
+    return () => {
+      console.log("[Audio] Cleaning up audio context");
+      // Cleanup when component unmounts
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      musicGainNodeRef.current = null;
+      effectsGainNodeRef.current = null;
+      connectedElementsRef.current.clear();
+    };
+  }, []);
+
+  // Update audio volumes when sliders change
+  useEffect(() => {
+    if (!audioContextRef.current || !musicGainNodeRef.current || !effectsGainNodeRef.current) {
+      console.log("[Audio] Cannot update volumes - audio context or gain nodes not initialized");
+      return;
+    }
+
+    console.log("[Audio] Updating audio volumes:", {
+      master: masterVolume,
+      music: musicVolume,
+      effects: soundEffectsVolume
+    });
+
+    // Calculate actual volumes by applying master volume percentage
+    const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
+    const actualSoundEffectsVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
+
+    // Update gain nodes
+    musicGainNodeRef.current.gain.value = actualMusicVolume;
+    effectsGainNodeRef.current.gain.value = actualSoundEffectsVolume;
+
+    // Store the current volume settings in localStorage for persistence
+    localStorage.setItem('duel-learn-audio-settings', JSON.stringify({
+      master: masterVolume,
+      music: musicVolume,
+      effects: soundEffectsVolume
+    }));
+  }, [masterVolume, musicVolume, soundEffectsVolume]);
+
+  // Add audio elements to the component
+  useEffect(() => {
+    // Only initialize audio after questions are loaded
+    if (!aiQuestions || aiQuestions.length === 0) {
+      console.log("[Audio] Skipping audio initialization - questions not loaded yet");
+      return;
+    }
+
+    console.log("[Audio] Setting up audio elements");
+    // Create and configure audio elements
+    if (backgroundMusicRef.current) {
+      console.log("[Audio] Setting background music source to peaceful-mode.mp3");
+      backgroundMusicRef.current.src = "/sounds-sfx/peaceful-mode.mp3";
+      backgroundMusicRef.current.loop = true; // Music should loop
+
+      // Add event listeners for debugging
+      backgroundMusicRef.current.addEventListener('loadeddata', () => {
+        console.log("[Audio] Background music loaded successfully");
+      });
+      
+      backgroundMusicRef.current.addEventListener('play', () => {
+        console.log("[Audio] Background music started playing");
+      });
+      
+      backgroundMusicRef.current.addEventListener('error', (e) => {
+        console.error("[Audio] Error with background music:", e);
+      });
+    }
+
+    const soundEffects = [
+      { ref: correctAnswerSoundRef, src: "/sounds-sfx/right-answer.mp3" },
+      { ref: incorrectAnswerSoundRef, src: "/sounds-sfx/wrong-answer.mp3" },
+      { ref: sessionIncompleteRef, src: "/sounds-sfx/session-incomplete.wav" },
+      {
+        ref: sessionCompleteRef,
+        src: "/sounds-sfx/session_report_completed.mp3",
+      },
+    ];
+
+    // Configure sound effects
+    soundEffects.forEach(({ ref, src }) => {
+      if (ref.current) {
+        console.log(`[Audio] Setting sound effect source to ${src}`);
+        ref.current.src = src;
+      }
+    });
+
+    // Start playing background music when component mounts
+    const startAudioPlayback = async () => {
+      if (!backgroundMusicRef.current) return;
+
+      try {
+        // Ensure audio context is running
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          console.log("[Audio] Resuming suspended audio context");
+          await audioContextRef.current.resume();
+        }
+
+        // Set initial volume
+        if (musicGainNodeRef.current) {
+          const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
+          musicGainNodeRef.current.gain.value = actualMusicVolume;
+        }
+
+        console.log("[Audio] Attempting to play background music");
+        await backgroundMusicRef.current.play();
+        console.log("[Audio] Background music playback started successfully");
+      } catch (error) {
+        console.error("[Audio] Error playing background music:", error);
+      }
+    };
+
+    // Start audio playback
+    startAudioPlayback();
+
+    // Cleanup function to stop all sounds when component unmounts
+    return () => {
+      console.log("[Audio] Cleaning up audio elements");
+      const allRefs = [
+        backgroundMusicRef,
+        correctAnswerSoundRef,
+        incorrectAnswerSoundRef,
+        sessionIncompleteRef,
+        sessionCompleteRef,
+      ];
+
+      allRefs.forEach((ref) => {
+        if (ref.current) {
+          ref.current.pause();
+          ref.current.currentTime = 0;
+        }
+      });
+    };
+  }, [aiQuestions, masterVolume, musicVolume]); // Add dependencies to re-run when questions are loaded or volumes change
 
   // Generate AI questions when component mounts
   useEffect(() => {
@@ -535,153 +734,6 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 
   const [startTime] = useState(new Date());
 
-  // Add audio elements to the component
-  useEffect(() => {
-    // Create and configure audio elements
-    if (backgroundMusicRef.current) {
-      backgroundMusicRef.current.src = "/sounds-sfx/peaceful-mode.mp3";
-      backgroundMusicRef.current.loop = true; // Music should loop
-      // Set initial volume
-      const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
-      backgroundMusicRef.current.volume = actualMusicVolume;
-    }
-
-    const soundEffects = [
-      { ref: correctAnswerSoundRef, src: "/sounds-sfx/right-answer.mp3" },
-      { ref: incorrectAnswerSoundRef, src: "/sounds-sfx/wrong-answer.mp3" },
-      { ref: sessionIncompleteRef, src: "/sounds-sfx/session-incomplete.wav" },
-      {
-        ref: sessionCompleteRef,
-        src: "/sounds-sfx/session_report_completed.mp3",
-      },
-    ];
-
-    // Configure sound effects
-    soundEffects.forEach(({ ref, src }) => {
-      if (ref.current) {
-        ref.current.src = src;
-        const actualVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
-        ref.current.volume = actualVolume;
-      }
-    });
-
-    // Start playing background music when component mounts
-    if (backgroundMusicRef.current) {
-      backgroundMusicRef.current.play().catch((error) => {
-        console.log("Audio autoplay was prevented:", error);
-      });
-    }
-
-    // Cleanup function to stop all sounds when component unmounts
-    return () => {
-      const allRefs = [
-        backgroundMusicRef,
-        correctAnswerSoundRef,
-        incorrectAnswerSoundRef,
-        sessionIncompleteRef,
-        sessionCompleteRef,
-      ];
-
-      allRefs.forEach((ref) => {
-        if (ref.current) {
-          ref.current.pause();
-          ref.current.currentTime = 0;
-        }
-      });
-    };
-  }, [masterVolume, musicVolume, soundEffectsVolume]);
-
-  // Custom answer submit handler with sound effects
-  const handleAnswerSubmit = (answer: string) => {
-    let isAnswerCorrect = false;
-
-    if (!currentQuestion) {
-      console.error("Missing question:", currentQuestion);
-      return;
-    }
-
-    // Get correct answer - with fallbacks
-    let correctAnswer = currentQuestion.correctAnswer || currentQuestion.answer;
-
-    // Handle special case for multiple-choice: correctAnswer might be in format "A. term"
-    if (
-      currentQuestion.questionType === "multiple-choice" &&
-      typeof correctAnswer === "string" &&
-      correctAnswer.includes(". ")
-    ) {
-      // Extract just the term part after the letter
-      const answerParts = correctAnswer.split(". ");
-      if (answerParts.length > 1) {
-        correctAnswer = answerParts.slice(1).join(". ").trim();
-        console.log(
-          `Using extracted multiple-choice answer: "${correctAnswer}"`
-        );
-      }
-    }
-
-    // Multi-stage fallback for correct answer
-    if (!correctAnswer && currentQuestion.itemInfo?.term) {
-      correctAnswer = currentQuestion.itemInfo.term;
-      console.log(`Using term as fallback answer: "${correctAnswer}"`);
-    }
-
-    if (!correctAnswer) {
-      console.error("No correct answer found for question:", currentQuestion);
-      return;
-    }
-
-    // Safe string conversion and comparison
-    const answerString = String(answer || "")
-      .toLowerCase()
-      .trim();
-    const correctAnswerString = String(correctAnswer || "")
-      .toLowerCase()
-      .trim();
-
-    console.log(
-      `Comparing answer "${answerString}" with correct answer "${correctAnswerString}"`
-    );
-    isAnswerCorrect = answerString === correctAnswerString;
-
-    // Play appropriate sound using AudioContext functions
-    if (isAnswerCorrect) {
-      playCorrectAnswerSound();
-      // Also play the local sound as a fallback
-      if (correctAnswerSoundRef.current) {
-        correctAnswerSoundRef.current.play().catch((error) => {
-          console.log("Error playing correct answer sound:", error);
-        });
-      }
-    } else {
-      playIncorrectAnswerSound();
-      // Also play the local sound as a fallback
-      if (incorrectAnswerSoundRef.current) {
-        incorrectAnswerSoundRef.current.play().catch((error) => {
-          console.log("Error playing incorrect answer sound:", error);
-        });
-      }
-    }
-
-    // Call the original handler
-    originalHandleAnswerSubmit(answer);
-  };
-
-  // Add keyboard event listener
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (showResult && isCorrect) {
-        if (event.key === "ArrowLeft") {
-          handleMastered();
-        } else if (event.key === "ArrowRight") {
-          handleUnmastered();
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [showResult, isCorrect, handleMastered, handleUnmastered]);
-
   // Update the handleEndGame function
   const handleEndGame = async () => {
     console.log("Handling early game end in peaceful mode...");
@@ -1099,6 +1151,81 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
           </div>
         );
     }
+  };
+
+  // Add handleAnswerSubmit function
+  const handleAnswerSubmit = (answer: string) => {
+    let isAnswerCorrect = false;
+
+    if (!currentQuestion) {
+      console.error("Missing question:", currentQuestion);
+      return;
+    }
+
+    // Get correct answer - with fallbacks
+    let correctAnswer = currentQuestion.correctAnswer || currentQuestion.answer;
+
+    // Handle special case for multiple-choice: correctAnswer might be in format "A. term"
+    if (
+      currentQuestion.questionType === "multiple-choice" &&
+      typeof correctAnswer === "string" &&
+      correctAnswer.includes(". ")
+    ) {
+      // Extract just the term part after the letter
+      const answerParts = correctAnswer.split(". ");
+      if (answerParts.length > 1) {
+        correctAnswer = answerParts.slice(1).join(". ").trim();
+        console.log(
+          `Using extracted multiple-choice answer: "${correctAnswer}"`
+        );
+      }
+    }
+
+    // Multi-stage fallback for correct answer
+    if (!correctAnswer && currentQuestion.itemInfo?.term) {
+      correctAnswer = currentQuestion.itemInfo.term;
+      console.log(`Using term as fallback answer: "${correctAnswer}"`);
+    }
+
+    if (!correctAnswer) {
+      console.error("No correct answer found for question:", currentQuestion);
+      return;
+    }
+
+    // Safe string conversion and comparison
+    const answerString = String(answer || "")
+      .toLowerCase()
+      .trim();
+    const correctAnswerString = String(correctAnswer || "")
+      .toLowerCase()
+      .trim();
+
+    console.log(
+      `Comparing answer "${answerString}" with correct answer "${correctAnswerString}"`
+    );
+    isAnswerCorrect = answerString === correctAnswerString;
+
+    // Play appropriate sound using AudioContext functions
+    if (isAnswerCorrect) {
+      playCorrectAnswerSound();
+      // Also play the local sound as a fallback
+      if (correctAnswerSoundRef.current) {
+        correctAnswerSoundRef.current.play().catch((error) => {
+          console.log("Error playing correct answer sound:", error);
+        });
+      }
+    } else {
+      playIncorrectAnswerSound();
+      // Also play the local sound as a fallback
+      if (incorrectAnswerSoundRef.current) {
+        incorrectAnswerSoundRef.current.play().catch((error) => {
+          console.log("Error playing incorrect answer sound:", error);
+        });
+      }
+    }
+
+    // Call the original handler
+    originalHandleAnswerSubmit(answer);
   };
 
   return (

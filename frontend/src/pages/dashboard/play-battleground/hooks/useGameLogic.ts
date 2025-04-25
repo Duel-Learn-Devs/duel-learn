@@ -435,7 +435,15 @@ export const useGameLogic = ({
           if (prev === null || prev <= 0) {
             clearInterval(timer);
             if (!showResult) {
+              // Mark the current question as incorrect
+              if (currentQuestion) {
+                currentQuestion.isCorrect = false;
+              }
+              // Submit empty answer to trigger incorrect result
               handleAnswerSubmit("");
+              // Show the next question button
+              setShowResult(true);
+              setShowNextButton(true);
             }
             return 0;
           }
@@ -447,7 +455,7 @@ export const useGameLogic = ({
     }
 
     return () => clearInterval(timer);
-  }, [currentQuestionIndex, timeLimit, showResult, mode, isGameReady]);
+  }, [currentQuestionIndex, timeLimit, showResult, mode, isGameReady, currentQuestion]);
 
   const handleAnswerSubmit = (answer: string) => {
     if (showResult || !currentQuestion) return;

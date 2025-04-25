@@ -2658,4 +2658,78 @@ export const deductLeaverXP = async (req, res) => {
     }
 };
 
+// Add new function to fetch stored questions
+export const getStoredBattleQuestions = async (req, res) => {
+    try {
+        const { studyMaterialId } = req.params;
+        const { game_mode, player_type } = req.query;
+
+        if (!studyMaterialId || !game_mode) {
+            return res.status(400).json({
+                success: false,
+                error: "Missing required parameters"
+            });
+        }
+
+        const { pool } = await import("../config/db.js");
+
+        // Fetch questions from generated_material table
+        const [questions] = await pool.query(
+            `SELECT 
+                id,
+                study_material_id,
+                item_id,
+                item_number,
+                term,
+                definition,
+                question_type as type,
+                question,
+                answer as correctAnswer,
+                choices,
+                game_mode
+            FROM generated_material 
+            WHERE study_material_id = ? 
+            AND game_mode = ?`,
+            [studyMaterialId, game_mode]
+        );
+
+        if (!questions || questions.length === 0) {
+            return res.json({
+                success: false,
+                message: "No stored questions found"
+            });
+        }
+
+        // Process questions to match frontend expected format
+        const processedQuestions = questions.map(q => ({
+            id: q.id,
+            study_material_id: q.study_material_id,
+            type: q.type,
+            questionType: q.type,
+            question: q.question,
+            correctAnswer: q.correctAnswer,
+            answer: q.correctAnswer,
+            options: q.choices ? JSON.parse(q.choices) : undefined,
+            itemInfo: {
+                term: q.term,
+                definition: q.definition,
+                itemId: q.item_id,
+                itemNumber: q.item_number
+            }
+        }));
+
+        return res.json({
+            success: true,
+            data: processedQuestions
+        });
+
+    } catch (error) {
+        console.error("Error fetching stored questions:", error);
+        return res.status(500).json({
+            success: false,
+            error: "Failed to fetch stored questions"
+        });
+    }
+};
+
 

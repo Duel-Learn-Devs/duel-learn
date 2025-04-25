@@ -149,6 +149,22 @@ interface UpdateRoundResponse {
   data?: any;
 }
 
+// Add new interfaces for stored questions response
+interface StoredQuestionsResponse {
+  success: boolean;
+  message?: string;
+  data?: Question[];
+  error?: string;
+}
+
+// Add new interfaces for API responses
+interface GeneratedQuestionsResponse {
+  success: boolean;
+  message?: string;
+  data?: Question[];
+  error?: string;
+}
+
 /**
  * PvpBattle component - Main battle screen for player vs player mode
  */
@@ -1867,9 +1883,32 @@ export default function PvpBattle() {
         try {
           dispatchQuestionGen({ type: "START_GENERATION" });
 
-          const { data } = await axios.post<GenerateQuestionsResponse>(
-            `${import.meta.env.VITE_BACKEND_URL
-            }/api/gameplay/battle/generate-questions`,
+          // First, try to fetch existing questions from the database
+          const response = await axios.get<StoredQuestionsResponse>(
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/stored-questions/${studyMaterialId}`,
+            {
+              params: {
+                game_mode: 'battle',
+                player_type: isHost ? 'host' : 'guest'
+              }
+            }
+          );
+
+          const existingQuestionsData = response.data as StoredQuestionsResponse;
+
+          if (existingQuestionsData.success && existingQuestionsData.data?.length > 0) {
+            // If we have stored questions, use them
+            console.log('Using stored questions:', existingQuestionsData.data.length);
+            dispatchQuestionGen({
+              type: "GENERATION_SUCCESS",
+              questions: existingQuestionsData.data,
+            });
+            return;
+          }
+
+          // If no stored questions found, generate new ones
+          const generatedResponse = await axios.post<GeneratedQuestionsResponse>(
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/generate-questions`,
             {
               session_uuid: battleState.session_uuid,
               study_material_id: studyMaterialId,
@@ -1879,19 +1918,21 @@ export default function PvpBattle() {
             }
           );
 
-          if (data?.success && data.data) {
+          const generatedQuestionsData = generatedResponse.data as GeneratedQuestionsResponse;
+
+          if (generatedQuestionsData.success && generatedQuestionsData.data) {
             dispatchQuestionGen({
               type: "GENERATION_SUCCESS",
-              questions: data.data,
+              questions: generatedQuestionsData.data,
             });
           }
         } catch (error) {
-          console.error("Error generating questions:", error);
+          console.error("Error generating/fetching questions:", error);
           dispatchQuestionGen({
             type: "GENERATION_ERROR",
-            error: "Failed to generate questions. Please try again.",
+            error: "Failed to generate/fetch questions. Please try again.",
           });
-          toast.error("Failed to generate questions. Please try again.");
+          toast.error("Failed to generate/fetch questions. Please try again.");
         }
       }
     };

@@ -96,32 +96,14 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   const sessionCompleteRef = useRef<HTMLAudioElement>(null);
 
   // Add volume control state
-  const [masterVolume, setMasterVolume] = useState(() => {
-    const savedSettings = localStorage.getItem("duel-learn-audio-settings");
-    if (savedSettings) {
-      const { master } = JSON.parse(savedSettings);
-      return master || 100;
-    }
-    return 100;
-  });
+  const [masterVolume, setMasterVolume] = useState(100);
+  const [musicVolume, setMusicVolume] = useState(100);
+  const [soundEffectsVolume, setSoundEffectsVolume] = useState(100);
 
-  const [musicVolume, setMusicVolume] = useState(() => {
-    const savedSettings = localStorage.getItem("duel-learn-audio-settings");
-    if (savedSettings) {
-      const { music } = JSON.parse(savedSettings);
-      return music || 100;
-    }
-    return 100;
-  });
-
-  const [soundEffectsVolume, setSoundEffectsVolume] = useState(() => {
-    const savedSettings = localStorage.getItem("duel-learn-audio-settings");
-    if (savedSettings) {
-      const { effects } = JSON.parse(savedSettings);
-      return effects || 100;
-    }
-    return 100;
-  });
+  // Add audio context and gain nodes
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const musicGainNodeRef = useRef<GainNode | null>(null);
+  const effectsGainNodeRef = useRef<GainNode | null>(null);
 
   // 4. Fix whitespace and case sensitivity
   const normalizedMode = String(mode).trim();
@@ -188,28 +170,229 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
   // Initialize audio after questions are loaded
   useEffect(() => {
-    const initializeAudio = async () => {
-      if (aiQuestions.length > 0 && !isAudioInitialized) {
-        try {
-          await playTimePressuredAudio(30);
-          setIsAudioInitialized(true);
-        } catch (error) {
-          console.error("Error initializing time pressured audio:", error);
-          setTimeout(() => {
-            setIsAudioInitialized(false);
-          }, 1000);
+    if (!aiQuestions || aiQuestions.length === 0) {
+      console.log("[Audio] Skipping audio initialization - questions not loaded yet");
+      return;
+    }
+
+    console.log("[Audio] Starting audio context initialization");
+    // Create audio context if it doesn't exist
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      console.log("[Audio] Created new AudioContext");
+    }
+
+    // Create gain nodes if they don't exist
+    if (!musicGainNodeRef.current) {
+      musicGainNodeRef.current = audioContextRef.current.createGain();
+      musicGainNodeRef.current.connect(audioContextRef.current.destination);
+      console.log("[Audio] Created music gain node");
+    }
+
+    if (!effectsGainNodeRef.current) {
+      effectsGainNodeRef.current = audioContextRef.current.createGain();
+      effectsGainNodeRef.current.connect(audioContextRef.current.destination);
+      console.log("[Audio] Created effects gain node");
+    }
+
+    // Update audio volumes
+    if (musicGainNodeRef.current) {
+      const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
+      musicGainNodeRef.current.gain.value = actualMusicVolume;
+      console.log("[Audio] Updated music volume:", { master: masterVolume, music: musicVolume, actual: actualMusicVolume });
+    }
+
+    if (effectsGainNodeRef.current) {
+      const actualEffectsVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
+      effectsGainNodeRef.current.gain.value = actualEffectsVolume;
+      console.log("[Audio] Updated effects volume:", { master: masterVolume, effects: soundEffectsVolume, actual: actualEffectsVolume });
+    }
+
+    // Set up audio elements
+    console.log("[Audio] Setting up audio elements");
+    if (backgroundMusicRef.current) {
+      console.log("[Audio] Setting background music source to time-pressured.mp3");
+      backgroundMusicRef.current.src = "/sounds-sfx/time-pressured.mp3";
+      backgroundMusicRef.current.loop = true;
+
+      // Add event listeners for debugging
+      backgroundMusicRef.current.addEventListener('loadeddata', () => {
+        console.log("[Audio] Background music loaded successfully");
+      });
+      
+      backgroundMusicRef.current.addEventListener('play', () => {
+        console.log("[Audio] Background music started playing");
+      });
+      
+      backgroundMusicRef.current.addEventListener('error', (e) => {
+        console.error("[Audio] Error with background music:", e);
+      });
+    }
+
+    if (speedUpMusicRef.current) {
+      console.log("[Audio] Setting speed-up music source to time-pressured-speed-up.mp3");
+      speedUpMusicRef.current.src = "/sounds-sfx/time-pressured-speed-up.mp3";
+      speedUpMusicRef.current.loop = true;
+
+      // Add event listeners for debugging
+      speedUpMusicRef.current.addEventListener('loadeddata', () => {
+        console.log("[Audio] Speed-up music loaded successfully");
+      });
+      
+      speedUpMusicRef.current.addEventListener('play', () => {
+        console.log("[Audio] Speed-up music started playing");
+      });
+      
+      speedUpMusicRef.current.addEventListener('error', (e) => {
+        console.error("[Audio] Error with speed-up music:", e);
+      });
+    }
+
+    const soundEffects = [
+      { ref: correctAnswerSoundRef, src: "/sounds-sfx/right-answer.mp3" },
+      { ref: incorrectAnswerSoundRef, src: "/sounds-sfx/wrong-answer.mp3" },
+      { ref: sessionIncompleteRef, src: "/sounds-sfx/session-incomplete.wav" },
+      { ref: sessionCompleteRef, src: "/sounds-sfx/session_report_completed.mp3" },
+    ];
+
+    // Configure sound effects
+    soundEffects.forEach(({ ref, src }) => {
+      if (ref.current) {
+        console.log(`[Audio] Setting sound effect source to ${src}`);
+        ref.current.src = src;
+      }
+    });
+
+    // Start playing background music when component mounts
+    const startAudioPlayback = async () => {
+      if (!backgroundMusicRef.current) return;
+
+      try {
+        // Ensure audio context is running
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          console.log("[Audio] Resuming suspended audio context");
+          await audioContextRef.current.resume();
         }
+
+        // Set initial volume
+        if (musicGainNodeRef.current) {
+          const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
+          musicGainNodeRef.current.gain.value = actualMusicVolume;
+        }
+
+        // Only start playing if not already playing
+        if (backgroundMusicRef.current.paused) {
+          console.log("[Audio] Attempting to play background music");
+          await backgroundMusicRef.current.play();
+          console.log("[Audio] Background music playback started successfully");
+        } else {
+          console.log("[Audio] Background music already playing");
+        }
+      } catch (error) {
+        console.error("[Audio] Error playing background music:", error);
       }
     };
-    initializeAudio();
-  }, [aiQuestions.length, playTimePressuredAudio, isAudioInitialized]);
 
-  // Cleanup audio when component unmounts
-  useEffect(() => {
+    // Start audio playback
+    startAudioPlayback();
+
+    // Cleanup function to stop all sounds when component unmounts
     return () => {
-      setIsAudioInitialized(false);
+      console.log("[Audio] Cleaning up audio elements");
+      const allRefs = [
+        backgroundMusicRef,
+        speedUpMusicRef,
+        correctAnswerSoundRef,
+        incorrectAnswerSoundRef,
+        sessionIncompleteRef,
+        sessionCompleteRef,
+      ];
+
+      allRefs.forEach((ref) => {
+        if (ref.current) {
+          ref.current.pause();
+          ref.current.currentTime = 0;
+        }
+      });
+
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      musicGainNodeRef.current = null;
+      effectsGainNodeRef.current = null;
     };
-  }, []);
+  }, [aiQuestions, masterVolume, musicVolume, soundEffectsVolume]);
+
+  // Audio switching logic
+  useEffect(() => {
+    if (!backgroundMusicRef.current || !speedUpMusicRef.current) return;
+
+    const switchToSpeedUpMusic = async () => {
+      try {
+        // First pause and reset the normal music
+        if (backgroundMusicRef.current) {
+          backgroundMusicRef.current.pause();
+          backgroundMusicRef.current.currentTime = 0;
+        }
+        
+        // Then start the speed-up music
+        if (speedUpMusicRef.current) {
+          await speedUpMusicRef.current.play();
+          console.log("[Audio] Successfully switched to speed-up music");
+        }
+      } catch (error) {
+        console.error("[Audio] Error switching to speed-up music:", error);
+      }
+    };
+
+    const switchToNormalMusic = async () => {
+      try {
+        // First pause and reset the speed-up music
+        if (speedUpMusicRef.current) {
+          speedUpMusicRef.current.pause();
+          speedUpMusicRef.current.currentTime = 0;
+        }
+        
+        // Then start the normal music
+        if (backgroundMusicRef.current) {
+          await backgroundMusicRef.current.play();
+          console.log("[Audio] Successfully switched to normal music");
+        }
+      } catch (error) {
+        console.error("[Audio] Error switching to normal music:", error);
+      }
+    };
+
+    if (questionTimer <= 5) {
+      console.log("[Audio] Switching to speed-up music");
+      switchToSpeedUpMusic();
+    } else {
+      console.log("[Audio] Switching to normal music");
+      switchToNormalMusic();
+    }
+  }, [questionTimer]);
+
+  // Update audio volumes when they change
+  useEffect(() => {
+    if (!audioContextRef.current || !musicGainNodeRef.current || !effectsGainNodeRef.current) return;
+
+    // Calculate actual volumes by applying master volume percentage
+    const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
+    const actualSoundEffectsVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
+
+    // Update gain nodes
+    musicGainNodeRef.current.gain.value = actualMusicVolume;
+    effectsGainNodeRef.current.gain.value = actualSoundEffectsVolume;
+
+    console.log("[Audio] Updated volumes:", {
+      master: masterVolume,
+      music: musicVolume,
+      effects: soundEffectsVolume,
+      actualMusic: actualMusicVolume,
+      actualEffects: actualSoundEffectsVolume
+    });
+  }, [masterVolume, musicVolume, soundEffectsVolume]);
 
   // Generate AI questions
   useEffect(() => {
@@ -534,29 +717,27 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     }
   }, [questionTimer, playTimePressuredAudio]);
 
-  // Handle speed-up music based on timer
+  // Deduct mana when the game starts
   useEffect(() => {
-    if (questionTimer !== null) {
-      const isSpeedUpThreshold = questionTimer <= 5;
-
-      if (isSpeedUpThreshold) {
-        if (backgroundMusicRef.current) {
-          backgroundMusicRef.current.pause();
-        }
-        if (speedUpMusicRef.current) {
-          speedUpMusicRef.current.play().catch(console.error);
-        }
-      } else {
-        if (speedUpMusicRef.current) {
-          speedUpMusicRef.current.pause();
-          speedUpMusicRef.current.currentTime = 0;
-        }
-        if (backgroundMusicRef.current) {
-          backgroundMusicRef.current.play().catch(console.error);
+    const deductMana = async () => {
+      if (!manaAlreadyDeducted) {
+        setManaAlreadyDeducted(true);
+        try {
+          const manaResponse = await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
+            {
+              firebase_uid: user.firebase_uid,
+            }
+          );
+        } catch (error) {
+          setManaAlreadyDeducted(false);
+          console.error("Error reducing mana:", error);
         }
       }
-    }
-  }, [questionTimer]);
+    };
+
+    deductMana();
+  }, [manaAlreadyDeducted, user.firebase_uid]);
 
   // Deduct mana when the game starts
   useEffect(() => {
