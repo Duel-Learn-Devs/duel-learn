@@ -1,28 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Box, Fab } from "@mui/material";
 import CardComponent from "../../../components/CardComponent";
 import NextIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
-
-type CardData = {
-  title: string;
-  description: string;
-  tags: string[];
-  creator: string;
-};
+import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 const RecentlyOpened = () => {
-  const [cards, setCards] = useState<CardData[]>([]);
+  const [cards, _setCards] = useState<StudyMaterial[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardsToShow = 3; // Number of cards to display at once
   const cardWidth = 100 / cardsToShow; // Each card takes a fraction of the total width
-
-  useEffect(() => {
-    fetch("/mock-data/StudyMaterialDetails.json")
-      .then((response) => response.json())
-      .then((data: CardData[]) => setCards(data))
-      .catch((error) => console.error("Error fetching cards data:", error));
-  }, []);
 
   const handleNext = () => {
     if (currentIndex + cardsToShow < cards.length) {
@@ -46,8 +33,9 @@ const RecentlyOpened = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "20rem",
+        height: "auto",
         overflow: "hidden",
+        paddingY: "1rem",
       }}
     >
       <Box
@@ -65,9 +53,17 @@ const RecentlyOpened = () => {
           >
             <CardComponent
               title={item.title}
-              description={item.description}
+              totalItems={item.total_items}
               tags={item.tags}
-              creator={item.creator}
+              createdBy={item.created_by}
+              createdById={item.created_by_id}
+              totalViews={item.total_views}
+              createdAt={item.updated_at}
+              updatedAt={item.updated_at}
+              images={item.images}
+              status={item.status}
+              visibility={item.visibility}
+              items={[]} // Provide appropriate value
             />
           </Box>
         ))}
@@ -84,6 +80,7 @@ const RecentlyOpened = () => {
           opacity: isPrevDisabled ? 0 : 1, // Hide when disabled
           pointerEvents: isPrevDisabled ? "none" : "auto", // Disable interactions when not visible
           backgroundColor: "transparent",
+          transition: "all 0.3s ease", // Smooth transition for visibility
           "& .MuiSvgIcon-root": {
             color: "#3B354D",
           },

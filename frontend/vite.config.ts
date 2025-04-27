@@ -5,4 +5,7 @@ import svgr from "vite-plugin-svgr";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), svgr()],
+  define: {
+    "process.env": {}, // Prevent "process is not defined" error
+  },
 });

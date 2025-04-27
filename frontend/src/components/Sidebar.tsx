@@ -1,10 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Box,
   Button,
   Fab,
   Tooltip,
-  IconButton,
   Typography,
   Stack,
   List,
@@ -17,10 +16,18 @@ import {
 import clsx from "clsx";
 import AddIcon from "@mui/icons-material/Add";
 import PlayIcon from "@mui/icons-material/PlayArrowRounded";
-import ArrowBackIcon from "@mui/icons-material/ArrowBackIosNewRounded";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForwardIosRounded";
-import { useNavigate } from "react-router-dom";
-import ChooseModeModal from "./modals/ChooseModeModal"; // Import the modal component
+import MenuOpenIcon from "@mui/icons-material/MenuOpenRounded";
+
+import { useNavigate, useLocation } from "react-router-dom";
+import ChooseModeModal from "./modals/ChooseModeModal";
+import { useUser } from "../contexts/UserContext";
+import { auth } from "../services/firebase";
+import { signOut } from "firebase/auth";
+
+interface SidebarProps {
+  selectedIndex: number | null;
+  setSelectedIndex: React.Dispatch<React.SetStateAction<number | null>>;
+}
 
 const menuItems = [
   {
@@ -50,30 +57,44 @@ const menuItems = [
   },
 ];
 
-export default function Sidebar() {
+const Sidebar: React.FC<SidebarProps> = ({
+  selectedIndex,
+  setSelectedIndex,
+}) => {
   const navigate = useNavigate();
-  const [selectedIndex, setSelectedIndex] = React.useState<number | null>(0);
+  const location = useLocation();
   const [collapsed, setCollapsed] = React.useState(false);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
-  const [fromCreate, setFromCreate] = React.useState(false); // Tracks if navigation came from Create button
+  const [openModal, setOpenModal] = React.useState(false);
+  const { setUser } = useUser();
 
-  const [openModal, setOpenModal] = React.useState(false); // Modal state
+  const handleLandingPage = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem("userToken");
+      localStorage.removeItem("userData");
+      setUser(null);
+      navigate("/landing-page");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
+
   const handleModalOpen = () => setOpenModal(true);
   const handleModalClose = () => setOpenModal(false);
 
   const handleItemClick = (index: number, path: string) => {
-    setSelectedIndex(index);
-    setCollapsed(fromCreate ? false : collapsed); // Uncollapse if navigation came from Create button
-    setFromCreate(false); // Reset the Create navigation state
-    navigate(path);
+    if (selectedIndex !== index) {
+      setSelectedIndex(index);
+      navigate(path);
+    }
   };
 
   const toggleCollapse = () => setCollapsed(!collapsed);
 
   const handleCreateStudyMaterial = () => {
-    setSelectedIndex(null); // Deselect the list items
-    setFromCreate(true); // Mark that navigation originated from Create button
-    setCollapsed(true); // Collapse the sidebar
+    setSelectedIndex(null);
+    setCollapsed(true);
     navigate("/dashboard/study-material/create");
   };
 
@@ -90,28 +111,42 @@ export default function Sidebar() {
         sx={{
           textTransform: "none",
           borderRadius: "0.8rem",
-          padding: "0.6rem 2rem",
+          padding: collapsed ? "0.6rem" : "0.6rem 1rem", // Change from vw to rem
           display: "flex",
-          width: "full",
+          width: "100%",
           justifyContent: "center",
           alignItems: "center",
-          ...(variant === "contained" && { backgroundColor: "#4D18E8" }),
+          transition: "all 0.3s ease-in-out",
+          ...(variant === "contained" && {
+            backgroundColor: "#4D18E8",
+            borderWidth: "2px",
+          }),
           ...(variant === "outlined" && {
             borderColor: "#E2DDF3",
+            borderWidth: "2px",
             color: "#E2DDF3",
           }),
+          "&:hover": {
+            transform: "scale(1.05)",
+          },
+          "& .MuiSvgIcon-root": {
+            fontSize: "1.3rem", // Change from clamp to rem
+            margin: collapsed ? "0 auto" : "0",
+          },
         }}
       >
         {icon}
         <Typography
           variant="subtitle1"
           className={clsx("transition-all duration-100", {
-            "opacity-0 w-auto": collapsed,
-            "opacity-100 w-auto": !collapsed,
+            "opacity-0 w-0 absolute pointer-events-none": collapsed,
+            "opacity-100 ": !collapsed,
           })}
           sx={{
             whiteSpace: "nowrap",
             overflow: "hidden",
+            fontSize: "0.875rem", // Change from clamp to rem
+            marginLeft: collapsed ? 0 : "0.5rem", // Add marginLeft for spacing
           }}
         >
           {text}
@@ -120,94 +155,124 @@ export default function Sidebar() {
     </Tooltip>
   );
 
+  useEffect(() => {
+    console.log("Current Path:", location.pathname);
+    const index = menuItems.findIndex(
+      (item) => item.path === location.pathname
+    );
+    setSelectedIndex(index !== -1 ? index : null);
+    window.scrollTo(0, 0); // Scroll to the top when the path changes
+  }, [location.pathname]);
+
   return (
-    <Box style={{ display: "flex", position: "relative" }}>
+    <Box
+      style={{
+        display: "flex",
+        position: "relative",
+        height: "100vh",
+      }}
+    >
       <Stack
-        className="h-full w-full pl-2 mx-2  py-12 flex flex-col justify-between"
+        className="h-full w-full flex flex-col justify-between"
         spacing={2}
         sx={{
-          width: collapsed ? "5.5rem" : "16rem",
-          transition: "width 0.35s",
+          width: collapsed ? "5rem" : "14rem", // Change from vw to rem
+          minWidth: collapsed ? "4rem" : "12rem",
+          maxWidth: collapsed ? "6rem" : "18rem",
+          paddingY: "4rem",
+          paddingX: "0.5rem",
+          marginLeft: collapsed ? 0 : "0.3rem", // Change from vw to rem
+          transition: "all 0.35s ease",
         }}
       >
         <Stack spacing={3} className="flex">
-          <Stack direction="row" className="flex items-center" spacing={2}>
-            <IconButton
-              aria-label="navigate to landing page"
-              onClick={() => navigate("/landing-page")}
+          <Stack direction="row" className="flex items-center pb-2" spacing={1}>
+            <Button
+              onClick={handleLandingPage}
+              sx={{
+                transition: "transform 0.3s ease",
+                textTransform: "none",
+                padding: 0,
+                "&:hover": {
+                  transform: "scale(1.05)",
+                },
+              }}
             >
               <img
                 src="/duel-learn-logo.svg"
-                className="w-10 h-10"
+                style={{
+                  width: "2.5rem",
+                  height: "auto",
+                }}
                 alt="icon"
               />
-            </IconButton>
-            <Typography
-              variant="h6"
-              fontWeight={600}
-              className={clsx("transition-all duration-100", {
-                "opacity-0 w-auto": collapsed,
-                "opacity-100 w-auto": !collapsed,
-              })}
-              sx={{
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-              }}
-            >
-              Duel Learn
-            </Typography>
+              <Typography
+                fontWeight={600}
+                className={clsx("transition-all duration-100", {
+                  "opacity-0 w-0": collapsed,
+                  "opacity-100 ml-2": !collapsed,
+                })}
+                sx={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  color: "#E2DDF3",
+                  fontSize: "1.3rem", // Change from clamp to rem
+                  marginLeft: { xs: "0.5rem", sm: "1rem" },
+                }}
+              >
+                Duel Learn
+              </Typography>
+            </Button>
+
             <Fab
               color="primary"
               onClick={toggleCollapse}
               size="small"
               sx={{
-                backgroundColor: "transparent",
+                backgroundColor: "inherit",
+                transition: "all 0.3s ease-in-out",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
                 "& .MuiSvgIcon-root": {
                   color: "#3B354D",
                 },
                 "&:hover": {
-                  backgroundColor: "#3B354D",
-                  "& .MuiSvgIcon-root": {
-                    color: "#E2DDF3",
-                  },
+                  backgroundColor: "#080511",
+                  "& .MuiSvgIcon-root": { color: "#E2DDF3" },
                 },
               }}
-              className={clsx(
-                "absolute z-50 transition-all duration-300",
-                collapsed ? "left-[0rem]" : "left-[0rem]"
-              )}
+              className="absolute z-50 left-0"
             >
               {collapsed ? (
-                <ArrowForwardIcon fontSize="small" />
+                <MenuOpenIcon className=" rotate-180" />
               ) : (
-                <ArrowBackIcon fontSize="small" />
+                <MenuOpenIcon />
               )}
             </Fab>
           </Stack>
-          {renderButton(
-            <AddIcon
-              fontSize="small"
-              className={clsx({ "mr-2": !collapsed })}
-            />,
-            "Create",
-            "contained",
-            handleCreateStudyMaterial
-          )}
-          {renderButton(
-            <PlayIcon
-              fontSize="small"
-              className={clsx({ "mr-2": !collapsed })}
-            />,
-            "Play",
-            "outlined",
-            handleModalOpen // Opens the modal when "Play" is clicked
-          )}
-          <Divider className="bg-[#3F3565]" />
+
+          <Stack spacing={2} sx={{ marginTop: "1.5rem" }}>
+            {" "}
+            {/* Change from vh to rem */}
+            {renderButton(
+              <AddIcon fontSize="small" />,
+              "Create",
+              "contained",
+              handleCreateStudyMaterial
+            )}
+            {renderButton(<PlayIcon />, "Play", "outlined", handleModalOpen)}
+          </Stack>
+
+          <Divider
+            sx={{ height: "2px", backgroundColor: "#3B354C", margin: "1rem 0" }}
+          />
         </Stack>
-        <nav aria-label="sidebar">
-          <List>
+
+        <nav aria-label="sidebar" style={{ flex: 1, marginTop: "2vh" }}>
+          <List sx={{ height: "100%" }}>
             {menuItems.map((item, index) => (
-              <ListItem key={index} disablePadding className="mb-2">
+              <ListItem key={index} disablePadding sx={{ marginBottom: "1vh" }}>
                 <Tooltip
                   title={collapsed ? item.title : ""}
                   placement="right"
@@ -221,27 +286,36 @@ export default function Sidebar() {
                         borderColor: "#4D18E8",
                         borderWidth: "2px",
                         borderStyle: "solid",
-                        borderRadius: "0.8rem",
                         color: "#4D18E8",
+                        transform: "scale(1.05)",
                       },
-                      justifyContent: collapsed ? "center" : "center",
-                      padding: "0.5rem 1.4rem",
+                      "&.Mui-selected": {
+                        color: "#4D18E8",
+                        fontWeight: "bold",
+                      },
+                      transition: "all 0.3s ease-in-out",
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      alignItems: "center",
+                      padding: collapsed ? "0.5rem " : "0.5rem 1.2rem",
+                      color: "#E2DDF3",
+                      borderColor: "#080511",
+                      borderWidth: "2px",
+                      borderStyle: "solid",
                       borderRadius: "0.8rem",
-                      transition: "all 0.15s",
+                      width: "100%",
                     }}
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
                   >
                     <ListItemIcon
                       sx={{
-                        minWidth: 0,
+                        minWidth: collapsed ? 0 : "2rem", // Change from vw to rem
+                        width: collapsed ? "auto" : "auto",
                         justifyContent: "center",
                         display: "flex",
                         alignItems: "center",
-                        marginRight: collapsed ? 0 : "1rem",
-                        width: collapsed ? "100%" : "auto",
-                        transition:
-                          "margin-right 0.35s, width 0.35s, opacity 0.35s",
+                        marginRight: collapsed ? 0 : "0.5rem", // Change from vw to rem
+                        padding: collapsed ? "0" : "0",
                       }}
                     >
                       <img
@@ -250,21 +324,25 @@ export default function Sidebar() {
                             ? item.icon.replace(".svg", "-colored.svg")
                             : item.icon
                         }
-                        className="w-6.5"
+                        style={{
+                          width: "1.5rem", // Change from clamp to rem
+                          margin: collapsed ? "0 auto" : "0",
+                        }}
                         alt={`${item.title} icon`}
                       />
                     </ListItemIcon>
-
                     <ListItemText
                       primary={item.title}
                       className={clsx("transition-all duration-0", {
-                        "opacity-0 w-auto": collapsed,
-                        "opacity-100 w-auto": !collapsed,
+                        "opacity-0 w-0 absolute": collapsed,
+                        "opacity-100": !collapsed,
                       })}
-                      sx={{
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        transition: "opacity 0.35s",
+                      primaryTypographyProps={{
+                        sx: {
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          fontSize: "0.925rem", // Change from clamp to rem
+                        },
                       }}
                     />
                   </ListItemButton>
@@ -275,8 +353,9 @@ export default function Sidebar() {
         </nav>
       </Stack>
 
-      {/* Modal */}
       <ChooseModeModal open={openModal} handleClose={handleModalClose} />
     </Box>
   );
-}
+};
+
+export default Sidebar;

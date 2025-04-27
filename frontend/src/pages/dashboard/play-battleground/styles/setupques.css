@@ -1,0 +1,125 @@
+/* 🌀 Bigger Round Scroll Holders (Now Pushed Inside) */
+.scroll-holder {
+    width: 40px;  
+    height: 40px; 
+    background-color: #b6a2f7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2; /* Ensure it appears above the rods */
+    margin-left: -15px; 
+    margin-right: -15px; 
+}
+
+/* 📜 Bigger Thin Scroll Rods */
+.scroll-bar {
+    width: 550px; 
+    height: 30px; 
+    background-color: #E4DCFD;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    position: relative;
+    z-index: 1; /* Ensure it stays below the holders */
+}
+
+/* 🏗️ Structure: Align everything */
+.scroll-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    position: relative; /* Make sure scroll-wrapper is positioned above the paper */
+    z-index: 3; /* Layer it on top of the paper */
+}
+
+/* 📜 Centered Parchment Paper */
+.paper-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0; /* Ensure no extra space between items */
+    position: relative;
+}
+
+/* 📜 Bigger Parchment Paper */
+.paper {
+    width: 470px;  /* Made it wider */
+    height: 520px; /* Made it taller */
+    background: linear-gradient(to bottom, #eee3ff, #c2b5e6);
+    box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
+    margin-top: -8px;
+    margin-bottom: -8px;
+    position: relative; /* Keep the paper in its own stacking context */
+    z-index: 1; /* Ensure paper is below the scroll-wrapper */
+    animation: unfurl 1.5s ease-out forwards;
+}
+
+/* 📄 Paper Inner */
+.paper-inner {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, #f5efff, #d9c9f3);
+    border-radius: 10px;
+    opacity: 0;
+    animation: fadein 4.5s ease-in 1s forwards;
+    animation-delay: 0.7s; /* Starts after the paper unfurl animation */
+}
+
+/* 🎬 Animation */
+@keyframes unfurl {
+    0% { height: 20px; opacity: 0; }
+    15% { height: 80px; opacity: 0.5; }
+    40% { height: 500px; opacity: 1; }
+    50% { height: 480px; }
+    60% { height: 500px; }
+    70% { height: 490px; }
+    90% { height: 500px; }
+}
+
+/* Fade-in animation for image */
+.image {
+    opacity: 0;
+    animation: fadeInImage 1s ease-out forwards;
+    animation-delay: 0.7s; /* Starts after the paper unfurl animation */
+}
+
+/* Fade-in keyframe */
+@keyframes fadeInImage {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* 🎖️ Correct Streak Animation */
+.correct-streak-animation {
+    font-size: 2rem; /* Adjust size as needed */
+    color: #FFD700; /* Gold color for the streak */
+    animation: flare 1s ease-in-out forwards; /* Add flare effect */
+    position: absolute; /* Ensure it overlays correctly */
+    z-index: 50; /* Ensure it appears above other elements */
+    opacity: 1; /* Start fully visible */
+    transition: opacity 1s ease-out; /* Fade out effect */
+}
+
+@keyframes flare {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}

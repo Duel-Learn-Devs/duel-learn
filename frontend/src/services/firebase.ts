@@ -8,7 +8,7 @@ import {
 import { GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore"; // Add this import
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, getAdditionalUserInfo } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import {
   verifyPasswordResetCode,
@@ -19,34 +19,42 @@ import { onAuthStateChanged } from "firebase/auth";
 import { getDatabase, ref, onValue } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBtZC2Cm7D1kynMAlTL-_4g2-8VoE90LKI",
-  authDomain: "duel-learn.firebaseapp.com",
-  projectId: "duel-learn",
-  storageBucket: "duel-learn.firebasestorage.app",
-  messagingSenderId: "255993502199",
-  appId: "1:255993502199:web:f758d82c6bb334577076f2",
-  measurementId: "G-RTRW795R9H",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+// ✅ Initialize Firebase
 const app = initializeApp(firebaseConfig);
-
 const provider = new GoogleAuthProvider();
 
+// ✅ Export Firebase Services
 export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const database = getDatabase(app);
+
+// ✅ Export Authentication Functions
 export const signIn = signInWithEmailAndPassword;
-export const sendEmail = sendEmailVerification;
-export const signOutUser = signOut;
-export const googleProvider = provider;
-export const db = getFirestore(app); // Add this line to export Firestore instance
 export const createUserEmail = createUserWithEmailAndPassword;
 export const signInWithGooglePopup = signInWithPopup;
+export const getAdditionalInfo = getAdditionalUserInfo;
+export const sendEmail = sendEmailVerification;
+export const sendResetEmail = sendPasswordResetEmail;
+export const verifyResetCode = verifyPasswordResetCode;
+export const confirmResetPassword = confirmPasswordReset;
+export const signOutUser = signOut;
+export const authStateChanged = onAuthStateChanged;
+export const googleProvider = provider;
+
+// ✅ Export Firestore Functions
 export const firestoreDoc = doc;
 export const setFirestoreDoc = setDoc;
 export const firestoreServerTimestamp = serverTimestamp;
-export const verifyResetCode = verifyPasswordResetCode;
-export const confirmResetPassword = confirmPasswordReset;
-export const sendResetEmail = sendPasswordResetEmail;
-export const authStateChanged = onAuthStateChanged;
-export const database = getDatabase(app);
+
+// ✅ Export Realtime Database Functions
 export const databaseRef = ref;
 export const onDatabaseValue = onValue;

@@ -1,0 +1,74 @@
+.sticky-col {
+  position: sticky;
+  left: 0;
+  background-color: white; /* Ensure the background color matches the table */
+  z-index: 1; /* Ensure it stays above other cells */
+}
+
+.sticky-header th {
+  position: sticky;
+  top: 0;
+  background-color: black; /* Ensure the background color matches the table */
+  z-index: 1; /* Ensure it stays above other cells */
+}
+
+.dark-table-container {
+  background-color: #1a1a1f !important;
+}
+
+.dark-themed-table {
+  background-color: #1a1a1f !important;
+}
+
+.dark-themed-table .MuiTableCell-root {
+  background-color: #1a1a1f !important;
+  color: #fff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark-themed-table .MuiTableHead-root .MuiTableCell-root {
+  background-color: #1e1e24 !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Special styling for the Firebase UID column */
+.dark-themed-table .MuiTableBody-root .MuiTableRow-root .MuiTableCell-root:nth-child(2) {
+  background-color: #1a1a1f !important;
+  color: #fff !important;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  letter-spacing: -0.2px;
+}
+
+/* Styles for sticky-header */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: #1e1e24 !important;
+}
+
+/* Styles for sticky-col */
+.sticky-col {
+  background-color: #1a1a1f !important;
+}
+
+/* Make sure chips display properly against the dark background */
+.MuiChip-root {
+  background-color: transparent !important;
+}
+.MuiChip-colorSuccess {
+  background-color: rgba(46, 125, 50, 0.2) !important;
+  color: #4caf50 !important;
+  border: 1px solid rgba(46, 125, 50, 0.5) !important;
+}
+.MuiChip-colorError {
+  background-color: rgba(211, 47, 47, 0.2) !important;
+  color: #f44336 !important;
+  border: 1px solid rgba(211, 47, 47, 0.5) !important;
+}

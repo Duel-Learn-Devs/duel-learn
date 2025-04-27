@@ -1,0 +1,32 @@
+
+
+Types of Programming Languages 
+ 
+● Procedural 
+● Object-Oriented 
+● Functional 
+● Scripting 
+Database Models 
+ 
+● Relational 
+● NoSQL 
+● Hierarchical 
+● Graph 
+Sorting Algorithms 
+ 
+● Bubble Sort 
+● Quick Sort 
+● Merge Sort 
+● Insertion Sort 
+ 
+Python - A high-level, interpreted programming language known for its readability and versatility 
+in web development, data science, and automation. 
+Machine Learning - A method in AI where a model is trained to recognize patterns and make 
+decisions without being explicitly programmed. 
+HTTPS (Hypertext Transfer Protocol Secure) - A protocol used for securely transferring data 
+over the internet, ensuring encrypted communication between client and server. 
+Microservices Architecture - A technique in software development that focuses on breaking 
+down applications into independent, modular services that communicate via APIs. 
+Relational Database Model - A structured way of storing data in a relational database using 
+tables, rows, and columns with predefined relationships. 
+ 

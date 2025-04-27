@@ -4,59 +4,79 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/header/Header";
+import Footer from "../components/Footer";
 import RightSideBar from "../components/RighSideBar/RightSideBar";
 import DrawerRightSideBar from "../components/DrawerRightSideBar"; // Import the new Drawer component
+import { BattleInvitationCenter } from "../components"; // Import BattleInvitationCenter
 import { Box } from "@mui/system";
 import "../styles/custom-scrollbar.css";
-import WidgetsIcon from "@mui/icons-material/Widgets";
-import { useMediaQuery } from "@mui/material"; // Import useMediaQuery from Material-UI
+import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
+import { useMediaQuery } from "@mui/material";
 
 const DashboardLayout = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const isMobile = useMediaQuery("(max-width:1022px)"); // Check if the screen size is mobile
+  const isMobile = useMediaQuery("(max-width:1022px)");
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(0);
 
   const toggleDrawer = (open: boolean) => {
     setDrawerOpen(open);
   };
 
   return (
-    <Box className="h-screen px-1 flex flex-col lg:flex-row w-screen overflow-x-hidden">
+    <Box className="custom-scrollbar h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden overflow-y-auto ">
+      {/* BattleInvitationCenter - will only show in dashboard routes */}
+      <BattleInvitationCenter />
+
       {/* Sidebar (hidden on small screens) */}
-      <aside className="hidden lg:block pl-4 pr-5 top-0 h-screen">
-        <Box className="sticky top-0">
-          <Sidebar />
+      <aside className="hidden lg:block pl-4 pr-4 h-screen sticky top-0">
+        <Box>
+          <Sidebar
+            selectedIndex={selectedIndex}
+            setSelectedIndex={setSelectedIndex}
+          />
         </Box>
       </aside>
 
       {/* Main Section */}
-      <Box className="flex-1 flex flex-col">
-        <header className="w-full pr-2 top-0 ">
+      <Box className="flex-1 flex flex-col relative">
+        {/* Header - Fixed at the top */}
+        <header className="w-full sticky top-0 md:pr-2 lg:pr-10 pb-2  z-[100] bg-[#080511]">
           <Header />
         </header>
 
-        {/* Main Content Section */}
+        {/* Main Content Section with its own scrollable area */}
         <Box className="flex flex-1">
-          <main className="flex-1 pt-3 relative">
+          <main
+            className={`flex-1 pt-3 relative ${
+              useMediaQuery("(min-width:1200px)") ? "px-11" : "px-25"
+            }`}
+          >
             <Outlet />
-
-            {/* Absolute icon button in the top-right corner (only shown on mobile screens) */}
-            {isMobile && (
-              <button
-                className="absolute top-2 right-4 p-3 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-500 disabled:bg-purple-400 disabled:cursor-not-allowed"
-                onClick={() => toggleDrawer(true)}
-              >
-                <WidgetsIcon />
-              </button>
-            )}
+            <Footer />
           </main>
 
           {/* Right Sidebar */}
-          <aside className="hidden lg:block pr-2">
+          <aside
+            className="pr-2 pb-12"
+            style={{
+              display: isMobile ? "none" : "block",
+            }}
+          >
             <Box className="sticky top-0">
               <RightSideBar />
             </Box>
           </aside>
         </Box>
+
+        {/* Mobile menu button - fixed at bottom with full width */}
+        {isMobile && (
+          <button
+            className="fixed bottom-0 left-0 w-full py-1 rounded-t-[0.8rem] bg-[#120F1B] text-white shadow-lg flex items-center justify-center transition-all duration-300 ease-in hover:bg-[#120F1B] z-[110]"
+            onClick={() => toggleDrawer(true)}
+          >
+            <KeyboardArrowUpRoundedIcon fontSize="medium" />
+          </button>
+        )}
       </Box>
 
       {/* Bottom Drawer (visible only on mobile screens) */}

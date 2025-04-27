@@ -1,11 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 import { useLocation } from "react-router-dom";
 
 // Importing the necessary content components
 import Leaderboards from "./Leaderboards/Leaderboards";
 import FriendList from "./FriendList/FriendList";
-import EmptyLB from "./Leaderboards/EmptyLB";
-import EmptyFriendList from "./FriendList/EmptyFriendList";
 
 // Define the possible route paths based on the PrivateRoutes
 type RoutePath =
@@ -14,21 +12,31 @@ type RoutePath =
   | "/dashboard/my-library"
   | "/dashboard/profile"
   | "/dashboard/study-material/create"
-  | "/dashboard/shop";
+  | "/dashboard/shop"
+  | "/dashboard/account-settings"
+  | "/dashboard/search";
 
 const RightSideBar: React.FC = () => {
+  // Make sure to get the location from useLocation hook
   const location = useLocation();
 
-  // State to simulate the number of friends (replace with actual logic if dynamic)
-  const [friendCount, setFriendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
+  // Handle dynamic route `/dashboard/study-material/preview/:studyMaterialId`
+  const isPreviewRoute = location.pathname.startsWith(
+    "/dashboard/study-material/preview/"
+  );
+
+  // Handle dynamic route `/dashboard/study-material/view/:studyMaterialId`
+  const isViewRoute = location.pathname.startsWith(
+    "/dashboard/study-material/view/"
+  );
 
   // Determine whether to show EmptyLB or Leaderboards
-  const leaderboardContent = friendCount >= 5 ? <Leaderboards /> : <EmptyLB />;
-  const friendListContent =
-    friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
+  const leaderboardContent = <Leaderboards />;
+  const friendListContent = <FriendList />;
 
   // Mapping route paths to content components
-  const contentMap: Record<RoutePath, JSX.Element> = {
+  const contentMap: Partial<Record<RoutePath, JSX.Element>> &
+    Record<string, JSX.Element> = {
     "/dashboard/home": (
       <>
         {friendListContent}
@@ -36,7 +44,13 @@ const RightSideBar: React.FC = () => {
         {leaderboardContent}
       </>
     ),
-    "/dashboard/explore": leaderboardContent,
+    "/dashboard/explore": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
     "/dashboard/my-library": (
       <>
         {friendListContent}
@@ -59,12 +73,53 @@ const RightSideBar: React.FC = () => {
         {leaderboardContent}
       </>
     ),
+    "/dashboard/search": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
+    // Return empty div for account-settings route
+    "/dashboard/account-settings": <div></div>,
+    "/dashboard/verify-email": <div></div>,
   };
 
-  // Get the content based on the current route
-  const content = contentMap[location.pathname as RoutePath] || (
-    <div>No Content</div>
+  // Check if we should hide the sidebar completely
+  const shouldHideSidebar = location.pathname.includes(
+    "/dashboard/account-settings"
   );
+
+  if (shouldHideSidebar) {
+    return null; // Return null to completely hide the sidebar
+  }
+
+  // Get the content based on the current route
+  let content: JSX.Element;
+
+  if (isPreviewRoute) {
+    content = (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    );
+  } else {
+    content = contentMap[location.pathname] || <div></div>;
+  }
+
+  if (isPreviewRoute || isViewRoute) {
+    content = (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    );
+  } else {
+    content = contentMap[location.pathname] || <div></div>;
+  }
 
   return (
     <div className="hidden side-list-navi pr-8 lg:block sm:w-[20rem] md:w-[24rem] mb-10 lg:w-[28rem] p-4 flex-shrink-0">

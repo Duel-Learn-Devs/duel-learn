@@ -1,0 +1,41 @@
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+*.env
+.env.*
+
+# Build output
+dist/
+build/
+
+# Dependency directories
+bower_components/
+
+# VS Code directories
+.vscode/
+
+# MacOS files
+.DS_Store
+
+# Windows files
+Thumbs.db
+
+# Package files
+package-lock.json
+
+
+
+.vscode/*
+
+# Firebase admin SDK JSON file
+duel-learn-firebase-adminsdk-65lmy-22bd9929f6.json
+
+# Lunar Goal JSON file
+lunar-goal-452311-e6-1af8037708ca.json
+.vercel

@@ -1,5 +1,3 @@
-# Duel-Learn: A Gamified Learning Platform
-
 ## Overview
 
 **Duel-Learn** is an innovative web-based learning platform that combines Artificial Intelligence (AI) and Optical Character Recognition (OCR) to help students study more efficiently. By automatically generating quizzes, flashcards, and other study materials from handwritten or digital notes, Duel-Learn streamlines the study process, saving students valuable time.
@@ -61,8 +59,8 @@ The following developers contributed to the creation and development of **Duel-L
 - **Cj Juliane** - [juliane.carljamesbscs2022@gmail.com](mailto:juliane.carljamesbscs2022@gmail.com)
 - **Bea Lugtu** - [lugtu.beaalyssabscs2022@gmail.com](mailto:lugtu.beaalyssabscs2022@gmail.com)
 - **Justine Peralta** - [peralta.justinebryanbscs2022@gmail.com](mailto:peralta.justinebryanbscs2022@gmail.com)
-- **Laira Samis** - [juliane.carljamesbscs2022@gmail.com](mailto:juliane.carljamesbscs2022@gmail.com)
-- **Gwyneth Uy** - [lugtu.beaalyssabscs2022@gmail.com](mailto:lugtu.beaalyssabscs2022@gmail.com)
+- **Laira Samis** - [samis.lairacoleenbscs2022@gmail.com](mailto:samis.lairacoleenbscs2022@gmail.com)
+- **Gwyneth Uy** - [uy.gwyneth2022@gmail.com](mailto:uy.gwynethbscs2022@gmail.com)
 
 ## About the Project
 

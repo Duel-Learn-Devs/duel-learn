@@ -1,31 +1,60 @@
-import { Box, Button, Stack, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { Box } from "@mui/material";
 import DocumentHead from "../../components/DocumentHead";
+import PageTransition from "../../styles/PageTransition";
+import Header from "./components/Header";
+import HeroSection from "./components/HeroSection";
+import LearningSection from "./components/LearningSection";
+import HowItWorksSection from "./components/HowItWorksSection";
+import FeaturesSection from "./components/FeaturesSection";
+import PremiumSection from "./components/PremiumSection";
+import Footer from "./components/Footer";
 
 const LandingPage = () => {
-  const navigate = useNavigate();
-
-  const handleDashboard = () => {
-    navigate("/dashboard/home"); // Navigate to the dashboard
-  };
-
-  const handleLogin = () => {
-    navigate("/login"); // Navigate to the login page
-  };
-
   return (
-    <Box>
-      <DocumentHead title="Duel Learn" />
-      <Typography variant="h3">Landing Page</Typography>
-      <Stack spacing={3}>
-        <Button variant="contained" color="primary" onClick={handleLogin}>
-          Login
-        </Button>
-        <Button variant="contained" color="primary" onClick={handleDashboard}>
-          Dashboard
-        </Button>
-      </Stack>
-    </Box>
+    <PageTransition>
+      <Box
+        sx={{
+          bgcolor: "#080511",
+          minHeight: "100vh",
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          overflowX: "hidden",
+        }}
+      >
+        <DocumentHead title="Duel Learn" />
+
+        {/* Header */}
+        <Header />
+
+        {/* Main Content Container */}
+        <Box
+          component="main"
+          sx={{
+            flex: 1,
+            position: "relative",
+          }}
+        >
+          {/* Hero Section */}
+          <HeroSection />
+
+          {/* Learning Section */}
+          <LearningSection />
+
+          {/* How It Works Section */}
+          <HowItWorksSection />
+
+          {/* Features Section */}
+          <FeaturesSection />
+
+          {/* Premium Section */}
+          <PremiumSection />
+
+          {/* Footer */}
+          <Footer />
+        </Box>
+      </Box>
+    </PageTransition>
   );
 };
 

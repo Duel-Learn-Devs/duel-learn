@@ -1,0 +1,209 @@
+
+/* BUTTON FILTERS */
+
+@media (min-width: 40px) {
+  .responsive-gap {
+    gap: 12px !important;
+    padding-left: 10px;
+    padding-right: 10px;      
+    }  
+  .responsive-gapINSIDE {
+    width: 75px;
+    font-size: 12px;
+  }
+}
+
+@media (min-width: 600px) {
+  .responsive-gap {
+    gap: 12px !important;
+    padding-left: 10px;
+    padding-right: 10px;
+  }  
+  .responsive-gapINSIDE {
+    width: 100px;
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-gap {
+    gap: 40px !important;
+  }  
+  .responsive-gapINSIDE {
+    width: 110px;
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 1025px) {
+  .responsive-gap {
+    gap: 20px !important;
+    font-size: 15px;
+  }
+  .responsive-gapINSIDE {
+    width: 110px;
+    font-size: 16px;
+  }
+}
+
+
+@media (min-width: 1595px) {
+  .responsive-gap {
+    gap: 24px !important;
+  }
+  .responsive-gapINSIDE {
+    width: 166px;
+    font-size: 16px;
+  }
+}
+
+
+/* LB DATA */
+/* General Styles */
+.rank-entry {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+
+/* Grouping Medal + Profile Pic */
+.rank-profile {
+  display: flex;
+  align-items: center;
+}
+
+.rank-icon img {
+  width: 40px;
+  height: 40px;
+}
+
+.profile-icon img {
+  width: 90px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.player-name {
+  font-weight: 600;
+  color: white;
+}
+
+.xp-text,
+.level-text {
+  font-size: 14px;
+  font-weight: bold;
+  color: #A0AEC0;
+}
+
+/* Responsive Styles */
+
+@media (min-width: 440px) { /* sm */
+  .rank-entry{
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  .rank-info,
+  .xp-info {
+    gap: 30px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  .rank-icon img {
+    width: 30px;
+    height: 30px;
+    margin-right: 10px;
+  }
+  .profile-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .rank-number, .player-name, .xp-text {
+    font-size: 14px;
+  }
+
+}
+
+@media (min-width: 540px) { /* sm */
+  .rank-info,
+  .xp-info {
+    gap: 30px;
+  }
+  .profile-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .rank-number, .player-name, .xp-text {
+    font-size: 14px;
+  }
+}
+@media (min-width: 640px) { /* sm */
+  .rank-info,
+  .xp-info {
+    gap: 12px;
+  }
+  .profile-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .rank-number, .player-name, .xp-text {
+    font-size: 14px;
+  }
+  .rank-entry{
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  .rank-profile{
+    gap: 36px; /* Adjust the space between medal and profile pic */
+  }
+}
+
+@media (min-width: 768px) { /* md */
+  .rank-info,
+  .xp-info {
+    gap: 14px;
+  }
+  .profile-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .rank-number, .player-name, .xp-text {
+    font-size: 16px;
+  }
+  .rank-entry{
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  .rank-profile{
+    gap: 46px; /* Adjust the space between medal and profile pic */
+  }
+}
+
+@media (min-width: 1024px) { /* lg */
+  .rank-info,
+  .xp-info {
+    gap: 20px;
+  }
+  .profile-icon {
+    width: 58px;
+    height: 58px;
+  }
+  .medal-icon {
+    width: 64px;
+    height: 64px;
+  }
+  .rank-number, .player-name, .xp-text {
+    font-size: 16px;
+  }
+  .rank-entry{
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  .rank-profile{
+    gap: 46px; /* Adjust the space between medal and profile pic */
+  }
+}

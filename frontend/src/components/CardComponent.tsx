@@ -1,106 +1,223 @@
-import { Box, Stack, Typography, Chip, Card, CardContent } from "@mui/material";
+import {
+  Box,
+  Stack,
+  Typography,
+  Chip,
+  Card,
+  CardContent,
+  CardMedia,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 import { styled } from "@mui/system";
-import PropTypes from "prop-types";
-
-interface CardComponentProps {
-  title: string;
-  description: string;
-  tags: string[];
-  creator: string;
-  clicked?: number;
-  mutual?: string;
-  date?: string;
-  filter?: string;
-  createdBy?: string;
-}
+import defaultCover from "/study-material-cover/cardBackground.svg";
+import { CardComponentProps } from "src/types/cardComponentObject";
 
 const CardComponent: React.FC<CardComponentProps> = ({
   title,
-  description,
   tags,
-  creator,
+  totalItems,
+  createdBy,
+  totalViews,
+  onClick, // Destructured onClick handler
 }) => {
+  const safeTags = Array.isArray(tags) ? tags : []; // Ensure it's always an array
+  const theme = useTheme();
+  const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const isSmScreen = useMediaQuery(theme.breakpoints.between("sm", "md"));
+
   const ModeCard = styled(Card)(() => ({
     display: "flex",
     flexDirection: "column",
     justifyContent: "flex-end",
     alignItems: "flex-start",
-    borderRadius: "1rem",
-    height: "16rem",
+    borderRadius: "0.8rem",
+    height: isXsScreen ? "180px" : isSmScreen ? "180px" : "220px",
+    width: "100%", // Keep consistent width
     cursor: "pointer",
     maxHeight: "100%",
-    background: "linear-gradient(to bottom, #ECE6FF, #DDD3FF)",
+    background: "#E2DDF3",
     position: "relative",
-    transform: "scale(1)", // Initial transform state
-    transition: "all 0.3s", // Ensure smooth transition between hover and unhover states
+    transform: "translateY(0)", // Start position
+    transition: "all 0.3s", // Match the transition timing with ChooseYourChallenge
+    overflow: "hidden", // Add this to match ChooseYourChallenge
+    "& .cardMedia": {
+      transform: "scale(1)",
+      transition: "transform 0.5s ease-in-out",
+    },
     "&:hover": {
-      transform: "scale(1.03)", // Scales slightly on hover
+      transform: "translateY(-4px)",
+      boxShadow: "0 10px 20px rgba(0,0,0,0.12)", // Add shadow for lifting effect
+      "& .cardMedia": {
+        transform: "scale(1.05)", // Scale up the background image on hover
+      },
     },
   }));
 
   return (
-    <ModeCard>
+    <ModeCard onClick={onClick}>
+      {" "}
+      {/* Added onClick to the card */}
       <CardContent
         sx={{
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-end",
+          padding: isXsScreen ? "12px" : isSmScreen ? "14px" : "16px",
         }}
       >
         <Box
           sx={{
             position: "absolute",
-            bottom: 28,
-            left: 28,
+            bottom: isXsScreen ? 16 : isSmScreen ? 24 : 26,
+            left: isXsScreen ? 16 : isSmScreen ? 24 : 26,
             textAlign: "left",
+            maxWidth: isXsScreen ? "80%" : "85%",
           }}
         >
-          <Stack spacing={1}>
-            <Typography variant="body1" className="text-[#322168]">
-              {description}
-            </Typography>
+          <Stack spacing={0} className="flex items-baseline justify-end">
+            <Stack
+              direction="row"
+              spacing={isXsScreen ? 0.5 : 1}
+              alignItems={"center"}
+            >
+              <Typography
+                sx={{
+                  color: "#080511",
+                  fontSize: isXsScreen
+                    ? "0.7rem"
+                    : isSmScreen
+                    ? "0.75rem"
+                    : "0.8rem",
+                  fontWeight: "650",
+                  lineHeight: 1.4,
+                }}
+              >
+                {totalItems} Items
+              </Typography>
+              <Typography
+                sx={{
+                  color: "#080511",
+                  fontSize: isXsScreen
+                    ? "0.7rem"
+                    : isSmScreen
+                    ? "0.75rem"
+                    : "0.8rem",
+                  fontWeight: "65",
+                }}
+              >
+                &#x2022;
+              </Typography>
+              <Typography
+                sx={{
+                  color: "#080511",
+                  fontSize: isXsScreen
+                    ? "0.7rem"
+                    : isSmScreen
+                    ? "0.75rem"
+                    : "0.8rem",
+                  fontWeight: "650",
+                  lineHeight: 1.4,
+                }}
+              >
+                {totalViews} Views
+              </Typography>
+            </Stack>{" "}
             <Typography
-              variant="h6"
               className="text-[#080511]"
               fontWeight="bold"
+              sx={{
+                fontSize: isXsScreen
+                  ? "0.9rem"
+                  : isSmScreen
+                  ? "1rem"
+                  : "1.1rem",
+                lineHeight: isXsScreen ? 1.3 : 1.4,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                mb: 0.5,
+              }}
             >
               {title}
             </Typography>
-            <Stack direction="row" spacing={1}>
-              {tags.map((tag, index) => (
+            <Stack
+              direction="row"
+              spacing={0}
+              sx={{
+                flexWrap: "wrap",
+                gap: 0.5,
+                mb: isXsScreen ? 1 : 1.5,
+              }}
+            >
+              {safeTags.map((tag, index) => (
                 <Chip
                   key={index}
                   label={tag}
                   sx={{
-                    backgroundColor: "#3B354D",
-                    color: "#E2DDF3",
-                    borderRadius: "0.5rem",
-                    padding: "1rem",
+                    backgroundColor: "#4D18E8 !important", // Force background color
+                    color: "#E2DDF3 !important", // Force text color
+                    borderRadius: "0.8rem",
                     width: "fit-content",
+                    height: "1.75rem",
+                    py: isXsScreen ? "0.15rem" : "0.2rem",
+                    px: isXsScreen ? "0.4rem" : "0.5rem",
+                    fontSize: isXsScreen
+                      ? "0.6rem"
+                      : isSmScreen
+                      ? "0.65rem"
+                      : "0.7rem",
+                    fontWeight: "600",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    "& .MuiChip-label": {
+                      padding: isXsScreen ? "0 2px" : "0 4px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      color: "#E2DDF3 !important", // Force label text color
+                      lineHeight: 1.2,
+                    },
                   }}
                 />
               ))}
             </Stack>
-            <Typography variant="body2" className="text-[#322168]">
-              Made by <strong>{creator}</strong>
+            <Typography
+              sx={{
+                color: "#000000",
+                fontSize: isXsScreen
+                  ? "0.65rem"
+                  : isSmScreen
+                  ? "0.7rem"
+                  : "0.75rem",
+                fontWeight: "600",
+                paddingLeft: "1px",
+                lineHeight: 1.3,
+              }}
+            >
+              Made by <strong>{createdBy}</strong>
             </Typography>
           </Stack>
         </Box>
+        <CardMedia
+          component="svg"
+          className="cardMedia"
+          sx={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            zIndex: -1,
+            width: isXsScreen ? "7rem" : isSmScreen ? "9rem" : "12rem",
+            height: "100%",
+            objectFit: "cover",
+          }}
+          image={defaultCover}
+        />
       </CardContent>
     </ModeCard>
   );
-};
-
-CardComponent.propTypes = {
-  title: PropTypes.string.isRequired,
-  description: PropTypes.string.isRequired,
-  tags: PropTypes.arrayOf(PropTypes.string.isRequired).isRequired,
-  creator: PropTypes.string.isRequired,
-  clicked: PropTypes.number,
-  mutual: PropTypes.string,
-  date: PropTypes.string,
-  filter: PropTypes.string,
-  createdBy: PropTypes.string,
 };
 
 export default CardComponent;

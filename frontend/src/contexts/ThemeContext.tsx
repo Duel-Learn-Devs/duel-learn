@@ -1,55 +1,48 @@
 import { createTheme, responsiveFontSizes } from "@mui/material/styles";
-import { PaletteMode } from "@mui/material";
 
-function ThemeContext(mode: PaletteMode = "light") {
-  console.log("Current mode:", mode); // Debugging mode
-
+// Function to create the theme with the specified mode
+function ThemeContext() {
   let theme = createTheme({
-    palette: {
-      mode,
-      ...(mode === "light"
-        ? {
-            background: {
-              default: "#F0F0F0",
-            },
-            text: {
-              primary: "#0A0A0A",
-              secondary: "#4A4A4A",
-            },
-          }
-        : {
-            background: {
-              default: "#121212",
-            },
-            text: {
-              primary: "#FFFEFE",
-              secondary: "#B3B3B3",
-            },
-          }),
-    },
     typography: {
-      fontFamily: "Questrial",
+      fontFamily: "Nunito, sans-serif", // Set Nunito font globally
     },
-    breakpoints: {
-      values: {
-        xs: 0,
-        sm: 600,
-        md: 960,
-        lg: 1280,
-        xl: 1920,
+    palette: {
+      // Allow for light or dark mode based on the `mode` parameter
+      background: {
+        default: "#080511", // Background color
+      },
+      text: {
+        primary: "#E2DDF3", // Text color
       },
     },
     components: {
-      MuiCssBaseline: {
+      // Customizing Tooltip globally
+      MuiTooltip: {
         styleOverrides: {
-          body: {
-            transition: "background-color 0.3s ease, color 0.3s ease",
+          tooltip: {
+            fontSize: "0.8rem", // Font size for tooltip
+            backgroundColor: "#3B354D", // Tooltip background color
+            color: "#E2DDF3", // Tooltip text color
+            borderRadius: "0.5rem", // Tooltip border radius
+            padding: "0.5rem 1rem", // Tooltip padding
+            transition: "all 0.5s ease", // Tooltip transition
+          },
+          arrow: {
+            color: "#3B354D", // Arrow color
+          },
+        },
+      },
+      MuiDivider: {
+        styleOverrides: {
+          root: {
+            backgroundColor: "#3B354D", // Divider color
           },
         },
       },
     },
   });
 
+  // Optionally apply responsive font sizes
   theme = responsiveFontSizes(theme);
 
   return theme;
