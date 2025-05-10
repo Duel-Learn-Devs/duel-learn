@@ -41,7 +41,7 @@ class GeneratedMaterial extends Model {
       if (tables.length === 0) {
         console.log("generated_material table does not exist - creating it");
         
-        // Create table with updated unique constraint to include item_number
+        // Create table with updated unique constraint to include item_id
         await pool.query(`
           CREATE TABLE generated_material (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -61,29 +61,66 @@ class GeneratedMaterial extends Model {
             INDEX (study_material_id),
             INDEX (question_type),
             INDEX (game_mode),
-            UNIQUE KEY unique_question (study_material_id, item_number, question_type, game_mode)
+            UNIQUE KEY unique_question (study_material_id, item_id, question_type, game_mode)
           )
         `);
         
         console.log("generated_material table created successfully");
       } else {
-        // Update the unique constraint to include item_number
+        console.log("generated_material table exists - updating constraints");
+        
+        // First check if there are any duplicate rows that would violate our unique constraint
+        const [duplicates] = await pool.query(`
+          SELECT study_material_id, item_id, question_type, game_mode, COUNT(*) as count
+          FROM generated_material
+          GROUP BY study_material_id, item_id, question_type, game_mode
+          HAVING COUNT(*) > 1
+        `);
+        
+        if (duplicates.length > 0) {
+          console.log("Found duplicate entries that would violate the unique constraint - cleaning up...");
+          
+          // For each set of duplicates, keep only the newest one
+          for (const dup of duplicates) {
+            // Get all IDs for this combination, ordered by creation date (newest first)
+            const [rows] = await pool.query(`
+              SELECT id
+              FROM generated_material
+              WHERE study_material_id = ? AND item_id = ? AND question_type = ? AND game_mode = ?
+              ORDER BY created_at DESC
+            `, [dup.study_material_id, dup.item_id, dup.question_type, dup.game_mode]);
+            
+            // Keep the first one (newest), delete the rest
+            if (rows.length > 1) {
+              const keepId = rows[0].id;
+              const deleteIds = rows.slice(1).map(r => r.id);
+              
+              console.log(`Keeping newest entry (ID: ${keepId}) and deleting ${deleteIds.length} duplicates`);
+              
+              await pool.query(`
+                DELETE FROM generated_material
+                WHERE id IN (?)
+              `, [deleteIds]);
+            }
+          }
+        }
+        
+        // Now try to drop any existing unique constraint
         try {
-          await pool.query(`
-            ALTER TABLE generated_material 
-            DROP INDEX unique_question
-          `);
+          await pool.query(`ALTER TABLE generated_material DROP INDEX unique_question`);
+          console.log("Dropped existing unique_question constraint");
         } catch (error) {
-          // Ignore error if constraint doesn't exist
+          console.log("No existing unique_question constraint to drop");
         }
 
+        // Add the new unique constraint
         try {
           await pool.query(`
             ALTER TABLE generated_material 
             ADD CONSTRAINT unique_question 
-            UNIQUE (study_material_id, item_number, question_type, game_mode)
+            UNIQUE (study_material_id, item_id, question_type, game_mode)
           `);
-          console.log("Updated unique constraint for generated_material table");
+          console.log("Added new unique_question constraint");
         } catch (error) {
           console.error("Error adding unique constraint:", error);
         }

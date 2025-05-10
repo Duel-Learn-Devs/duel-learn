@@ -45,7 +45,7 @@ const SearchController = {
                         created_by, created_by_id, total_views, created_at, status, visibility  
                  FROM study_material_info 
                  WHERE LOWER(title) LIKE LOWER(?)
-                 AND status = 'active' AND visibility = 0
+                 AND status = 'active' AND visibility = 1
                  ORDER BY total_views DESC, created_at DESC
                  LIMIT 10`,
                 [`%${query}%`]
@@ -154,7 +154,7 @@ const SearchController = {
                         i.status, i.visibility 
                  FROM study_material_info i
                  WHERE LOWER(i.title) LIKE LOWER(?)
-                 AND i.status = 'active' AND i.visibility = 0
+                 AND i.status = 'active' AND i.visibility = 1
                  ORDER BY i.total_views DESC, i.created_at DESC
                  LIMIT 20`,
                 [`%${query}%`]
@@ -270,7 +270,7 @@ const SearchController = {
                         created_by, created_by_id, total_views, created_at,
                         status, visibility  
                  FROM study_material_info 
-                 WHERE created_by = ? AND status = 'active'
+                 WHERE created_by = ? AND status = 'active' AND visibility = 1
                  ORDER BY created_at DESC`,
                 [username]
             );

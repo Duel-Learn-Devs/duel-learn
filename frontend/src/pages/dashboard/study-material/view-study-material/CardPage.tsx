@@ -1,4 +1,5 @@
 import { Box, Stack, Typography } from "@mui/material";
+import { useState } from "react";
 
 interface Item {
   term: string;
@@ -22,6 +23,26 @@ interface CardPageProps {
 }
 
 const CardPage = ({ studyMaterial }: CardPageProps) => {
+  // Track image orientations by index
+  const [imageOrientations, setImageOrientations] = useState<
+    Record<number, string>
+  >({});
+
+  // Function to handle image load and determine orientation
+  const handleImageLoad = (
+    index: number,
+    event: React.SyntheticEvent<HTMLImageElement>
+  ) => {
+    const img = event.currentTarget;
+    const isLandscape = img.naturalWidth > img.naturalHeight;
+    const isPortrait = img.naturalHeight > img.naturalWidth;
+
+    setImageOrientations((prev) => ({
+      ...prev,
+      [index]: isLandscape ? "landscape" : isPortrait ? "portrait" : "square",
+    }));
+  };
+
   return (
     <Stack spacing={1}>
       {/* Check if study material is available and contains items */}
@@ -59,18 +80,42 @@ const CardPage = ({ studyMaterial }: CardPageProps) => {
               {item.image && (
                 <Box
                   sx={{
-                    width: { xs: "100%", md: "12rem" },
-                    height: { xs: "10rem", md: "12rem" },
+                    width: {
+                      xs: "100%",
+                      md:
+                        imageOrientations[index] === "landscape"
+                          ? "18rem"
+                          : imageOrientations[index] === "portrait"
+                          ? "10rem"
+                          : "12rem",
+                    },
+                    height: {
+                      xs:
+                        imageOrientations[index] === "portrait"
+                          ? "16rem"
+                          : "10rem",
+                      md:
+                        imageOrientations[index] === "landscape"
+                          ? "10rem"
+                          : imageOrientations[index] === "portrait"
+                          ? "16rem"
+                          : "12rem",
+                    },
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     mt: { xs: 2, md: 0 },
+                    minWidth: { xs: "auto", md: "10rem" },
+                    maxWidth: { xs: "100%", md: "20rem" },
+                    transition: "width 0.2s, height 0.2s",
+                    overflow: "hidden",
                   }}
                 >
                   <img
                     src={typeof item.image === "string" ? item.image : ""}
                     alt={item.term}
                     className="max-w-full max-h-full object-contain rounded-lg"
+                    onLoad={(e) => handleImageLoad(index, e)}
                   />
                 </Box>
               )}

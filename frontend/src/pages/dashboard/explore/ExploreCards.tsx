@@ -37,7 +37,7 @@ const ExploreCards = ({ cards }: ExploreCardsProps) => {
           xs: "repeat(auto-fill, minmax(250px, 1fr))",
           sm: "repeat(auto-fill, minmax(290px, 1fr))",
         },
-        gap: { xs: 1, sm: 2 },
+        gap: { xs: 1, sm: 1.5 },
         width: "100%",
       }}
     >

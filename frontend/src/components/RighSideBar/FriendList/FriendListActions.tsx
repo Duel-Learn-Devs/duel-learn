@@ -4,7 +4,6 @@ import PeopleIcon from "@mui/icons-material/People";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PersonSearchIcon from "@mui/icons-material/PersonSearch";
 import Badge from "@mui/material/Badge";
-import { useUser } from "../../../contexts/UserContext";
 
 interface FriendListActionsProps {
   activeTab: string;
@@ -17,15 +16,11 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
   onTabChange,
   pendingCount,
 }) => {
-  const { user } = useUser();
-  // Remove this line as we're using the prop instead
-  // const { requestsCount } = usePendingFriendRequests(user?.firebase_uid);
-
   return (
     <Stack
       direction={"row"}
       spacing={1}
-      className="flex justify-between bg-[#120F1C] py-4 px-3 sm:px-4 border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
+      className="flex justify-between bg-[#120F1C] py-3 sm:py-4 px-2 sm:px-4 border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
     >
       <Tooltip title="Your Friends" placement="top" enterDelay={100} arrow>
         <button
@@ -35,7 +30,7 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
           }`}
         >
           <PeopleIcon
-            sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem", md: "1.3rem" } }}
+            sx={{ fontSize: { xs: "0.85rem", sm: "1.1rem", md: "1.3rem" } }}
           />
         </button>
       </Tooltip>
@@ -64,12 +59,12 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
               }}
             >
               <PersonAddIcon
-                sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem", md: "1.3rem" } }}
+                sx={{ fontSize: { xs: "0.85rem", sm: "1.1rem", md: "1.3rem" } }}
               />
             </Badge>
           ) : (
             <PersonAddIcon
-              sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem", md: "1.3rem" } }}
+              sx={{ fontSize: { xs: "0.85rem", sm: "1.1rem", md: "1.3rem" } }}
             />
           )}
         </button>
@@ -83,7 +78,7 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
           }`}
         >
           <PersonSearchIcon
-            sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem", md: "1.3rem" } }}
+            sx={{ fontSize: { xs: "0.85rem", sm: "1.1rem", md: "1.3rem" } }}
           />
         </button>
       </Tooltip>

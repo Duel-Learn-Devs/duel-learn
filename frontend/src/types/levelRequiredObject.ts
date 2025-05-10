@@ -28,7 +28,7 @@ export function generateLevelRequirements(
       requirement.expToNextLevel = level * 200;
     } else {
       // Level 10+: 1800 + (level-9) * 400
-      requirement.expToNextLevel = 1800 + (level - 9) * 300;
+      requirement.expToNextLevel = 1500 + (level - 9) * 200;
     }
 
     requirements.push(requirement);

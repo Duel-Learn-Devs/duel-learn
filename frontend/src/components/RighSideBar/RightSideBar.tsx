@@ -17,7 +17,18 @@ type RoutePath =
   | "/dashboard/search";
 
 const RightSideBar: React.FC = () => {
+  // Make sure to get the location from useLocation hook
   const location = useLocation();
+
+  // Handle dynamic route `/dashboard/study-material/preview/:studyMaterialId`
+  const isPreviewRoute = location.pathname.startsWith(
+    "/dashboard/study-material/preview/"
+  );
+
+  // Handle dynamic route `/dashboard/study-material/view/:studyMaterialId`
+  const isViewRoute = location.pathname.startsWith(
+    "/dashboard/study-material/view/"
+  );
 
   // Determine whether to show EmptyLB or Leaderboards
   const leaderboardContent = <Leaderboards />;
@@ -33,7 +44,13 @@ const RightSideBar: React.FC = () => {
         {leaderboardContent}
       </>
     ),
-    "/dashboard/explore": leaderboardContent,
+    "/dashboard/explore": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
     "/dashboard/my-library": (
       <>
         {friendListContent}
@@ -68,11 +85,6 @@ const RightSideBar: React.FC = () => {
     "/dashboard/verify-email": <div></div>,
   };
 
-  // Handle dynamic route `/dashboard/study-material/preview/:studyMaterialId`
-  const isPreviewRoute = location.pathname.startsWith(
-    "/dashboard/study-material/preview/"
-  );
-
   // Check if we should hide the sidebar completely
   const shouldHideSidebar = location.pathname.includes(
     "/dashboard/account-settings"
@@ -86,6 +98,18 @@ const RightSideBar: React.FC = () => {
   let content: JSX.Element;
 
   if (isPreviewRoute) {
+    content = (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    );
+  } else {
+    content = contentMap[location.pathname] || <div></div>;
+  }
+
+  if (isPreviewRoute || isViewRoute) {
     content = (
       <>
         {friendListContent}

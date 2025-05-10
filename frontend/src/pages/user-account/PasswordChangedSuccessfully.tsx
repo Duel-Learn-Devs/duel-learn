@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import PasswordSecurity from "../../assets/General/PasswordSecurity.png"; // Importing the big star image
+import PasswordSecurity from "/General/PasswordSecurity.png"; // Importing the big star image
 import PageTransition from "../../styles/PageTransition"; // Importing the PageTransition component
 
 export default function PasswordChangedSuccessfully() {

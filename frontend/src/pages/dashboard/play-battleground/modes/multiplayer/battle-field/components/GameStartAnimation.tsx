@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef } from "react";
 
 interface GameStartAnimationProps {
     showGameStart: boolean;
@@ -9,6 +10,33 @@ export default function GameStartAnimation({
     showGameStart,
     gameStartText
 }: GameStartAnimationProps) {
+    // Create a ref for a notification sound
+    const notificationSoundRef = useRef<HTMLAudioElement | null>(null);
+
+    // Effect to stop any randomizing sounds when game start animation appears
+    useEffect(() => {
+        if (showGameStart) {
+            // Find and stop all looping audio elements on the page EXCEPT the background music
+            const audioElements = document.querySelectorAll('audio:not(#pvp-background-music)');
+            audioElements.forEach(audio => {
+                // Only stop audio that's looping
+                const audioElement = audio as HTMLAudioElement;
+                if (audioElement.loop) {
+                    audioElement.pause();
+                    audioElement.currentTime = 0;
+                }
+            });
+
+            // Play notification sound once
+            if (notificationSoundRef.current) {
+                notificationSoundRef.current.volume = 0.7;
+                notificationSoundRef.current.play().catch(err =>
+                    console.error("Error playing notification sound:", err)
+                );
+            }
+        }
+    }, [showGameStart]);
+
     return (
         <AnimatePresence>
             {showGameStart && (
@@ -18,6 +46,13 @@ export default function GameStartAnimation({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                 >
+                    {/* Audio for battle start notification */}
+                    <audio
+                        ref={notificationSoundRef}
+                        src="/GameBattle/spin-complete.mp3"
+                        preload="auto"
+                    />
+
                     <motion.div
                         initial={{ scale: 0.5, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}

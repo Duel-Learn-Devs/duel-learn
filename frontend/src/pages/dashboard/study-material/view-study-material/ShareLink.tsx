@@ -9,8 +9,8 @@ import {
 } from "@mui/material";
 import ErrorsSnackbar from "../../../../components/ErrorsSnackbar";
 import Filter from "../../../../components/Filter";
-import { useState } from "react";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { useState, useEffect } from "react";
+import CloseRoundedIcon from "@mui/icons-material/HighlightOffRounded";
 
 const style = {
   position: "absolute",
@@ -41,7 +41,14 @@ export default function ShareLink({
   studyMaterialVisibility,
 }: ShareLinkProps) {
   const shareUrl = `${window.location.origin}/dashboard/study-material/view/${studyMaterialId}`;
-  const [visibility, setVisibility] = useState<string>("0");
+  const [visibility, setVisibility] = useState<string>(
+    studyMaterialVisibility.toString()
+  );
+
+  useEffect(() => {
+    setVisibility(studyMaterialVisibility.toString());
+  }, [studyMaterialVisibility]);
+
   const [snackbarMessage, setSnackbarMessage] = useState<string>(
     "Link copied to clipboard!"
   );
@@ -142,7 +149,7 @@ export default function ShareLink({
             </Typography>
             <Box flex={1} />
             <IconButton onClick={onClose}>
-              <CloseRoundedIcon className="text-[#6F658D] hover:scale-110" />
+              <CloseRoundedIcon className="text-[#6F658D] hover:scale-110 transition-all duration-300 ease-in-out" />
             </IconButton>
           </Stack>
 
@@ -197,15 +204,16 @@ export default function ShareLink({
               onClick={handleCopy}
               sx={{
                 alignItems: "center",
-                backgroundColor: "#4D18E8",
+                backgroundColor: "#8565E7",
                 color: "#E2DDF3",
                 height: "2.65rem",
                 borderRadius: "0.8rem",
                 padding: "0.5rem 2rem",
                 fontSize: "0.8rem",
-                transition: "all 0.3s ease",
+                transition: "all 0.3s ease-in-out",
                 "&:hover": {
                   transform: "scale(1.05)",
+                  backgroundColor: "#4D18E8",
                 },
               }}
             >

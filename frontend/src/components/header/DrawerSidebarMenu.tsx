@@ -15,11 +15,13 @@ import {
   Stack,
   Tooltip,
   Typography,
+  Fab,
 } from "@mui/material";
 import clsx from "clsx";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ChooseModeModal from "../modals/ChooseModeModal"; // Adjust path accordingly
+import MenuOpenIcon from "@mui/icons-material/MenuOpenRounded";
 
 const menuItems = [
   {
@@ -86,28 +88,42 @@ export default function DrawerSidebarMenu({
         sx={{
           textTransform: "none",
           borderRadius: "0.8rem",
-          padding: "0.6rem 2rem",
+          padding: collapsed ? "0.6rem" : "0.6rem 1rem", // Change from vw to rem
           display: "flex",
-          width: "full",
+          width: "100%",
           justifyContent: "center",
           alignItems: "center",
-          ...(variant === "contained" && { backgroundColor: "#4D18E8" }),
+          transition: "all 0.3s ease-in-out",
+          ...(variant === "contained" && {
+            backgroundColor: "#4D18E8",
+            borderWidth: "2px",
+          }),
           ...(variant === "outlined" && {
             borderColor: "#E2DDF3",
+            borderWidth: "2px",
             color: "#E2DDF3",
           }),
+          "&:hover": {
+            transform: "scale(1.05)",
+          },
+          "& .MuiSvgIcon-root": {
+            fontSize: "1.3rem", // Change from clamp to rem
+            margin: collapsed ? "0 auto" : "0",
+          },
         }}
       >
         {icon}
         <Typography
           variant="subtitle1"
           className={clsx("transition-all duration-100", {
-            "opacity-0 w-auto": collapsed,
-            "opacity-100 w-auto": !collapsed,
+            "opacity-0 w-0 absolute pointer-events-none": collapsed,
+            "opacity-100 ": !collapsed,
           })}
           sx={{
             whiteSpace: "nowrap",
             overflow: "hidden",
+            fontSize: "0.875rem", // Change from clamp to rem
+            marginLeft: collapsed ? 0 : "0.5rem", // Add marginLeft for spacing
           }}
         >
           {text}
@@ -116,15 +132,23 @@ export default function DrawerSidebarMenu({
     </Tooltip>
   );
 
+  const handleCreateStudyMaterial = () => {
+    setSelectedIndex(null);
+    navigate("/dashboard/study-material/create");
+  };
+
+  const handleCloseDrawer = () => {
+    toggleDrawer(false);
+  };
+
   return (
     <Drawer
       anchor="left"
       open={drawerOpen}
       onClose={() => toggleDrawer(false)}
       sx={{
-        width: 400,
         "& .MuiDrawer-paper": {
-          width: "300px",
+          width: "auto",
           backgroundColor: "#080511",
           paddingX: "20px",
         },
@@ -132,14 +156,19 @@ export default function DrawerSidebarMenu({
     >
       <Box style={{ display: "flex", position: "relative" }}>
         <Stack
-          className="h-full w-full  mx-2  py-12 flex flex-col justify-between"
-          spacing={2}
+          className="h-full w-full  mx-2  py-6 flex flex-col justify-between"
+          spacing={1}
           sx={{
-            width: collapsed ? "5.5rem" : "w-64",
-            transition: "width 0.35s",
+            width: collapsed ? "5rem" : "14rem", // Change from vw to rem
+            minWidth: collapsed ? "4rem" : "12rem",
+            maxWidth: collapsed ? "6rem" : "18rem",
+            paddingY: "2rem",
+            paddingX: "0.5rem",
+            marginLeft: collapsed ? 0 : "0.3rem", // Change from vw to rem
+            transition: "all 0.35s ease",
           }}
         >
-          <Stack spacing={3} className="flex">
+          <Stack spacing={2} className="flex">
             <Stack direction="row" className="flex items-center" spacing={1}>
               <IconButton
                 aria-label="navigate to landing page"
@@ -165,6 +194,32 @@ export default function DrawerSidebarMenu({
               >
                 Duel Learn
               </Typography>
+              <Fab
+                color="primary"
+                size="small"
+                onClick={handleCloseDrawer}
+                sx={{
+                  backgroundColor: "inherit",
+                  transition: "all 0.3s ease-in-out",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  "& .MuiSvgIcon-root": {
+                    color: "#3B354D",
+                  },
+                  "&:hover": {
+                    backgroundColor: "#080511",
+                    "& .MuiSvgIcon-root": { color: "#E2DDF3" },
+                  },
+                }}
+                className="absolute z-50 left-0"
+              >
+                {collapsed ? (
+                  <MenuOpenIcon className=" rotate-180" />
+                ) : (
+                  <MenuOpenIcon />
+                )}
+              </Fab>
             </Stack>
             {renderButton(
               <AddIcon
@@ -173,7 +228,7 @@ export default function DrawerSidebarMenu({
               />,
               "Create",
               "contained",
-              () => {}
+              handleCreateStudyMaterial
             )}
             {renderButton(
               <PlayIcon
@@ -207,11 +262,23 @@ export default function DrawerSidebarMenu({
                           borderColor: "#4D18E8",
                           borderWidth: "2px",
                           borderStyle: "solid",
-                          borderRadius: "0.8rem",
                           color: "#4D18E8",
+                          transform: "scale(1.05)",
                         },
+                        "&.Mui-selected": {
+                          color: "#4D18E8",
+                          fontWeight: "bold",
+                        },
+                        transition: "all 0.3s ease-in-out",
                         justifyContent: collapsed ? "center" : "flex-start",
-                        padding: "0.5rem 1.4rem",
+                        alignItems: "center",
+                        padding: collapsed ? "0.75rem" : "0.5rem 1.2rem",
+                        color: "#E2DDF3",
+                        borderColor: "#080511",
+                        borderWidth: "2px",
+                        borderStyle: "solid",
+                        borderRadius: "0.8rem",
+                        width: "100%",
                       }}
                       onMouseEnter={() => setHoveredIndex(index)}
                       onMouseLeave={() => setHoveredIndex(null)}

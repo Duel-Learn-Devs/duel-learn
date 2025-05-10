@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Box, IconButton, Stack } from "@mui/material";
 import { useUser } from "../../../contexts/UserContext";
-import cauldronGif from "../../../assets/General/Cauldron.gif";
+import cauldronGif from "/General/Cauldron.gif";
 import InviteSnackbar from "../../../components/InviteSnackbar";
 import Modal from "./FriendListModal";
 import FriendListItem from "./FriendListItem";
@@ -9,11 +9,13 @@ import FriendListActions from "./FriendListActions";
 import { useFriendList } from "../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../hooks/friends.hooks/useFriendSocket";
 import { usePendingFriendRequests } from "../../../hooks/friends.hooks/usePendingFriendRequests";
+import { useFriendStatusMap } from "../../../hooks/useFriendStatusMap";
+import { useSortedFriends } from "../../../hooks/useSortedFriends";
 import axios from "axios";
 import { SnackbarState, FriendRequestData } from "../../../types/friendObject";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import noFriend from "../../../assets/images/NoFriend.svg";
+import noFriend from "/images/NoFriend.svg";
 import { Friend } from "../../../contexts/UserContext";
 
 const FriendList: React.FC = () => {
@@ -51,6 +53,17 @@ const FriendList: React.FC = () => {
       setLocalFriendList(friendList);
     }
   }, [friendList]);
+
+  // Extract friend IDs for status mapping
+  const friendIds = useMemo(() => {
+    return localFriendList.map((friend) => friend.firebase_uid);
+  }, [localFriendList]);
+
+  // Get status information for all friends
+  const statusMap = useFriendStatusMap(friendIds);
+
+  // Get sorted friend list
+  const sortedFriendList = useSortedFriends(localFriendList, statusMap);
 
   // Setup socket handlers
   const { sendFriendRequest } = useFriendSocket({
@@ -269,58 +282,66 @@ const FriendList: React.FC = () => {
 
   return (
     <>
-      <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C] max-h-[80%]">
-        <div className="px-8 pt-8 pb-4">
-          <div className="flex flex-row items-center mb-4 gap-3">
+      <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C] h-auto w-full">
+        <div className="px-6 sm:px-6 md:px-8 pt-6 sm:pt-6 md:pt-8 pb-6 sm:pb-2 lg:pb-6">
+          <div className="flex flex-row items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
             <img
               src="/bunny.png"
-              className="w-8 sm:w-10 md:w-12 h-auto"
+              className="w-8 sm:w-10 md:w-10 h-auto"
               alt="icon"
             />
-            <p className="text-base sm:text-lg md:text-xl font-semibold">
+            <p className="text-sm sm:text-base md:text-xl font-semibold">
               Friend List
             </p>
           </div>
-          <hr className="border-t-2 border-[#3B354D] mb-4" />
+          <hr className="border-t-2 border-[#3B354D] mb-3 sm:mb-3 md:mb-4 rounded-full" />
 
           {loading ? (
-            <Box display="flex" justifyContent="center" alignItems="center">
-              <img
-                src={cauldronGif}
-                alt="Loading..."
-                style={{ width: "3rem", height: "auto" }}
-              />
-            </Box>
-          ) : error ? (
-            <div className="text-center text-red-500">{error}</div>
-          ) : localFriendList.length === 0 ? (
-            <Stack
-              spacing={2}
+            <Box
               display="flex"
               justifyContent="center"
               alignItems="center"
-              padding="1rem 0"
+              py={1}
+            >
+              <img
+                src={cauldronGif}
+                alt="Loading..."
+                style={{ width: "8rem", height: "auto" }}
+              />
+            </Box>
+          ) : error ? (
+            <div className="text-center text-red-500 text-xs sm:text-sm">
+              {error}
+            </div>
+          ) : localFriendList.length === 0 ? (
+            <Stack
+              spacing={1}
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              padding="0.5rem 0 0.75rem"
             >
               <Box display="flex" justifyContent="center" alignItems="center">
                 <img
                   src={noFriend}
                   alt="noFriend"
                   style={{
-                    width: "6rem",
+                    width: "8.5rem",
                     height: "auto",
                     opacity: 0.75,
                   }}
                 />
               </Box>
-              <p className="text-[#6F658D] font-semibold text-sm">
-                {" "}
+              <p className="text-[#6F658D] font-semibold text-xs text-center px-2">
                 Add friends and share the magic!
               </p>
             </Stack>
           ) : (
-            localFriendList.map((friend: Friend) => (
-              <FriendListItem key={friend.firebase_uid} friend={friend} />
-            ))
+            <div className="space-y-2 sm:space-y-3">
+              {sortedFriendList.map((friend: Friend) => (
+                <FriendListItem key={friend.firebase_uid} friend={friend} />
+              ))}
+            </div>
           )}
         </div>
 

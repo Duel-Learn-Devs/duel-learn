@@ -1,15 +1,35 @@
-import { useState } from "react";
-import pvpMatches from "../../../assets/images/pvp-matches-icon.svg";
-import pvpWins from "../../../assets/images/pvp-wins-icon.svg";
-import longestStreak from "../../../assets/images/longest-streak-icon.svg";
+import { useGetStatistics } from "./hooks/getStatistics";
+import pvpMatches from "/images/pvp-matches-icon.svg";
+import pvpWins from "/images/pvp-wins-icon.svg";
+import longestStreak from "/images/longest-streak-icon.svg";
 
-const Statictics = () => {
-  // State for statistics data
-  const [statistics, _setStatistics] = useState({
-    totalPvPMatches: 16,
-    totalPvPWins: 24,
-    longestStreak: 5,
-  });
+const Statistics = () => {
+  // Use the hook to get statistics data
+  const { statistics, loading, error } = useGetStatistics();
+
+  // Handle loading state
+  if (loading) {
+    return (
+      <div>
+        <h3 className="text-white text-2xl font-semibold mb-5">Statistics</h3>
+        <div className="rounded-[1rem] px-5 py-8 mb-10 border-[0.2rem] border-[#3B354C] text-center">
+          <p className="text-white">Loading statistics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div>
+        <h3 className="text-white text-2xl font-semibold mb-5">Statistics</h3>
+        <div className="rounded-[1rem] px-5 py-8 mb-10 border-[0.2rem] border-[#3B354C] text-center">
+          <p className="text-red-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -50,4 +70,4 @@ const Statictics = () => {
   );
 };
 
-export default Statictics;
+export default Statistics;

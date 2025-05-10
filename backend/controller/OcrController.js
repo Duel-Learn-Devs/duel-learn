@@ -304,7 +304,44 @@ function preprocessExtractedText(text) {
   return processed;
 }
 
-// Add a helper function for PDF processing
+// Add this function after the other helper functions
+async function countPdfPages(pdfPath) {
+  try {
+    const pdfBuffer = fs.readFileSync(pdfPath);
+
+    // First attempt with pdf-parse
+    try {
+      const data = await pdfParse(pdfBuffer);
+
+      // Validate the page count - if it's suspiciously low for the file size
+      const fileSizeMB = pdfBuffer.length / (1024 * 1024);
+      const estimatedPages = Math.ceil(fileSizeMB / 0.1); // Rough estimate based on file size
+
+      if (data.numpages < 5 && fileSizeMB > 1 && estimatedPages > 10) {
+        console.log(`PDF page count suspicious: library reports ${data.numpages} pages but file size suggests ~${estimatedPages} pages`);
+
+        // Alternative method - try to estimate based on file size
+        return Math.max(data.numpages, Math.min(estimatedPages, 200)); // Cap at 200 to avoid extreme numbers
+      }
+
+      return data.numpages;
+    } catch (parseError) {
+      console.error("Error in pdf-parse, falling back to size estimation:", parseError);
+
+      // Fallback: Rough estimation based on file size
+      const fileSizeMB = pdfBuffer.length / (1024 * 1024);
+      const estimatedPages = Math.ceil(fileSizeMB / 0.1); // Assuming ~100KB per page
+
+      console.log(`Estimated ${estimatedPages} pages based on file size ${fileSizeMB.toFixed(2)}MB`);
+      return Math.min(estimatedPages, 200); // Cap at 200 to avoid extreme numbers
+    }
+  } catch (error) {
+    console.error("Critical error in counting PDF pages:", error);
+    return 5; // Return at least 1 tech pass worth of pages as fallback
+  }
+}
+
+// Modify the processPdfWithOCR function to return page count
 async function processPdfWithOCR(pdfPath) {
   try {
     console.log(`Processing PDF: ${pdfPath}`);
@@ -312,7 +349,7 @@ async function processPdfWithOCR(pdfPath) {
     // Verify file exists and check file size
     if (!fs.existsSync(pdfPath)) {
       console.error(`PDF file not found: ${pdfPath}`);
-      return ""; // Return empty string instead of throwing
+      return { text: "", pageCount: 0 };
     }
 
     const stats = fs.statSync(pdfPath);
@@ -320,8 +357,12 @@ async function processPdfWithOCR(pdfPath) {
 
     if (stats.size === 0) {
       console.error(`File is empty: ${pdfPath}`);
-      return ""; // Return empty string instead of throwing
+      return { text: "", pageCount: 0 };
     }
+
+    // Count pages first
+    const pageCount = await countPdfPages(pdfPath);
+    console.log(`PDF has ${pageCount} pages`);
 
     // First, try extracting text directly from the PDF using pdf-parse
     console.log("Attempting direct text extraction from PDF...");
@@ -334,11 +375,11 @@ async function processPdfWithOCR(pdfPath) {
       const fileStart = pdfBuffer.slice(0, 5).toString();
       if (fileStart !== "%PDF-") {
         console.error(`File does not appear to be a valid PDF: ${pdfPath}`);
-        return ""; // Return empty for invalid PDFs
+        return { text: "", pageCount };
       }
     } catch (readError) {
       console.error(`Error reading PDF file: ${readError.message}`);
-      return ""; // Return empty if we can't read the file
+      return { text: "", pageCount };
     }
 
     try {
@@ -350,7 +391,7 @@ async function processPdfWithOCR(pdfPath) {
         console.log(
           `Successfully extracted ${extractedText.length} characters from PDF directly`
         );
-        return extractedText;
+        return { text: extractedText, pageCount };
       }
 
       console.log(
@@ -386,18 +427,18 @@ async function processPdfWithOCR(pdfPath) {
         console.log(
           `Extracted ${extractedText.length} characters from PDF with OCR`
         );
-        return extractedText;
+        return { text: extractedText, pageCount };
       } else {
         console.log(`No text annotations found in API response for PDF`);
-        return "";
+        return { text: "", pageCount };
       }
     } catch (visionError) {
       console.error(`Error in Vision API processing: ${visionError.message}`);
-      return ""; // Return empty instead of propagating the error
+      return { text: "", pageCount };
     }
   } catch (error) {
     console.error(`Error processing PDF:`, error);
-    return ""; // Return empty string instead of throwing
+    return { text: "", pageCount: 0 };
   }
 }
 
@@ -429,6 +470,7 @@ const ocrController = {
       let allExtractedText = "";
       let processedCount = 0;
       let errorCount = 0;
+      let totalPdfPages = 0;
 
       // Process each file one by one
       for (let i = 0; i < req.files.length; i++) {
@@ -439,9 +481,7 @@ const ocrController = {
           const fileType = file.mimetype;
 
           console.log(
-            `Processing file ${i + 1} of ${
-              req.files.length
-            }: ${fileName} (${fileType})`
+            `Processing file ${i + 1} of ${req.files.length}: ${fileName} (${fileType})`
           );
 
           if (!fs.existsSync(filePath)) {
@@ -451,11 +491,15 @@ const ocrController = {
           }
 
           let extractedText = "";
+          let pageCount = 0;
 
           // Handle PDF files differently than images
           if (fileType === "application/pdf") {
             console.log(`Detected PDF file: ${fileName}`);
-            extractedText = await processPdfWithOCR(filePath);
+            const result = await processPdfWithOCR(filePath);
+            extractedText = result.text;
+            pageCount = result.pageCount;
+            totalPdfPages += pageCount;
           } else {
             // Handle image files
             console.log(`Detected image file: ${fileName}`);
@@ -471,13 +515,9 @@ const ocrController = {
           if (extractedText && extractedText.trim()) {
             processedCount++;
             // Add page marker and the extracted text
-            allExtractedText += `\n\n--- File ${
-              i + 1
-            }: ${fileName} ---\n\n${extractedText}`;
+            allExtractedText += `\n\n--- File ${i + 1}: ${fileName}${pageCount > 0 ? ` (${pageCount} pages)` : ''} ---\n\n${extractedText}`;
             console.log(
-              `Successfully extracted ${
-                extractedText.length
-              } characters from file ${i + 1}`
+              `Successfully extracted ${extractedText.length} characters from file ${i + 1}`
             );
           } else {
             console.log(`No text extracted from file ${i + 1}`);
@@ -499,9 +539,7 @@ const ocrController = {
       }
 
       // Add a summary of the extraction process
-      const summary = `\n\n=== Extraction Summary ===\nSuccessfully processed ${processedCount} of ${
-        req.files.length
-      } files${errorCount > 0 ? ` (${errorCount} files had issues)` : ""}\n`;
+      const summary = `\n\n=== Extraction Summary ===\nSuccessfully processed ${processedCount} of ${req.files.length} files${errorCount > 0 ? ` (${errorCount} files had issues)` : ""}${totalPdfPages > 0 ? `\nTotal PDF pages: ${totalPdfPages}` : ""}\n`;
 
       allExtractedText = summary + allExtractedText;
 
@@ -517,6 +555,7 @@ const ocrController = {
         fileCount: req.files.length,
         successCount: processedCount,
         errorCount: errorCount,
+        totalPdfPages: totalPdfPages,
       });
     } catch (error) {
       console.error("Error processing files:", error);
@@ -599,7 +638,7 @@ const ocrController = {
       const preprocessedText = preprocessExtractedText(text);
       console.log(
         "Preprocessed text:",
-        preprocessedText.substring(0, 200) + "..."
+        preprocessedText.substring(0, 1000) + "..."
       );
 
       // Import OpenAI with proper error handling
@@ -628,7 +667,7 @@ const ocrController = {
           ${preprocessedText}
 
           INSTRUCTIONS:
-1. ONLY extract terms that have clearly designated definitions in the text. Do not create or infer definitions for terms that don't have them explicitly stated.
+1. ONLY extract terms that have designated definitions in the text. Do not create or infer definitions for terms that don't have them explicitly stated.
 2. You can fix minimal errors in the text to make it more readable.
 2. A term must have an EXPLICIT definition directly following it - usually after a colon, dash, or on the next line with clear indentation.
 3. Headers, titles, section names, or category labels are NOT terms with definitions - ignore these completely.
@@ -638,6 +677,7 @@ const ocrController = {
 7. Use the EXACT definition as provided in the text - do not paraphrase, summarize, or modify the extracted definitions.
 8. Only include terms that have substantive definitions. Skip terms with vague or incomplete explanations.
 9. Format your response as a JSON array of term-definition pairs.
+10. Expect preprocessed text to be quite unformatted, so you will need to format it correctly.
 
           FORMAT:
           [

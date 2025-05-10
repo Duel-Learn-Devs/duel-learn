@@ -162,8 +162,8 @@ const FriendRequestController = {
         .json({ message: "Missing sender_id or receiver_id" });
     }
 
-    const currentTimestamp = manilacurrentTimestamp;
-    const updatedTimestamp = manilacurrentTimestamp;
+    const currentTimestamp = manilacurrentTimestamp();
+    const updatedTimestamp = manilacurrentTimestamp();
 
     const connection = await pool.getConnection();
     try {
@@ -224,7 +224,7 @@ const FriendRequestController = {
         .json({ message: "Missing sender_id or receiver_id" });
     }
 
-    const acceptedTimestamp = manilacurrentTimestamp;
+    const acceptedTimestamp = manilacurrentTimestamp();
     const connection = await pool.getConnection();
     try {
       // Update the friend request status
@@ -259,7 +259,7 @@ const FriendRequestController = {
         .json({ message: "Missing sender_id or receiver_id" });
     }
 
-    const rejectedTimestamp = manilacurrentTimestamp;
+    const rejectedTimestamp = manilacurrentTimestamp();
     const connection = await pool.getConnection();
     try {
       await connection.execute(
@@ -282,7 +282,7 @@ const FriendRequestController = {
         .json({ message: "Missing sender_id or receiver_id" });
     }
 
-    const deletedTimestamp = manilacurrentTimestamp;
+    const deletedTimestamp = manilacurrentTimestamp();
 
     const connection = await pool.getConnection();
     try {

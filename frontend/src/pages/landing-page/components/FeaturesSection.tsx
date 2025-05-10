@@ -67,7 +67,7 @@ const FeaturesSection = () => {
             }}
           >
             <img
-              src="src/assets/landing-page/spark-2.png"
+              src="/landing-page/spark-2.png"
               alt="Spark"
               style={{
                 width: "100%",
@@ -161,7 +161,7 @@ const FeatureCard = ({ icon, title, description }: FeatureCardProps) => (
       }}
     >
       <img
-        src={`src/assets/landing-page/${icon}.png`}
+        src={`/landing-page/${icon}.png`}
         alt={title}
         style={{
           width: "60px",

@@ -1,23 +1,33 @@
 import React, { useState } from "react";
 import { Modal, Box } from "@mui/material";
-import CoinIcon from "../../../../assets/CoinIcon.png";
-import ConfirmPurchaseModal from "./ConfirmPurchaseModal"; // Import new modal
+import CoinIcon from "/CoinIcon.png";
+import ConfirmPurchaseModal from "./ConfirmPurchaseModal";
+import { ShopItem } from "../../../../types/shopObject";
 
-interface ShopItem {
+// Extended ShopItem for UI purposes
+interface ShopItemExtended extends ShopItem {
   id: number;
+  owned: number;
   name: string;
   buyLabel: string;
-  owned: number;
   image: string;
 }
 
 interface ShopItemModalProps {
   isModalOpen: boolean;
   closeModal: () => void;
-  selectedItem: ShopItem | null;
+  selectedItem: ShopItemExtended | null;
   quantity: number;
   handleIncrement: () => void;
   handleDecrement: () => void;
+  handlePurchase: (
+    itemCode: string,
+    quantity: number,
+    itemName: string,
+    itemEffect: string,
+    itemPrice: number
+  ) => Promise<boolean>;
+  userCoins: number;
 }
 
 const ShopItemModal: React.FC<ShopItemModalProps> = ({
@@ -27,28 +37,52 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
   quantity,
   handleIncrement,
   handleDecrement,
+  handlePurchase,
+  userCoins,
 }) => {
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [confirmItem, setConfirmItem] = useState<ShopItem | null>(null); // Store selected item
-  const [confirmQuantity, setConfirmQuantity] = useState(1); // Store selected quantity
-  const [errorMessage, setErrorMessage] = useState<string | null>(null); // Store error message
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleOpenConfirmModal = () => {
     if (selectedItem) {
       if (selectedItem.owned + quantity > 5) {
         setErrorMessage("You cannot own more than 5 of this item.");
+      } else if (userCoins < parseInt(selectedItem.buyLabel) * quantity) {
+        setErrorMessage("You don't have enough coins for this purchase.");
       } else {
-        setConfirmItem(selectedItem); // Store selected item
-        setConfirmQuantity(quantity); // Store selected quantity
-        closeModal(); // Close ShopItemModal first
-        setConfirmModalOpen(true); // Open ConfirmPurchaseModal
+        setConfirmModalOpen(true);
       }
     }
   };
 
   const handleCloseModal = () => {
-    setErrorMessage(null); // Clear error message
+    setErrorMessage(null);
     closeModal();
+  };
+
+  const handleConfirmPurchase = async () => {
+    if (!selectedItem) return;
+
+    setIsProcessing(true);
+    try {
+      const result = await handlePurchase(
+        selectedItem.item_code,
+        quantity,
+        selectedItem.item_name,
+        selectedItem.item_effect,
+        selectedItem.item_price || 0
+      );
+
+      if (result) {
+        setConfirmModalOpen(false);
+        closeModal();
+      }
+    } catch (error) {
+      console.error("Purchase failed:", error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -62,6 +96,7 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
             left: "50%",
             transform: "translate(-50%, -50%)",
             width: 500,
+            maxWidth: "90%",
             bgcolor: "#080511",
             boxShadow: 24,
             borderColor: "#3B354D",
@@ -76,15 +111,15 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
             <>
               <h2 className="text-2xl font-bold mb-2">Buy this item</h2>
               <p className="mb-4 text-sm text-[#8d80b3]">
-                Select the amount of <strong>{selectedItem.name}</strong> you
-                wish to buy.
+                Select the amount of <strong>{selectedItem.item_name}</strong>{" "}
+                you wish to buy.
               </p>
 
               <div className="flex justify-center items-center gap-6 mb-4">
                 <div className="flex items-center my-3 gap-4">
                   <img
-                    src={selectedItem.image}
-                    alt={selectedItem.name}
+                    src={selectedItem.item_picture_url}
+                    alt={selectedItem.item_name}
                     className="w-[74px] h-[74px] object-contain rounded-lg mr-3"
                   />
                   <button
@@ -105,9 +140,22 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
                 </div>
               </div>
 
+              <div className="mt-2 mb-4 flex justify-between items-center">
+                <span>Your coins:</span>
+                <div className="flex items-center">
+                  <img
+                    src={CoinIcon}
+                    alt="Coin"
+                    className="w-5 h-5 inline-block mr-2"
+                  />
+                  <span className="text-[#FFC700] font-bold">{userCoins}</span>
+                </div>
+              </div>
+
               <button
                 className="bg-white text-black px-5 py-2 rounded-lg font-bold w-full flex justify-center items-center hover:bg-gray-200 transition-all duration-200"
                 onClick={handleOpenConfirmModal}
+                disabled={selectedItem.item_price * quantity > userCoins}
               >
                 Buy for{" "}
                 <img
@@ -116,7 +164,7 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
                   className="w-5 h-5 inline-block ml-2"
                 />
                 <span className="text-[#9C8307] font-bold ml-2">
-                  {parseInt(selectedItem.buyLabel) * quantity}
+                  {selectedItem.item_price * quantity}
                 </span>
               </button>
 
@@ -139,8 +187,10 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
       <ConfirmPurchaseModal
         isOpen={isConfirmModalOpen}
         closeModal={() => setConfirmModalOpen(false)}
-        selectedItem={confirmItem} // Pass selected item
-        quantity={confirmQuantity} // Pass selected quantity
+        selectedItem={selectedItem}
+        quantity={quantity}
+        handleConfirmPurchase={handleConfirmPurchase}
+        isProcessing={isProcessing}
       />
     </>
   );

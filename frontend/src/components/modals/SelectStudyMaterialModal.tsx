@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -21,10 +21,13 @@ import SearchIcon from "@mui/icons-material/Search";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { useUser } from "../../contexts/UserContext";
-import { generateCode } from "../../pages/dashboard/play-battleground/utils/codeGenerator";
 import { StudyMaterial } from "../../types/studyMaterialObject";
-import { createNewLobby, navigateToWelcomeScreen } from "../../services/pvpLobbyService";
+import {
+  createNewLobby,
+  navigateToWelcomeScreen,
+} from "../../services/pvpLobbyService";
 
+// Modify the interface to accept newMaterialId
 interface SelectStudyMaterialModalProps {
   open: boolean;
   handleClose: () => void;
@@ -34,6 +37,7 @@ interface SelectStudyMaterialModalProps {
   onMaterialSelect: (material: StudyMaterial) => void;
   onModeSelect: (mode: string) => void;
   selectedTypes: string[];
+  newMaterialId?: string | null; // Add this prop
 }
 
 const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
@@ -45,6 +49,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   onMaterialSelect,
   onModeSelect,
   selectedTypes,
+  newMaterialId,
 }) => {
   const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,22 +62,48 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Add this state for tracking the highlighted material
+  const [highlightedMaterial, setHighlightedMaterial] = useState<string | null>(
+    null
+  );
+
+  // Create refs for scrolling to the new material
+  const materialRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
   useEffect(() => {
     const fetchStudyMaterials = async () => {
-      if (!user?.username) return;
+      if (!user?.username || !open) return;
       setIsLoading(true);
 
       try {
+        // Add a timestamp to the URL to avoid caching issues
+        const timestamp = new Date().getTime();
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-by-user/${
             user.username
-          }`
+          }?t=${timestamp}`
         );
+
         if (!response.ok) {
           throw new Error("Failed to fetch study materials");
         }
         const data = await response.json();
-        setStudyMaterials(data);
+
+        // Apply default sorting (recent first)
+        const sortedData = sortMaterials(data, filter);
+        setStudyMaterials(sortedData);
+        setFilteredMaterials(sortedData);
+
+        // If a new material was just created, highlight it
+        if (newMaterialId) {
+          console.log("New material to highlight:", newMaterialId);
+          setHighlightedMaterial(newMaterialId);
+
+          // If filter is not "Recent", change it to ensure new material is visible
+          if (filter !== "Recent") {
+            setFilter("Recent");
+          }
+        }
       } catch (error) {
         console.error("Error fetching study materials:", error);
       } finally {
@@ -80,8 +111,39 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
       }
     };
 
-    fetchStudyMaterials();
-  }, [user?.username]);
+    // This will run whenever the modal is opened
+    if (open) {
+      fetchStudyMaterials();
+    }
+  }, [user?.username, open, newMaterialId, filter]);
+
+  // Add effect to scroll to the highlighted material
+  useEffect(() => {
+    if (
+      highlightedMaterial &&
+      materialRefs.current[highlightedMaterial] &&
+      !isLoading
+    ) {
+      // Scroll the highlighted material into view after a short delay
+      setTimeout(() => {
+        materialRefs.current[highlightedMaterial]?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 300);
+    }
+  }, [highlightedMaterial, filteredMaterials, isLoading]);
+
+  // Add this effect to reset highlighting when the modal closes
+  useEffect(() => {
+    if (!open) {
+      // Reset highlighted material when modal closes
+      setHighlightedMaterial(null);
+    } else if (newMaterialId) {
+      // Set highlighted material when modal opens with a newMaterialId
+      setHighlightedMaterial(newMaterialId);
+    }
+  }, [open, newMaterialId]);
 
   // Update the sortMaterials function to correctly sort by total_views
   const sortMaterials = (materials: StudyMaterial[], filter: string) => {
@@ -108,6 +170,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
         return materials;
     }
   };
+
   useEffect(() => {
     const filtered = studyMaterials.filter((material) =>
       material.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -118,25 +181,26 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   const handleMaterialSelect = (material: StudyMaterial) => {
     // Call the onMaterialSelect callback with the material
     onMaterialSelect(material);
-    
+
     // If we're in a lobby context, just close the modal and don't navigate
     if (isLobby) {
       handleClose();
       return;
     }
-    
+
     // Normal flow for non-lobby context
     onModeSelect(mode || "");
     handleClose();
 
     // Format mode string consistently
-    const formattedMode = mode === "Peaceful Mode"
-      ? "Peaceful"
-      : mode === "Time Pressured"
-      ? "Time Pressured"
-      : mode === "PvP Mode"
-      ? "PvP"
-      : mode || "Unknown";
+    const formattedMode =
+      mode === "Peaceful Mode"
+        ? "Peaceful"
+        : mode === "Time Pressured"
+        ? "Time Pressured"
+        : mode === "PvP Mode"
+        ? "PvP"
+        : mode || "Unknown";
 
     // For PVP mode, use the lobby service
     if (formattedMode === "PvP" || mode === "PvP Mode") {
@@ -146,11 +210,11 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
       }
       navigateToWelcomeScreen(navigate, lobbyState);
     } else {
-      navigate("/dashboard/welcome-game-mode", { 
+      navigate("/dashboard/welcome-game-mode", {
         state: {
           mode: formattedMode,
-          material
-        }
+          material,
+        },
       });
     }
   };
@@ -178,8 +242,8 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: { xs: "90%", sm: "1000px" },
-            height: { xs: "auto", sm: "650px" },
+            width: { xs: "90%", sm: "1200px" },
+            height: { xs: "auto", sm: "700px" },
             bgcolor: "#120F1B",
             borderRadius: "0.8rem",
             border: "2px solid #3B354D",
@@ -199,23 +263,13 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
               position: "absolute",
               top: 16,
               left: 16,
-              color: "#FFFFFF",
+              color: "#3B354D",
+              "&:hover": {
+                color: "#E2DDF3",
+              },
             }}
           >
             <ArrowBackIcon />
-          </IconButton>
-
-          <IconButton
-            aria-label="close"
-            onClick={handleClose}
-            sx={{
-              position: "absolute",
-              top: 16,
-              right: 16,
-              color: "#FFFFFF",
-            }}
-          >
-            <CloseIcon />
           </IconButton>
 
           <Typography
@@ -343,12 +397,12 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
 
           <Box
             sx={{
-              width: "80%",
-              height: "280px",
+              width: "90%",
+              height: "50vh",
               justifyContent: "flex-start",
               textAlign: "left",
               overflowY: "auto",
-              marginTop: "15px",
+              padding: "10px",
             }}
             className="scrollbar-thin scrollbar-thumb-[#6F658B] scrollbar-track-[#3B354C]"
           >
@@ -357,21 +411,68 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
                 filteredMaterials.map((material, index) => (
                   <Button
                     key={index}
+                    ref={(el) =>
+                      (materialRefs.current[material.study_material_id] = el)
+                    }
                     sx={{
                       textTransform: "none",
-                      bgcolor: "#E4DCFD",
+                      bgcolor:
+                        highlightedMaterial === material.study_material_id
+                          ? "#A38CE6" // Highlight color for new material
+                          : "#E4DCFD",
                       color: "#110C21",
                       display: "flex",
                       justifyContent: "space-between",
                       borderRadius: "0.8rem",
                       px: 3,
                       py: 2,
+                      transition: "all 0.3s ease",
                       "&:hover": {
-                        bgcolor: "#9F9BAE",
+                        bgcolor:
+                          highlightedMaterial === material.study_material_id
+                            ? "#B99DF5" // Hover color for highlighted material
+                            : "#9F9BAE",
+                      },
+                      position: "relative", // For badge positioning
+                      animation:
+                        highlightedMaterial === material.study_material_id
+                          ? "pulse 2s infinite"
+                          : "none",
+                      "@keyframes pulse": {
+                        "0%": {
+                          boxShadow: "0 0 0 0 rgba(163, 140, 230, 0.7)",
+                        },
+                        "70%": {
+                          boxShadow: "0 0 0 10px rgba(163, 140, 230, 0)",
+                        },
+                        "100%": {
+                          boxShadow: "0 0 0 0 rgba(163, 140, 230, 0)",
+                        },
                       },
                     }}
                     onClick={() => handleMaterialSelect(material)}
                   >
+                    {/* New material badge */}
+                    {highlightedMaterial === material.study_material_id && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: -10,
+                          right: -10,
+                          bgcolor: "#4D18E8",
+                          color: "white",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          paddingX: "8px",
+                          paddingY: "2px",
+                          borderRadius: "12px",
+                          boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+                        }}
+                      >
+                        New
+                      </Box>
+                    )}
+
                     <Box sx={{ width: "100%" }}>
                       <Typography
                         variant="body1"
@@ -432,7 +533,9 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
                     mt: 2,
                   }}
                 >
-                  No study materials found
+                  {isLoading
+                    ? "Loading study materials..."
+                    : "No study materials found"}
                 </Typography>
               )}
             </Stack>

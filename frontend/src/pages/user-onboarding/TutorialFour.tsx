@@ -2,13 +2,17 @@ import * as React from "react";
 import Typewriter from "typewriter-effect";
 import useWandCursor from "./data/useWandCursor";
 import { useNavigate } from "react-router-dom";
-import CharacterTalking from "../../assets/UserOnboarding/NoddingBunny.gif";
+import CharacterTalking from "/UserOnboarding/NoddingBunny.gif";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import PageTransition from "../../styles/PageTransition";
+import { useAudio } from "../../contexts/AudioContext";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 
 export default function TutorialFour() {
   useWandCursor();
   const navigate = useNavigate();
+  const { isMuted, toggleMute } = useAudio();
 
   const dialogues = [
     `<span class="font-bold">Peaceful Mode</span> for relaxed practice and review. The best way to retain those lessons in your head, Magician.`,
@@ -23,7 +27,12 @@ export default function TutorialFour() {
     setTimeout(() => setAnimate(true), 100);
   }, []);
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    // Check if the click was on the sound button
+    if ((e.target as HTMLElement).closest("button")) {
+      return;
+    }
+
     if (!typingDone) {
       setShowFullText(true);
       setTypingDone(true);
@@ -50,6 +59,22 @@ export default function TutorialFour() {
         role="main"
         onClick={handleClick}
       >
+        <div className="absolute top-4 right-4 z-50 pointer-events-none">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMute();
+            }}
+            className="text-white hover:text-gray-300 transition-colors pointer-events-auto"
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? (
+              <VolumeOffIcon style={{ height: 23, width: 23 }} />
+            ) : (
+              <VolumeUpIcon style={{ height: 23, width: 23 }} />
+            )}
+          </button>
+        </div>
         {/* Magic Wand Cursor */}
         <div className="wand-cursor"></div>
 
@@ -68,7 +93,14 @@ export default function TutorialFour() {
 
         {/* Video Section */}
         <div className="flex justify-center items-center w-full mt-10 md:mt-16 z-10">
-          <div className="w-full max-w-[801px] h-[297px] bg-zinc-300 rounded-xl"></div>
+          <video
+            src="/UserOnboarding/useronboarding_stepthree.mp4"
+            className="w-full max-w-[50vw] h-[40vh] rounded-[0.8rem] border-2 border-white"
+            autoPlay
+            loop
+            muted
+            playsInline
+          />
         </div>
 
         {/* Dialogue Box */}

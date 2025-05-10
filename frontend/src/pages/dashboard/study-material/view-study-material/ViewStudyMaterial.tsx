@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Box, Stack, Typography, Button, Chip, Divider } from "@mui/material";
+import {
+  Box,
+  Stack,
+  Typography,
+  Button,
+  Chip,
+  Divider,
+  Tooltip,
+} from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
 import { Item, StudyMaterial } from "../../../../types/studyMaterialObject";
 import SummaryPage from "./SummaryPage";
@@ -19,7 +27,7 @@ const ViewStudyMaterial = () => {
   const { user } = useUser();
   const { studyMaterialId } = useParams();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState("Summary");
+  const [selected, setSelected] = useState("Overview");
   const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(
     null
   );
@@ -44,10 +52,12 @@ const ViewStudyMaterial = () => {
 
     const fetchStudyMaterial = async () => {
       try {
+        // Add timestamp to bypass cache
+        const timestamp = new Date().getTime();
         const response = await fetch(
           `${
             import.meta.env.VITE_BACKEND_URL
-          }/api/study-material/get-by-study-material-id/${studyMaterialId}`
+          }/api/study-material/get-by-study-material-id/${studyMaterialId}?timestamp=${timestamp}`
         );
         const data = await response.json();
         console.log("API Response:", data);
@@ -109,13 +119,16 @@ const ViewStudyMaterial = () => {
     if (!studyMaterial) return;
 
     // Transform items to match the format expected by CreateStudyMaterial
-    const transformedItems = studyMaterial.items.map((item, index) => ({
-      id: index, // Using index as id
-      term: item.term || "",
-      definition: item.definition || "",
-      image: item.image || null,
-      item_number: item.item_number || "",
-    }));
+    const transformedItems = studyMaterial.items
+      .map((item, index) => ({
+        id: index, // Using index as id
+        term: item.term || "",
+        definition: item.definition || "",
+        image: item.image || null,
+        item_number:
+          typeof item.item_number === "number" ? item.item_number : index + 1, // Ensure it's a number
+      }))
+      .sort((a, b) => a.item_number - b.item_number); // Sort by item_number
 
     // Navigate to create page with study material data
     navigate("/dashboard/study-material/create", {
@@ -227,16 +240,17 @@ const ViewStudyMaterial = () => {
         mode,
         material: studyMaterial,
         preSelectedMaterial: studyMaterial,
-        skipMaterialSelection: true
-      }
+        skipMaterialSelection: true,
+      },
     });
   };
 
   return (
     <PageTransition>
-      <Box className="min-h-screen w-full px-4 md:px-8">
+      <Box className="min-h-screen w-full ">
         <DocumentHead title={studyMaterial?.title + " | Duel Learn"} />
-        <Stack spacing={2} sx={{ pt: { xs: 2, md: 3 } }}>
+
+        <Stack spacing={2}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={2}
@@ -279,6 +293,21 @@ const ViewStudyMaterial = () => {
                     {loading ? "Loading..." : studyMaterial?.total_views} People
                   </strong>
                 </Typography>
+
+                {!loading && studyMaterial?.visibility?.toString() === "1" && (
+                  <>
+                    <Typography
+                      variant="subtitle2"
+                      className="text-[#9F9BAE]"
+                      sx={{ display: { xs: "none", sm: "block" } }}
+                    >
+                      •
+                    </Typography>
+                    <Typography variant="subtitle2" className="text-[#9F9BAE]">
+                      <strong>Public</strong>
+                    </Typography>
+                  </>
+                )}
 
                 {!loading &&
                   studyMaterial?.status?.toLowerCase() === "archived" && (
@@ -384,41 +413,43 @@ const ViewStudyMaterial = () => {
                   Edit
                 </Button>
               )}
-              <Button
-                variant="outlined"
-                onClick={handleClick}
-                sx={{
-                  alignItems: "center",
-                  borderColor: "#E2DDF3",
-                  color: "#E2DDF3",
-                  height: "fit-content",
-                  borderRadius: "0.8rem",
-                  padding: "0.4rem 1rem",
-                  minWidth: { xs: "40px", sm: "auto" },
-                  fontSize: "0.9rem",
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    transform: "scale(1.05)",
-                  },
-                }}
-              >
-                <MoreIcon />
-              </Button>
+              <Tooltip title="More Options" arrow>
+                <Button
+                  variant="outlined"
+                  onClick={handleClick}
+                  sx={{
+                    alignItems: "center",
+                    borderColor: "#E2DDF3",
+                    color: "#E2DDF3",
+                    height: "fit-content",
+                    borderRadius: "0.8rem",
+                    padding: "0.4rem 1rem",
+                    minWidth: { xs: "40px", sm: "auto" },
+                    fontSize: "0.9rem",
+                    transition: "all 0.3s ease-in-out",
+                    "&:hover": {
+                      transform: "scale(1.05)",
+                    },
+                  }}
+                >
+                  <MoreIcon />
+                </Button>
+              </Tooltip>
             </Stack>
           </Stack>
 
           <Stack
-            spacing={1.5}
+            spacing={1}
             direction={{ xs: "column", sm: "row" }}
             alignItems={{ xs: "flex-start", sm: "center" }}
-            sx={{ mt: 2 }}
+            sx={{ pt: 1.5 }}
           >
             <Typography variant="subtitle1" className="text-[#9F9BAE]">
               Tags:
             </Typography>
             <Stack
               direction="row"
-              spacing={1}
+              spacing={0}
               sx={{ flexWrap: "wrap", gap: "8px" }}
             >
               {studyMaterial?.tags?.map((tag: string, index: number) => (
@@ -439,7 +470,7 @@ const ViewStudyMaterial = () => {
               ))}
             </Stack>
           </Stack>
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
+          <Stack direction="row" alignItems="center" spacing={1}>
             <Typography
               variant="subtitle1"
               className="text-[#3B354D] font-bold"
@@ -455,16 +486,15 @@ const ViewStudyMaterial = () => {
               direction="row"
               spacing={1}
               className="flex items-center"
-              sx={{ overflowX: "auto", pb: 1 }}
+              sx={{ overflowX: "auto", pt: 0.5 }}
             >
-              {["Summary", "Cards"].map((label) => (
+              {["Overview", "Cards"].map((label) => (
                 <Button
                   key={label}
                   variant="text"
                   onClick={() => setSelected(label)}
                   sx={{
                     borderRadius: "0.8rem",
-                    padding: "0.5rem 1rem",
                     transition: "all 0.3s ease-in-out",
                     color: selected === label ? "#E2DDF3" : "#3B354D",
                     backgroundColor:
@@ -472,7 +502,7 @@ const ViewStudyMaterial = () => {
                     "&:hover": {
                       backgroundColor: "#3B354D",
                       color: "#E2DDF3",
-                      transform: "scale(1.05)",
+                      transform: "translateY(-3px)",
                     },
                     whiteSpace: "nowrap",
                   }}
@@ -482,7 +512,7 @@ const ViewStudyMaterial = () => {
               ))}
             </Stack>
             <Box sx={{ width: "100%" }}>
-              {selected === "Summary" ? (
+              {selected === "Overview" ? (
                 <SummaryPage studyMaterial={studyMaterial} />
               ) : (
                 <CardPage studyMaterial={studyMaterial} />
@@ -503,7 +533,7 @@ const ViewStudyMaterial = () => {
         />
 
         {/* Add ChooseModeModal */}
-        <ChooseModeModal 
+        <ChooseModeModal
           open={showModeModal}
           handleClose={() => setShowModeModal(false)}
           preSelectedMaterial={studyMaterial}

@@ -1,4 +1,4 @@
-export type GameMode = 'Peaceful' | 'Time Pressured' | 'pvp';
+export type GameMode = "Peaceful" | "Time Pressured" | "pvp";
 
 export interface StudyMaterialItem {
   term: string;
@@ -15,11 +15,34 @@ export interface StudyMaterial {
 }
 
 export interface Question {
-  type: 'multiple-choice' | 'identification' | 'true-false';
+  id?: string;
   question: string;
+  type: "multiple-choice" | "identification" | "true-false" | string;
+  questionType?: string;
+  options?: string[] | { [key: string]: string };
   correctAnswer: string;
-  options?: { [key: string]: string };  // for multiple choice questions
-  answer: string;
+  correct_answer?: string; // For API compatibility
+  answer?: string;
+  mode?: string;
+  explanation?: string;
+  study_material_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  difficulty?: "easy" | "average" | "hard";
+  itemInfo?: {
+    term?: string;
+    definition?: string;
+    itemId?: string;
+    itemNumber?: number;
+    image?: string;
+  };
+  // Additional fields used in the codebase
+  rawOptions?: any;
+  image?: string;
+  term?: string;
+  definition?: string;
+  item_id?: string;
+  item_number?: number;
 }
 
 export interface GameState {

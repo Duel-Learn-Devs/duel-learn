@@ -11,10 +11,16 @@ import LoadingScreen from "../../components/LoadingScreen";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import useGoogleAuth from "../../hooks/auth.hooks/useGoogleAuth";
-import { useStoreUser } from '../../hooks/api.hooks/useStoreUser';
+import { useStoreUser } from "../../hooks/api.hooks/useStoreUser";
 import { useUser } from "../../contexts/UserContext";
 import { useAuth } from "../../contexts/AuthContext";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import { setAuthToken } from "../../api/apiClient";
 import PasswordValidationTooltip from "../../components/PasswordValidationTooltip";
 
@@ -24,6 +30,7 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleButtonLoading, setGoogleButtonLoading] = useState(false);
   const { storeUser } = useStoreUser();
   const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
   const { loadUserData } = useUser();
@@ -63,8 +70,11 @@ const SignUp = () => {
       .required("Username is required.")
       .min(2, "Username must be at least 2 characters.")
       .max(20, "Username cannot exceed 20 characters.")
-      .matches(/^[a-zA-Z0-9_]+$/, "Username can only contain alphanumeric characters and underscores.")
-      .test("unique", "Username is already taken", async function(value) {
+      .matches(
+        /^[a-zA-Z0-9_]+$/,
+        "Username can only contain alphanumeric characters and underscores."
+      )
+      .test("unique", "Username is already taken", async function (value) {
         if (!value) return true; // Skip if empty as required() will handle it
         try {
           return await checkUsernameUnique(value);
@@ -75,7 +85,7 @@ const SignUp = () => {
     email: Yup.string()
       .required("Email is required.")
       .email("Please enter a valid email address.")
-      .test("unique", "Email is already in use", async function(value) {
+      .test("unique", "Email is already in use", async function (value) {
         if (!value) return true; // Skip if empty as required() will handle it
         try {
           return await checkEmailUnique(value);
@@ -89,10 +99,17 @@ const SignUp = () => {
       .matches(/[A-Z]/, "Password must contain at least one uppercase letter.")
       .matches(/[a-z]/, "Password must contain at least one lowercase letter.")
       .matches(/[0-9]/, "Password must contain at least one number.")
-      .matches(/[!@#$%^&*(),.?":{}|<>]/, "Password must contain at least one special character."),
+      .matches(
+        /[!@#$%^&*(),.?":{}|<>]/,
+        "Password must contain at least one special character."
+      ),
     confirmPassword: Yup.string()
-      .oneOf([Yup.ref('password')], "Passwords must match").required("Please confirm your password."),
-    terms: Yup.boolean().oneOf([true], "You must agree to the terms and conditions."),
+      .oneOf([Yup.ref("password")], "Passwords must match")
+      .required("Please confirm your password."),
+    terms: Yup.boolean().oneOf(
+      [true],
+      "You must agree to the terms and conditions."
+    ),
   });
 
   const formik = useFormik({
@@ -107,19 +124,19 @@ const SignUp = () => {
     onSubmit: async (values) => {
       setLoading(true);
       let firebaseUser = null; // Variable to track if we need to delete Firebase user on error
-      
+
       try {
         console.log("=== Starting SignUp Process ===");
         console.log("Creating Firebase user...");
-        
+
         // Use AuthContext signup instead of direct Firebase call
         const user = await signup(values.email, values.password);
         firebaseUser = user; // Store reference for cleanup in case of error
         console.log("Firebase user created:", user.uid);
-        
+
         await updateProfile(user, { displayName: values.username });
         console.log("Firebase profile updated");
-    
+
         // Get a fresh token and make sure it's set in apiClient
         console.log("Getting fresh token and setting up authentication...");
 
@@ -132,31 +149,39 @@ const SignUp = () => {
           try {
             tokenAttempts++;
             console.log(`Token attempt ${tokenAttempts}/${MAX_TOKEN_ATTEMPTS}`);
-            
+
             // Force refresh token
             token = await user.getIdToken(true);
-            console.log(`Got Firebase token (attempt ${tokenAttempts}):`, token.substring(0, 10) + "...");
-            
+            console.log(
+              `Got Firebase token (attempt ${tokenAttempts}):`,
+              token.substring(0, 10) + "..."
+            );
+
             // Explicitly set the token to ensure it's available for the API call
             setAuthToken(token);
             console.log("Token explicitly set in apiClient");
           } catch (tokenError) {
-            console.error(`Failed to get token on attempt ${tokenAttempts}:`, tokenError);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            console.error(
+              `Failed to get token on attempt ${tokenAttempts}:`,
+              tokenError
+            );
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         }
 
         if (!token) {
-          throw new Error("Failed to obtain authentication token after multiple attempts. Please try again.");
+          throw new Error(
+            "Failed to obtain authentication token after multiple attempts. Please try again."
+          );
         }
 
         // Increase the delay to ensure token is properly set
         console.log("Waiting for token to propagate...");
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
         // Ready to proceed with API call
         console.log("Proceeding with storeUser API call...");
-        
+
         // Store user data in backend
         console.log("Calling storeUser with data:", {
           username: values.username,
@@ -178,7 +203,7 @@ const SignUp = () => {
         if (!storeUserResult.success) {
           throw new Error(storeUserResult.error);
         }
-    
+
         // Remove the loadUserData call as it should only happen after email verification
         // await loadUserData(user.uid);
 
@@ -188,10 +213,9 @@ const SignUp = () => {
           console.log("Navigating to verify-email");
           navigate("/verify-email", { state: { token } });
         }, 2000);
-
       } catch (error) {
         console.error("Registration error:", error);
-        
+
         // Clean up Firebase user if it was created but subsequent steps failed
         if (firebaseUser) {
           try {
@@ -203,36 +227,49 @@ const SignUp = () => {
             // Continue with error handling even if deletion fails
           }
         }
-        
+
         handleError(error);
         setLoading(false);
       }
-    }
+    },
   });
 
   const handleGoogleSubmit = async () => {
     try {
+      setGoogleButtonLoading(true);
+
       const authResult = await handleGoogleAuth("free");
-      
+
       // Google users are pre-verified, so load user data for them
       // Google auth typically verifies email automatically
       if (auth.currentUser && auth.currentUser.emailVerified) {
         await loadUserData(authResult.userData.uid);
       }
 
+      setLoading(true);
+
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
-        setTimeout(() => {setLoading(true); navigate("/dashboard/welcome")}, 1500);
+        setTimeout(() => {
+          navigate("/dashboard/welcome");
+        }, 1000);
       } else {
         setSuccessMessage("Account already exists. Redirecting to login...");
-        setTimeout(() => {setLoading(true); navigate("/login")}, 1500);
+        setTimeout(() => {
+          navigate("/login");
+        }, 1000);
       }
     } catch (error) {
       handleError(error);
+      setGoogleButtonLoading(false);
+    } finally {
+      setTimeout(() => {
+        if (googleButtonLoading) setGoogleButtonLoading(false);
+      }, 1000);
     }
   };
 
-  if (loading || googleLoading) {
+  if (loading) {
     return (
       <PageTransition>
         <LoadingScreen />
@@ -286,7 +323,9 @@ const SignUp = () => {
                 }`}
               />
               {formik.touched.username && formik.errors.username && (
-                <p className="text-red-500 mt-1 text-sm">{formik.errors.username}</p>
+                <p className="text-red-500 mt-1 text-sm">
+                  {formik.errors.username}
+                </p>
               )}
             </div>
             <div className="relative mb-4">
@@ -320,14 +359,19 @@ const SignUp = () => {
                   <VisibilityOffRoundedIcon />
                 )}
               </span>
-              
-              <PasswordValidationTooltip 
-                password={formik.values.password} 
-                isVisible={isPasswordFocused || !!(formik.touched.password && formik.errors.password)}
+
+              <PasswordValidationTooltip
+                password={formik.values.password}
+                isVisible={
+                  isPasswordFocused ||
+                  !!(formik.touched.password && formik.errors.password)
+                }
               />
-              
+
               {formik.touched.password && formik.errors.password && (
-                <p className="text-red-500 mt-1 text-sm">{formik.errors.password}</p>
+                <p className="text-red-500 mt-1 text-sm">
+                  {formik.errors.password}
+                </p>
               )}
             </div>
             <div className="relative mb-4">
@@ -342,14 +386,18 @@ const SignUp = () => {
                 onBlur={formik.handleBlur}
                 onPaste={(e) => e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                  formik.touched.confirmPassword && formik.errors.confirmPassword
+                  formik.touched.confirmPassword &&
+                  formik.errors.confirmPassword
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
               />
-              {formik.touched.confirmPassword && formik.errors.confirmPassword && (
-                <p className="text-red-500 mt-1 text-sm">{formik.errors.confirmPassword}</p>
-              )}
+              {formik.touched.confirmPassword &&
+                formik.errors.confirmPassword && (
+                  <p className="text-red-500 mt-1 text-sm">
+                    {formik.errors.confirmPassword}
+                  </p>
+                )}
             </div>
             <div className="relative mb-4">
               <input
@@ -368,27 +416,35 @@ const SignUp = () => {
                 }`}
               />
               {formik.touched.email && formik.errors.email && (
-                <p className="text-red-500 mt-1 text-sm">{formik.errors.email}</p>
+                <p className="text-red-500 mt-1 text-sm">
+                  {formik.errors.email}
+                </p>
               )}
             </div>
             <div className="flex items-center mb-4">
-              <input
-                type="checkbox"
-                id="terms"
-                name="terms"
-                className="w-4 h-4 text-[#4D18E8] bg-[#3B354D] border-gray-300 rounded focus:ring-2 focus:ring-[#4D18E8]"
-                checked={formik.values.terms}
-                onChange={formik.handleChange}
-              />
-              <label htmlFor="terms" className="ml-2 text-[#9F9BAE] text-sm">
-                I agree to {""}
-                <Link
-                  to="/terms-and-conditions"
-                  target="_blank"
-                  className="text-[#4D18E8] underline hover:text-[#4D18E8]"
-                >
-                  Terms and Conditions
-                </Link>
+              <label
+                htmlFor="terms"
+                className="flex items-center cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  id="terms"
+                  name="terms"
+                  checked={formik.values.terms}
+                  onChange={formik.handleChange}
+                  className="peer hidden"
+                />
+                <div className="w-4 h-4 rounded-[6px] border border-[#3B354D] bg-[#3B354D] peer-checked:bg-[#4D18E8] flex items-center justify-center transition-all duration-200"></div>
+                <span className="ml-2 text-[#9F9BAE] text-sm">
+                  I agree to{" "}
+                  <Link
+                    to="/terms-and-conditions"
+                    target="_blank"
+                    className="text-[#4D18E8] underline hover:text-[#4D18E8]"
+                  >
+                    Terms and Conditions
+                  </Link>
+                </span>
               </label>
             </div>
             {formik.touched.terms && formik.errors.terms && (
@@ -396,7 +452,7 @@ const SignUp = () => {
             )}
             <button
               type="submit"
-              className="w-full py-3 text-white bg-[#4D18E8] rounded-lg hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
+              className="w-full py-3 text-white bg-[#4D18E8] rounded-[0.8rem] hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
             >
               Create Account
             </button>
@@ -409,21 +465,72 @@ const SignUp = () => {
           </div>
 
           <button
-            className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
+            className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-[0.8rem] flex items-center justify-center hover:bg-[#1A1426] transition-colors"
             onClick={handleGoogleSubmit}
+            disabled={googleButtonLoading}
           >
-            <img
-              src="/google-logo.png"
-              className="w-5 h-5 mr-3"
-              alt="Google Icon"
-            />
-            Sign up with Google
+            {googleButtonLoading ? (
+              <div className="flex items-center">
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="#E8E8E8"
+                    strokeWidth="2"
+                  ></circle>
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#4285F4"
+                    d="M12 2a10 10 0 0 1 10 10"
+                  ></path>
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#EA4335"
+                    d="M22 12a10 10 0 0 1-5 8.66"
+                  ></path>
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#FBBC05"
+                    d="M17 20.66A10 10 0 0 1 7 20.66"
+                  ></path>
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#34A853"
+                    d="M7 20.66A10 10 0 0 1 2 12"
+                  ></path>
+                </svg>
+                Signing in...
+              </div>
+            ) : (
+              <>
+                <img
+                  src="/google-logo.png"
+                  className="w-5 h-5 mr-3"
+                  alt="Google Icon"
+                />
+                Create account with Google
+              </>
+            )}
           </button>
 
           <p className="mt-4 text-center text-sm text-[#9F9BAE]">
             Already have an account?{" "}
             <button
-              onClick={() => {setLoading(true); navigate("/login")}}
+              onClick={() => {
+                setLoading(true);
+                navigate("/login");
+              }}
               className="text-[#4D18E8] hover:underline"
             >
               Log in

@@ -59,6 +59,7 @@ input:-webkit-autofill {
   -webkit-box-shadow: 0 0 0 30px #3b354d inset !important; /* Autofill background color */
   -webkit-text-fill-color: #d1c4e9 !important; /* Autofill text color */
   transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+  border-radius: 0.8rem !important;
 }
 
 /* Revert styles when autofill is removed */
@@ -66,4 +67,223 @@ input:not(:-webkit-autofill) {
   -webkit-box-shadow: none !important;
   -webkit-text-fill-color: initial !important;
   transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+  border-radius: 0.8rem !important;
+}
+
+/* Socket reconnect notification animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Animations for Answer Shield effects */
+@keyframes expand-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes expand-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes draw-line {
+  from { stroke-dashoffset: 150; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes flash-fade {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-expand-x {
+  animation: expand-x 0.6s ease-out forwards;
+}
+
+.animate-expand-y {
+  animation: expand-y 0.6s ease-out forwards;
+}
+
+.animate-draw-line {
+  animation: draw-line 1s ease-out forwards;
+}
+
+.animate-fade-slide-in {
+  animation: fade-slide-in 0.5s ease-out forwards;
+}
+
+.animate-flash-fade {
+  animation: flash-fade 1s ease-in-out forwards;
+}
+
+.animate-bounce-gentle {
+  animation: bounce-gentle 2s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+/* Regeneration animations */
+@keyframes float-up-slow {
+  0% { transform: translateY(0); opacity: 0.7; }
+  70% { opacity: 0.6; }
+  100% { transform: translateY(-100vh); opacity: 0; }
+}
+
+@keyframes float-up-mini {
+  0% { transform: translateY(0); opacity: 0.9; }
+  100% { transform: translateY(-10px); opacity: 0; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-out-right {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes shrink-width {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+@keyframes pop-in {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes float-gentle {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes ping-slow {
+  0% { transform: scale(1); opacity: 0.8; }
+  70% { transform: scale(1.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes heart-rate {
+  0% { stroke-dasharray: 0 100; stroke-dashoffset: 0; }
+  50% { stroke-dasharray: 100 0; stroke-dashoffset: 0; }
+  100% { stroke-dasharray: 100 0; stroke-dashoffset: -100; }
+}
+
+@keyframes rotate-slow {
+  0% { transform: rotate(0deg) translateY(0); }
+  50% { transform: rotate(5deg) translateY(-10px); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+
+@keyframes spin-very-slow {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.animate-float-up-slow {
+  animation: float-up-slow 5s ease-out forwards;
+}
+
+.animate-float-up-mini {
+  animation: float-up-mini 1.2s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.5s ease-out forwards;
+}
+
+.animate-slide-out-right {
+  animation: slide-out-right 0.5s ease-out forwards;
+}
+
+.animate-shrink-width {
+  animation: shrink-width 5s linear forwards;
+}
+
+.animate-pop-in {
+  animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-float-gentle {
+  animation: float-gentle 2s ease-in-out infinite;
+}
+
+.animate-ping-slow {
+  animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-heart-rate {
+  animation: heart-rate 2s ease-in-out infinite;
+}
+
+.animate-rotate-slow {
+  animation: rotate-slow 8s ease-in-out infinite;
+}
+
+.animate-spin-very-slow {
+  animation: spin-very-slow 15s linear infinite;
+}
+
+/* Radial gradient utility class */
+.bg-gradient-radial {
+  background-image: radial-gradient(var(--tw-gradient-stops));
+}
+
+/* Witch themed poison effect animations */
+@keyframes float {
+  0% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-15px) rotate(5deg); }
+  66% { transform: translateY(5px) rotate(-5deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes twinkle {
+  0% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.2; transform: scale(0.8); }
+}
+
+.animate-float {
+  animation: float 8s ease-in-out infinite;
+}
+
+.animate-twinkle {
+  animation: twinkle 1.5s ease-in-out infinite;
 }

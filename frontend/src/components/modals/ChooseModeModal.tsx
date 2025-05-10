@@ -9,12 +9,18 @@ import {
   IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import ModalFriendList from "../../assets/General/ModalFriendList.png";
+import ModalFriendList from "/General/ModalFriendList.png";
 import SelectStudyMaterialModal from "./SelectStudyMaterialModal"; // Assuming it's in the same folder
 import PvPOptionsModal from "./PvPOptionsModal"; // Add this import
 import { useAudio } from "../../contexts/AudioContext";
 import { useNavigate } from "react-router-dom";
-import { createNewLobby, joinExistingLobby, navigateToWelcomeScreen } from "../../services/pvpLobbyService";
+import {
+  createNewLobby,
+  joinExistingLobby,
+  navigateToWelcomeScreen,
+} from "../../services/pvpLobbyService";
+import useManaCheck from "../../hooks/useManaCheck";
+import ManaAlertModal from "../../pages/dashboard/play-battleground/modes/multiplayer/components/ManaAlertModal";
 
 // Add modeToTypesMap
 const modeToTypesMap = {
@@ -42,11 +48,11 @@ interface ButtonData {
   textColor: string;
 }
 
-const ChooseModeModal: React.FC<CustomModalProps> = ({ 
-  open, 
+const ChooseModeModal: React.FC<CustomModalProps> = ({
+  open,
   handleClose,
   preSelectedMaterial,
-  onModeSelect 
+  onModeSelect,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -56,6 +62,15 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
   const { setActiveModeAudio } = useAudio();
   const [pvpOptionsOpen, setPvpOptionsOpen] = useState<boolean>(false);
   const navigate = useNavigate();
+
+  // Initialize mana check hook with PVP requirement (10 mana)
+  const {
+    hasSufficientMana,
+    isManaModalOpen,
+    closeManaModal,
+    currentMana,
+    requiredMana,
+  } = useManaCheck(10);
 
   // Update when the parent open state changes
   useEffect(() => {
@@ -96,8 +111,23 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
     setSelectedMode(mode);
     setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
 
-    // If PvP mode, show options modal
+    // Add Time Pressured mana check
+    if (mode === "Time Pressured") {
+      // Check if user has enough mana
+      if (!hasSufficientMana()) {
+        // Modal will be shown automatically via the hook
+        return;
+      }
+    }
+
+    // If PvP mode, check mana before showing options modal
     if (mode === "PvP Mode") {
+      // Check if user has enough mana
+      if (!hasSufficientMana()) {
+        // Modal will be shown automatically via the hook
+        return;
+      }
+
       if (preSelectedMaterial) {
         // If we have pre-selected material, call onModeSelect directly
         if (onModeSelect) {
@@ -105,9 +135,9 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
         }
         handleClose();
       } else {
-        // Show PvP options modal
+        // Directly open the study material modal
         setChooseModeOpen(false);
-        setPvpOptionsOpen(true);
+        setModalOpen(true);
       }
       return;
     }
@@ -151,7 +181,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
   // Back navigation from Study Material modal
   const handleStudyMaterialBack = () => {
     setModalOpen(false);
-    
+
     // If we came from PvP options, go back there
     if (selectedMode === "PvP Mode") {
       setPvpOptionsOpen(true);
@@ -163,17 +193,17 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
 
   const handleMaterialSelect = (material: any) => {
     setModalOpen(false);
-    
+
     if (selectedMode && onModeSelect) {
       onModeSelect(selectedMode);
     }
-    
+
     // If PVP mode, use the lobby service
     if (selectedMode === "PvP Mode" || selectedMode === "PvP") {
       const lobbyState = createNewLobby(selectedMode, material);
       navigateToWelcomeScreen(navigate, lobbyState);
     }
-    
+
     handleClose();
   };
 
@@ -184,16 +214,26 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
     }
   };
 
-  // Handler for creating a new lobby
+  // Handler for creating a new lobby with mana check
   const handleCreateLobby = () => {
+    // Check mana again before proceeding
+    if (!hasSufficientMana()) {
+      return;
+    }
+
     setPvpOptionsOpen(false);
     setModalOpen(true);
   };
 
-  // Handler for joining an existing lobby
+  // Handler for joining an existing lobby with mana check
   const handleJoinLobby = (lobbyCode: string) => {
+    // Check mana before joining
+    if (!hasSufficientMana()) {
+      return;
+    }
+
     setPvpOptionsOpen(false);
-    
+
     // Use the lobby service
     const lobbyState = joinExistingLobby(lobbyCode, selectedMode || "PvP Mode");
     navigateToWelcomeScreen(navigate, lobbyState);
@@ -230,8 +270,6 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              padding: { xs: "20px", sm: "40px" },
-              paddingY: { xs: "60px", sm: "40px" },
             }}
           >
             {/* Close button */}
@@ -242,7 +280,11 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
                 position: "absolute",
                 top: 16,
                 right: 16,
-                color: "#FFFFFF",
+                color: "#6F658D",
+                transition: "color 0.3s ease-in-out",
+                "&:hover": {
+                  color: "#E2DDF3",
+                },
               }}
             >
               <CloseIcon />
@@ -287,7 +329,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
             {/* Buttons */}
             <Stack
               direction={{ xs: "column", sm: "row" }}
-              spacing={3}
+              spacing={1.5}
               justifyContent="center"
               alignItems="center"
             >
@@ -317,7 +359,9 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
                     textAlign: "center",
                     cursor: "pointer",
                     transform:
-                      hoveredIndex === index ? "scale(1.03)" : "scale(1)",
+                      hoveredIndex === index
+                        ? "translateY(-4px)"
+                        : "translateY(0)",
                     "&:hover": {
                       backgroundColor: button.hoverBackground,
                     },
@@ -399,6 +443,14 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
         onMaterialSelect={handleMaterialSelect}
         onModeSelect={handleModeSelect}
         selectedTypes={selectedTypes}
+      />
+
+      {/* Mana Alert Modal */}
+      <ManaAlertModal
+        isOpen={isManaModalOpen}
+        onClose={closeManaModal}
+        currentMana={currentMana}
+        requiredMana={requiredMana}
       />
     </>
   );

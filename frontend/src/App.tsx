@@ -6,19 +6,24 @@ import { UserProvider } from "./contexts/UserContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AudioProvider } from "./contexts/AudioContext";
 import { SnackbarProvider } from "./contexts/SnackbarContext";
-import { 
-  GlobalSnackbar, 
-  SnackbarConnector, 
+import {
+  GlobalSnackbar,
+  SnackbarConnector,
   AuthTokenSynchronizer,
-  InvitationLobbySnackbar,
-  AudioStopper 
+  AudioStopper,
+  BattleInvitationCenter,
 } from "./components";
-import theme from "../../frontend/src/contexts/ThemeContext";
+import theme from "./contexts/ThemeContext";
 import "./index.css";
+import { GameStatusProvider } from "./contexts/GameStatusContext";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function App() {
   return (
     <Router>
+      <Analytics />
+      <SpeedInsights />
       <AuthProvider>
         <AuthTokenSynchronizer />
         <UserProvider>
@@ -33,15 +38,18 @@ function App() {
               ]}
             />
             <SnackbarProvider>
-              <HelmetProvider>
-                <ThemeProvider theme={theme}>
-                  <CssBaseline />
-                  <InvitationLobbySnackbar />
-                  <AppRoutes />
-                  <GlobalSnackbar />
-                  <SnackbarConnector />
-                </ThemeProvider>
-              </HelmetProvider>
+              <GameStatusProvider>
+                <HelmetProvider>
+                  <ThemeProvider theme={theme}>
+                    <CssBaseline />
+                    <BattleInvitationCenter />
+                    <AppRoutes />
+                    <GlobalSnackbar />
+
+                    <SnackbarConnector />
+                  </ThemeProvider>
+                </HelmetProvider>
+              </GameStatusProvider>
             </SnackbarProvider>
           </AudioProvider>
         </UserProvider>

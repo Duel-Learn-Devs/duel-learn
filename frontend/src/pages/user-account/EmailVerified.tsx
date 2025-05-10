@@ -1,10 +1,10 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import sampleAvatar2 from "../../assets/profile-picture/kopibara-picture.png";
+import sampleAvatar2 from "/profile-picture/default-picture.svg";
 import PageTransition from "../../styles/PageTransition";
 import { toast } from "react-hot-toast";
 import { auth } from "../../services/firebase";
-import { reload, applyActionCode,} from "firebase/auth";
+import { reload, applyActionCode } from "firebase/auth";
 import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import { useUser } from "../../contexts/UserContext";
 
@@ -21,7 +21,7 @@ const EmailVerified = () => {
   const { user, setUser, loginAndSetUserData } = useUser();
   const { signUpApi } = useSignUpApi();
   const [isVerifying, setIsVerifying] = useState(false);
-  const[okayNaTo, isOkayNaTo] = useState(false);
+  const [okayNaTo, isOkayNaTo] = useState(false);
   const [isNew, setIsNew] = useState(false);
   const verifyEmail = async () => {
     const state = location.state as LocationState;
@@ -30,13 +30,13 @@ const EmailVerified = () => {
       toast.error("Invalid verification link");
       return;
     }
-  
+
     try {
       setIsVerifying(true);
-      if(!okayNaTo){
-      await applyActionCode(auth, state.oobCode);
-      console.log("applyActionCode successful");
-      isOkayNaTo(true);
+      if (!okayNaTo) {
+        await applyActionCode(auth, state.oobCode);
+        console.log("applyActionCode successful");
+        isOkayNaTo(true);
       }
       // 2. Reload user to get updated status
       if (!auth.currentUser) {
@@ -77,10 +77,10 @@ const EmailVerified = () => {
 
       if (email_verified) {
         await signUpApi(state.firebase_uid, isNew, email_verified);
-        
+
         // Get token after successful verification
         const token = await auth.currentUser.getIdToken();
-        
+
         // Fetch and update user data
         await loginAndSetUserData(state.firebase_uid, token);
       }
@@ -98,12 +98,11 @@ const EmailVerified = () => {
   };
 
   useEffect(() => {
-// Prevent double verification
-if (isVerifying) {
-  return;
-}
+    // Prevent double verification
+    if (isVerifying) {
+      return;
+    }
     verifyEmail();
-
   }, [location.state]);
 
   const handleContinue = () => {
@@ -119,13 +118,11 @@ if (isVerifying) {
     localStorage.removeItem("emailTimestamp");
 
     // Navigate based on user type and status
-    if(isNew && user.email_verified){
+    if (isNew && user.email_verified) {
       navigate("/dashboard/welcome");
-    }
-    else if (user.account_type === "admin" && !isNew && user.email_verified) {
+    } else if (user.account_type === "admin" && !isNew && user.email_verified) {
       navigate("/admin/admin-dashboard");
-    }
-    else {
+    } else {
       navigate("/dashboard/home");
     }
   };

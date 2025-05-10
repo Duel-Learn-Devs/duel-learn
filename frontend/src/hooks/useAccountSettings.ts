@@ -15,6 +15,7 @@ import useUpdateUserDetailsApi from "./api.hooks/useUpdateUserDetailsApi";
 import { useUser } from "../contexts/UserContext";
 import { useFormik } from "formik";
 import * as Yup from "yup";
+import { clearProfileCache } from "../pages/dashboard/profile/ProfileHeader";
 
 const useAccountSettings = () => {
   const { user, setUser } = useUser();
@@ -189,6 +190,9 @@ const useAccountSettings = () => {
         localStorage.setItem("userData", JSON.stringify(updatedUserData));
         sessionStorage.setItem("userData", JSON.stringify(updatedUserData));
 
+        // Add this line to clear the profile cache
+        clearProfileCache();
+
         // Add this after successful user update
         if (changedFields.username) {
           try {
@@ -297,8 +301,34 @@ const useAccountSettings = () => {
   }, [user]);
 
   useEffect(() => {
-    const hasNoPassword = user?.isSSO || false;
-    setHasNoPassword(hasNoPassword);
+    // Check if the user has no password by checking both isSSO and checking
+    // if they've previously created a password
+    const checkPasswordStatus = async () => {
+      if (!user) return;
+
+      try {
+        // Only check Firestore if the user is an SSO user
+        if (user.isSSO) {
+          const userDoc = await getDoc(doc(db, "users", user.firebase_uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            // If password_hash exists, the user has already set a password
+            setHasNoPassword(!userData.password_hash);
+          } else {
+            setHasNoPassword(true);
+          }
+        } else {
+          // Non-SSO users always have a password
+          setHasNoPassword(false);
+        }
+      } catch (error) {
+        console.error("Error checking password status:", error);
+        // Default to assuming user has no password if check fails
+        setHasNoPassword(user.isSSO || false);
+      }
+    };
+
+    checkPasswordStatus();
   }, [user]);
 
   const handleEditClick = () => {

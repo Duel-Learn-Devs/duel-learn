@@ -7,6 +7,14 @@ export default function GuestWaitingForRandomization({ waitingForRandomization =
 
     return (
         <div className="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
+            {/* Audio element for randomizing sound */}
+            <audio
+                src="/GameBattle/randomizing.mp3"
+                autoPlay
+                loop
+                className="hidden"
+            />
+
             <div className="text-center">
                 <h2 className="text-purple-300 text-4xl font-bold mb-8">Ready to Battle!</h2>
                 <p className="text-white text-xl mb-12">Waiting for host to determine who goes first...</p>

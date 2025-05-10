@@ -18,4 +18,6 @@ export interface BattleState {
   guest_username: string | null;
   ID: number;
   session_uuid: string;
-} 
+  game_over?: boolean; // Add this property
+  game_over_reason?: string; // Optional: reason for game ending
+}

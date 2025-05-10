@@ -33,44 +33,38 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       aria-describedby="confirmation-dialog-description"
       sx={{
         "& .MuiDialog-paper": {
-          backgroundColor: "#080511",
+          backgroundColor: "#120F1B",
           paddingY: "30px",
           paddingX: "20px",
           paddingRight: "40px",
-          borderRadius: "10px",
+          border: "2px solid #3B354D",
+          borderRadius: "0.8rem",
         },
         "& .MuiDialog-root": {
-          backgroundColor: "transparent",
+          backgroundColor: "#120F1B",
         },
       }}
     >
-      <DialogTitle
-        id="confirmation-dialog-title"
-        className="text-white py-4 px-6"
-        sx={{
-          backgroundColor: "#080511",
-        }}
-      >
+      <DialogTitle id="confirmation-dialog-title" className=" py-4 px-6">
         {title}
       </DialogTitle>
 
-      <DialogContent
-        className="text-white py-6 px-6"
-        sx={{ backgroundColor: "#080511" }}
-      >
+      <DialogContent className="text-[#9F9BAE] py-6 px-6">
         <p>{content}</p>
       </DialogContent>
 
-      <DialogActions className="bg-[#080511]" sx={{ padding: "16px 0" }}>
+      <DialogActions sx={{ padding: "16px 0" }}>
         <Button
           onClick={onCancel}
           sx={{
             color: "#B0B0B0",
-            py: 1,
-            px: 4,
+            fontWeight: "bold",
+            padding: "10px 24px",
+            borderRadius: "0.6rem",
+            transition: "all 0.3s ease-in-out",
             "&:hover": {
-              backgroundColor: "#080511",
-              color: "#FFFFFF",
+              backgroundColor: "#4D18E8",
+              color: "#E2DDF3",
             },
           }}
         >
@@ -80,13 +74,14 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           onClick={onConfirm}
           autoFocus
           sx={{
-            backgroundColor: "#4D1EE3",
-            color: "#FFFFFF",
-            py: 1,
-            px: 4,
+            backgroundColor: "#8565E7",
+            color: "#E2DDF3",
+            fontWeight: "bold",
+            padding: "10px 24px",
+            borderRadius: "0.6rem",
+            transition: "all 0.3s ease-in-out",
             "&:hover": {
-              backgroundColor: "#6A3EEA",
-              color: "#fff",
+              backgroundColor: "#4D18E8",
             },
           }}
         >
@@ -97,4 +92,4 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   );
 };
 
-export default ConfirmationDialog; 
+export default ConfirmationDialog;

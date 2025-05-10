@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { CircularProgress } from "@mui/material";
-import ManaIcon from "../../../../../../assets/ManaIcon.png";
+import { CircularProgress, Tooltip } from "@mui/material";
+import ManaIcon from "../../../../../../../public/ManaIcon.png";
 
 interface BattleControlsProps {
   onBattleStart: () => void;
@@ -18,27 +18,32 @@ const BattleControls: React.FC<BattleControlsProps> = ({
   hostReady,
   guestReady,
   loading,
-  disabledReason
+  disabledReason,
 }) => {
-  const isButtonDisabled = loading || (isHost && !guestReady) || !!disabledReason;
-  
+  const isButtonDisabled =
+    loading || (isHost && !guestReady) || !!disabledReason;
+
   // Determine button styles based on states
   const getButtonStyle = () => {
     if (isHost && !guestReady) {
-      return 'bg-[#3a3a3a] hover:bg-[#4a4a4a] cursor-not-allowed';
+      return "bg-[#3a3a3a] hover:bg-[#4a4a4a] cursor-not-allowed";
     }
     if (!isHost && guestReady) {
-      return 'bg-[#E44D4D] hover:bg-[#C03A3A]';
+      return "bg-[#E44D4D] hover:bg-[#C03A3A]";
+    }
+    // Style differently if there's a disabled reason (like not enough mana) but still allow clicking
+    if (disabledReason) {
+      return 'bg-[#6A4CA7] hover:bg-[#5B3E98]';
     }
     return 'bg-[#4D1EE3] hover:bg-purple-800';
   };
-  
+
   // Determine button text based on states
   const getButtonText = () => {
     if (loading) {
       return <CircularProgress size={24} color="inherit" />;
     }
-    
+
     if (isHost) {
       if (guestReady) {
         return (
@@ -54,12 +59,12 @@ const BattleControls: React.FC<BattleControlsProps> = ({
       }
       return <>START 1/2 (Waiting for player)</>;
     }
-    
+
     // Guest view
     return guestReady ? "CANCEL 2/2" : "START 1/2";
   };
   
-  return (
+  const button = (
     <motion.button
       onClick={onBattleStart}
       disabled={isButtonDisabled}
@@ -72,6 +77,21 @@ const BattleControls: React.FC<BattleControlsProps> = ({
       {getButtonText()}
     </motion.button>
   );
+  
+  // Wrap in tooltip if there's a disabled reason but button is clickable
+  if (disabledReason && !isButtonDisabled) {
+    return (
+      <Tooltip 
+        title={disabledReason}
+        arrow
+        placement="top"
+      >
+        {button}
+      </Tooltip>
+    );
+  }
+  
+  return button;
 };
 
-export default BattleControls; 
+export default BattleControls;

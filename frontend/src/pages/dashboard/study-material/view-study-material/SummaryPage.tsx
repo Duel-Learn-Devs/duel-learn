@@ -15,14 +15,6 @@ const SummaryPage = ({ studyMaterial }: SummaryPageProps) => {
             sx={{ bgcolor: "transparent", p: { xs: 1, md: 2 } }}
           >
             <Typography
-              variant="h6"
-              fontWeight="bold"
-              className="text-[#120F1D] mb-3"
-              sx={{ fontSize: { xs: "1.1rem", md: "1.25rem" } }}
-            >
-              {studyMaterial.title}
-            </Typography>
-            <Typography
               variant="body1"
               className="text-[#120F1D]"
               sx={{ fontSize: { xs: "0.95rem", md: "1.1rem" } }}

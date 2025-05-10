@@ -5,17 +5,24 @@ import studyMaterialRoutes from "./routes/StudyMaterialRoutes.js";
 import userRoutes from "./routes/UserAccount.js";
 import friendRoutes from "./routes/FriendRoutes.js";
 import userInfoRoutes from "./routes/UserInfoRoutes.js";
-import lobbyRoutes from "./routes/lobby.routes.js";
-import battleRoutes from "./routes/battle.routes.js";
 import gameplayRoutes from "./routes/gameplay.routes.js";
 import openAiRoutes from "./routes/OpenAiRoutes.js";
 import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
 import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
 import ocrRoutes from "./routes/OcrRoutes.js"; // Import OCR routes
+import shopRoutes from "./routes/ShopRoutes.js";
+import achivementRoutes from "./routes/AchievementRoutes.js";
+import paymentRoutes from "./routes/PaymentRoutes.js"; // Import payment routes
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
 import { coopMiddleware } from "./middleware/CoopMiddleware.js"; // Import COOP middleware
 import sessionReportRoutes from './routes/sessionReport.js';
-import { initSessionReportTable } from './models/SessionReport.js';// Load environment variables
+import { initSessionReportTable } from './models/SessionReport.js';
+import lobbyRoutes from "./routes/LobbyRoutes.js";
+import battleRoutes from './routes/battle.routes.js';
+import manaRoutes from './routes/ManaRoutes.js'; // Import mana routes
+
+
+// Load environment variables
 dotenv.config();
 
 // Connect to Database
@@ -55,13 +62,17 @@ app.use("/api/friend", friendRoutes);
 app.use("/api/user-info", userInfoRoutes);
 app.use("/api/lobby", lobbyRoutes);
 app.use("/api/search", searchRoutes);
-app.use("/api/search", searchRoutes);
 app.use("/api/battle", battleRoutes);
 app.use("/api/gameplay", gameplayRoutes);
 app.use("/api/openai", openAiRoutes);
-app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
-app.use("/api/ocr", ocrRoutes); // Mount OCR routes under /api/ocr
+app.use("/api/admin", adminRoutes);
+app.use("/api/ocr", ocrRoutes);
 app.use('/api/session-report', sessionReportRoutes);
+app.use("/api/shop", shopRoutes);
+app.use("/api/achievement", achivementRoutes);
+app.use("/api/payment", paymentRoutes);
+app.use('/api/mana', manaRoutes);
+
 // Add global error handler for uncaught exceptions
 app.use((err, req, res, next) => {
   console.error("Uncaught error:", err);

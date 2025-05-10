@@ -1,8 +1,18 @@
 import React, { useState } from "react";
-import { Avatar, Box, IconButton, Tooltip, Badge, Menu, MenuItem, Typography, Divider } from "@mui/material";
+import {
+  Avatar,
+  Box,
+  IconButton,
+  Tooltip,
+  Badge,
+  Menu,
+  MenuItem,
+  Typography,
+  Divider,
+} from "@mui/material";
 import { useUser } from "../../contexts/UserContext";
 import { useNavigate } from "react-router-dom";
-import defaultPicture from "../../assets/profile-picture/default-picture.svg";
+import defaultPicture from "/profile-picture/default-picture.svg";
 import { signOut } from "firebase/auth";
 import { auth } from "../../services/firebase";
 import PersonIcon from "@mui/icons-material/Person";
@@ -73,13 +83,13 @@ const AdminStatsNProfile = () => {
       </Tooltip>
 
       {/* Admin Label */}
-      <Box 
-        sx={{ 
-          backgroundColor: "#4D18E8", 
-          px: 2, 
-          py: 0.5, 
+      <Box
+        sx={{
+          backgroundColor: "#4D18E8",
+          px: 2,
+          py: 0.5,
           borderRadius: 4,
-          display: { xs: 'none', sm: 'flex' }
+          display: { xs: "none", sm: "flex" },
         }}
       >
         <Typography variant="body2" sx={{ color: "white", fontWeight: "bold" }}>
@@ -138,43 +148,48 @@ const AdminStatsNProfile = () => {
           <Typography variant="body2" sx={{ color: "#9F9BAE" }}>
             {user?.email}
           </Typography>
-          <Box 
-            sx={{ 
-              mt: 1, 
-              display: "inline-block", 
-              backgroundColor: "#4D18E8", 
-              px: 1.5, 
-              py: 0.3, 
-              borderRadius: 1
+          <Box
+            sx={{
+              mt: 1,
+              display: "inline-block",
+              backgroundColor: "#4D18E8",
+              px: 1.5,
+              py: 0.3,
+              borderRadius: 1,
             }}
           >
-            <Typography variant="caption" sx={{ color: "white", fontWeight: "bold" }}>
+            <Typography
+              variant="caption"
+              sx={{ color: "white", fontWeight: "bold" }}
+            >
               Administrator
             </Typography>
           </Box>
         </Box>
-        
+
         <Divider sx={{ backgroundColor: "#3B354C" }} />
-        
+
         <MenuItem onClick={handleViewProfile} sx={{ py: 1.5 }}>
           <PersonIcon sx={{ mr: 2, color: "#E2DDF3" }} />
           <Typography variant="body2">Profile Settings</Typography>
         </MenuItem>
-        
+
         <MenuItem onClick={handleViewUserMgmt} sx={{ py: 1.5 }}>
           <AdminPanelSettingsIcon sx={{ mr: 2, color: "#E2DDF3" }} />
           <Typography variant="body2">User Management</Typography>
         </MenuItem>
-        
+
         <Divider sx={{ backgroundColor: "#3B354C" }} />
-        
+
         <MenuItem onClick={handleLogout} sx={{ py: 1.5 }}>
           <ExitToAppIcon sx={{ mr: 2, color: "#ff5252" }} />
-          <Typography variant="body2" sx={{ color: "#ff5252" }}>Logout</Typography>
+          <Typography variant="body2" sx={{ color: "#ff5252" }}>
+            Logout
+          </Typography>
         </MenuItem>
       </Menu>
     </Box>
   );
 };
 
-export default AdminStatsNProfile; 
+export default AdminStatsNProfile;

@@ -1,0 +1,33 @@
+.mana-counter-replenishing {
+  animation: mana-pulse 3s infinite;
+  color: #e2ddf3;
+}
+
+.mana-counter-maxed {
+  color: #9f9bae;
+  font-weight: bold;
+}
+
+@keyframes mana-dot-animation {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes mana-pulse {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}

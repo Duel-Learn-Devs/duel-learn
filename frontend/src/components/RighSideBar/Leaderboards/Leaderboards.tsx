@@ -1,22 +1,23 @@
 import { useState, useEffect } from "react";
-import { Box, Stack, CircularProgress } from "@mui/material";
-import GoldMedal from "../../../assets/General/gold-medal.svg";
-import SilverMedal from "../../../assets/General/silver-medal.svg";
-import BronzeMedal from "../../../assets/General/bronze-medal.svg";
+import {
+  Box,
+  Stack,
+  CircularProgress,
+  Modal,
+  Backdrop,
+  Fade,
+} from "@mui/material";
+import GoldMedal from "/General/gold-medal.svg";
+import SilverMedal from "/General/silver-medal.svg";
+import BronzeMedal from "/General/bronze-medal.svg";
 import axios from "axios";
-import { useUser } from "../../../contexts/UserContext"; // Import your auth context
-import defaultPicture from "../../../assets/profile-picture/default-picture.svg";
+import { useUser } from "../../../contexts/UserContext";
+import defaultPicture from "/profile-picture/default-picture.svg";
 import { useMediaQuery, useTheme } from "@mui/material";
-
-interface LeaderboardPlayer {
-  firebase_uid: string;
-  username: string;
-  level: number;
-  exp: number;
-  display_picture: string;
-  isCurrentUser: boolean;
-  rank: number;
-}
+import { LeaderboardPlayer } from "../../../types/leaderboardObject";
+import { Friend } from "../../../contexts/UserContext";
+import ProfileModal from "../../modals/ProfileModal";
+import cauldronGif from "/General/Cauldron.gif";
 
 const Leaderboards = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,7 +26,9 @@ const Leaderboards = () => {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useUser(); // Get the current user from your auth context
+  const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const { user } = useUser();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -35,8 +38,6 @@ const Leaderboards = () => {
         setLoading(false);
         return;
       }
-
-      // Update the try-catch block in fetchLeaderboardData with better type handling:
 
       try {
         setLoading(true);
@@ -67,10 +68,11 @@ const Leaderboards = () => {
             if (Array.isArray(parsedData)) {
               console.log("Successfully parsed string as JSON array");
 
-              // Add rank if missing
+              // Add rank if missing AND mark current user
               const dataWithRank = parsedData.map((player, index) => ({
                 ...player,
                 rank: player.rank || index + 1,
+                isCurrentUser: player.firebase_uid === user.firebase_uid,
               }));
 
               setLeaderboardData(dataWithRank);
@@ -93,10 +95,11 @@ const Leaderboards = () => {
         }
         if (Array.isArray(response.data)) {
           console.log("Processing array data:", response.data.length, "items");
-          // Add rank if not already present
+          // Add rank if not already present AND mark current user
           const dataWithRank = response.data.map((player, index) => ({
             ...player,
             rank: player.rank || index + 1,
+            isCurrentUser: player.firebase_uid === user.firebase_uid,
           }));
 
           setLeaderboardData(dataWithRank);
@@ -136,6 +139,11 @@ const Leaderboards = () => {
     return undefined;
   };
 
+  const handleViewProfile = (friendId: string) => {
+    setSelectedFriend(friendId);
+    setProfileModalOpen(true);
+  };
+
   // New function to render a player item
   const renderPlayerItem = (
     player: LeaderboardPlayer,
@@ -144,9 +152,9 @@ const Leaderboards = () => {
     return (
       <div
         key={player.firebase_uid}
-        className={`flex items-center justify-between mb-4 w-full ${
+        className={`flex items-center justify-between  w-full ${
           showBackground && player.isCurrentUser
-            ? "bg-[#221f2e] rounded-lg px-2 py-3"
+            ? "bg-[#221f2e] rounded-lg px-4 py-3"
             : ""
         }`}
       >
@@ -170,7 +178,8 @@ const Leaderboards = () => {
             <img
               src={player.display_picture || defaultPicture}
               alt="Avatar"
-              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-2 ml-4 rounded-[5px]  object-cover"
+              onClick={() => handleViewProfile(player.firebase_uid)}
+              className="w-10 sm:w-10 md:w-12 cursor-pointer h-auto mr-2 ml-4 hover:scale-105 transition-all duration-300 ease-in-out rounded-[5px] object-cover"
             />
           </div>
 
@@ -203,92 +212,135 @@ const Leaderboards = () => {
   const top3Players = leaderboardData.filter((player) => player.rank <= 3);
 
   return (
-    <Box className="rounded-[0.8rem] shadow-md border-[0.2rem] gap-2 border-[#3B354C]">
-      <div className="px-8 pt-8 pb-4">
-        <div className="pl-2 flex flex-row items-center mb-4 gap-4">
-          <img
-            src="/leaderboard.png"
-            className="w-8 sm:w-10 md:w-12 h-auto"
-            alt="icon"
-          />
-          <h2 className="text-base md:text-lg font-semibold">Leaderboards</h2>
-        </div>
-
-        <hr className="border-t-2 border-[#3B354D] mb-4 rounded-full" />
-
-        {loading ? (
-          <div className="flex justify-center items-center h-60">
-            <CircularProgress />
-          </div>
-        ) : error ? (
-          <div className="text-center text-red-500 py-4">{error}</div>
-        ) : leaderboardData.length === 0 ? (
-          <div className="text-center text-gray-400 py-4">
-            No friends found. Add friends to see your leaderboard!
-          </div>
-        ) : (
-          <div className="flex flex-col">
-            {/* Top 3 Players - always without background styling */}
-            {top3Players.map((player) => renderPlayerItem(player, false))}
-
-            {/* Always add separator and current user with background styling */}
-            {currentUser && (
-              <>
-                <hr className="border-t-2 border-[#3B354D] mb-4 rounded-full" />
-                {renderPlayerItem(currentUser, true)}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Footer section */}
-      {leaderboardData.length > 3 && (
-        <Stack
-          direction={"row"}
-          spacing={1}
-          className="flex justify-center bg-[#120F1C] py-3 px-4 border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
-        >
-          <p
-            className={`text-sm ${
-              leaderboardData.length > 3
-                ? "text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
-                : "text-[#232029] cursor-not-allowed font-bold"
-            }`}
-            onClick={() => leaderboardData.length > 3 && setIsModalOpen(true)}
-          >
-            VIEW MORE
-          </p>
-        </Stack>
-      )}
-
-      {/* Modal with updated styling */}
-      {isModalOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4"
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div
-            className="bg-[#080511] px-5 md:px-8 py-6 border-[#3B354D] border rounded-[0.8rem] w-full max-w-3xl max-h-[90vh] shadow-lg flex flex-col space-y-4 items-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg md:text-xl text-white font-semibold">
-              Friend Leaderboard
+    <>
+      <Box className="rounded-[0.8rem] shadow-md border-[0.2rem] border-[#3B354C] w-full">
+        <div className="px-6 sm:px-6 md:px-8 pt-6 sm:pt-6 md:pt-8 pb-6">
+          <div className="flex flex-row items-center mb-4 sm:mb-4 gap-2 sm:gap-4">
+            <img
+              src="/leaderboard.png"
+              className="w-6 sm:w-8 md:w-8 h-auto"
+              alt="icon"
+            />
+            <h2 className="text-sm sm:text-base md:text-lg font-semibold">
+              Leaderboards
             </h2>
-            <hr className="border-t-2 border-[#363D46] w-full mb-4" />
-            <div className="overflow-y-auto w-full max-h-[400px] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-3">
-              {leaderboardData.map((player) => renderPlayerItem(player))}
-            </div>
-            <button
-              className="mt-4 bg-[#4D1EE3] text-white px-6 py-3 rounded-md hover:bg-[#3B1BC9] text-sm"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Close
-            </button>
           </div>
+
+          <hr className="border-t-2 border-[#3B354D] mb-2 sm:mb-4 rounded-full" />
+
+          {loading ? (
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              py={1}
+            >
+              <img
+                src={cauldronGif}
+                alt="Loading..."
+                style={{ width: "8rem", height: "auto" }}
+              />
+            </Box>
+          ) : error ? (
+            <div className="text-center text-red-500 text-xs sm:text-sm py-2 sm:py-4">
+              {error}
+            </div>
+          ) : leaderboardData.length === 0 ? (
+            <div className="text-center text-gray-400 text-xs sm:text-sm py-2 sm:py-4">
+              No friends found. Add friends to see your leaderboard!
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-1 sm:space-y-2">
+              {/* Top 3 Players - always without highlighting */}
+              {top3Players.map((player) => renderPlayerItem(player, false))}
+
+              {/* Always show current user with separator below top 3 */}
+              {currentUser && (
+                <>
+                  <hr className="border-t-2 border-[#3B354D] rounded-full" />
+                  {renderPlayerItem(currentUser, true)}
+                </>
+              )}
+            </div>
+          )}
         </div>
-      )}
-    </Box>
+
+        {/* Footer section */}
+        {leaderboardData.length > 3 && (
+          <Stack
+            direction={"row"}
+            spacing={1}
+            className="flex justify-center bg-[#120F1C] py-2 sm:py-3 px-2 sm:px-4 border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
+          >
+            <p
+              className={`text-xs sm:text-sm ${
+                leaderboardData.length > 3
+                  ? "text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
+                  : "text-[#232029] cursor-not-allowed font-bold"
+              }`}
+              onClick={() => leaderboardData.length > 3 && setIsModalOpen(true)}
+            >
+              VIEW MORE
+            </p>
+          </Stack>
+        )}
+
+        {/* Modal with transition effects */}
+        <Modal
+          open={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          closeAfterTransition
+          BackdropComponent={Backdrop}
+          BackdropProps={{
+            timeout: 500,
+            sx: {
+              backgroundColor: "rgba(0, 0, 0, 0.75)",
+              zIndex: 49,
+            },
+          }}
+        >
+          <Fade in={isModalOpen}>
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "689px",
+                maxWidth: "95%",
+                maxHeight: "95vh",
+                bgcolor: "#080511",
+                border: "1px solid #3B354D",
+                borderRadius: "0.8rem",
+                boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)",
+                p: { xs: 2, sm: 3, md: 4 },
+                zIndex: 50,
+              }}
+              className="px-3 sm:px-5 md:px-8 py-4 sm:py-6 flex flex-col space-y-3 sm:space-y-4 items-center"
+            >
+              <h2 className="text-base sm:text-lg md:text-xl text-white font-semibold">
+                Friend Leaderboard
+              </h2>
+              <hr className="border-t-2 border-[#363D46] w-full mb-2 sm:mb-4" />
+              <div className="overflow-y-auto w-full max-h-[300px] sm:max-h-[400px] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-2 sm:space-y-3">
+                {leaderboardData.map((player) => renderPlayerItem(player))}
+              </div>
+              <button
+                className="mt-2 sm:mt-4 bg-[#4D1EE3] text-white px-4 sm:px-6 py-2 sm:py-3 rounded-md hover:bg-[#3B1BC9] text-xs sm:text-sm"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Close
+              </button>
+            </Box>
+          </Fade>
+        </Modal>
+      </Box>
+      <ProfileModal
+        open={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        userId={selectedFriend || undefined}
+      />
+    </>
   );
 };
 

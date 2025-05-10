@@ -6,7 +6,7 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import { verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
 import { auth, db } from "../../services/firebase"; // Adjust the path as needed
 import PageTransition from "../../styles/PageTransition";
-import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
+import sampleAvatar2 from "/images/sampleAvatar2.png"; // Add this import
 import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
 import { setDoc, doc, getDoc } from "firebase/firestore";
 import bcrypt from "bcryptjs"; // Add this import
@@ -30,10 +30,13 @@ const ResetPassword = () => {
       .matches(/[A-Z]/, "Password must contain at least one uppercase letter.")
       .matches(/[a-z]/, "Password must contain at least one lowercase letter.")
       .matches(/[0-9]/, "Password must contain at least one number.")
-      .matches(/[!@#$%^&*(),.?":{}|<>]/, "Password must contain at least one special character."),
+      .matches(
+        /[!@#$%^&*(),.?":{}|<>]/,
+        "Password must contain at least one special character."
+      ),
     confirmPassword: Yup.string()
       .required("Please confirm your password.")
-      .oneOf([Yup.ref('newpassword')], "Passwords do not match.")
+      .oneOf([Yup.ref("newpassword")], "Passwords do not match."),
   });
 
   useEffect(() => {
@@ -70,7 +73,7 @@ const ResetPassword = () => {
     initialValues: {
       newpassword: "",
       confirmPassword: "",
-      general: ""
+      general: "",
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -98,7 +101,9 @@ const ResetPassword = () => {
             userData.password_hash
           );
           if (isMatch) {
-            formik.setErrors({ general: "Cannot use old password. Please try again" });
+            formik.setErrors({
+              general: "Cannot use old password. Please try again",
+            });
             setLoading(false);
             return;
           }
@@ -106,13 +111,10 @@ const ResetPassword = () => {
 
         await confirmPasswordReset(auth, oobCode, values.newpassword);
         await resetPasswordApi(firebase_uid, password_hash, updated_at);
-        
+
         // Update the user document with new password hash
         const userRef = doc(db, "users", firebase_uid);
-        await setDoc(userRef, 
-          { updated_at, password_hash },
-          { merge: true }
-        );
+        await setDoc(userRef, { updated_at, password_hash }, { merge: true });
 
         socket.emit("passwordResetSuccess");
         navigate("/password-changed-successfully");
@@ -122,11 +124,12 @@ const ResetPassword = () => {
       } finally {
         setLoading(false);
       }
-    }
+    },
   });
 
   const togglePassword = () => setShowPassword(!showPassword);
-  const toggleConfirmPassword = () => setShowConfirmPassword(!showConfirmPassword);
+  const toggleConfirmPassword = () =>
+    setShowConfirmPassword(!showConfirmPassword);
   const handleBacktoLoginClick = () => navigate("/login");
 
   return (
@@ -178,7 +181,7 @@ const ResetPassword = () => {
                 value={formik.values.newpassword}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                className={`block w-full p-3 rounded-[0.8rem] bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
                   formik.touched.newpassword && formik.errors.newpassword
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
@@ -196,7 +199,9 @@ const ResetPassword = () => {
                 )}
               </span>
               {formik.touched.newpassword && formik.errors.newpassword && (
-                <p className="text-red-500 mt-1 text-sm">{formik.errors.newpassword}</p>
+                <p className="text-red-500 mt-1 text-sm">
+                  {formik.errors.newpassword}
+                </p>
               )}
             </div>
 
@@ -210,8 +215,9 @@ const ResetPassword = () => {
                 value={formik.values.confirmPassword}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  formik.touched.confirmPassword && formik.errors.confirmPassword
+                className={`block w-full p-3 rounded-[0.8rem] bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                  formik.touched.confirmPassword &&
+                  formik.errors.confirmPassword
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
@@ -227,15 +233,18 @@ const ResetPassword = () => {
                   <VisibilityOffRoundedIcon />
                 )}
               </span>
-              {formik.touched.confirmPassword && formik.errors.confirmPassword && (
-                <p className="text-red-500 mt-1 text-sm">{formik.errors.confirmPassword}</p>
-              )}
+              {formik.touched.confirmPassword &&
+                formik.errors.confirmPassword && (
+                  <p className="text-red-500 mt-1 text-sm">
+                    {formik.errors.confirmPassword}
+                  </p>
+                )}
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-[#4D18E8] text-white py-3 rounded-md hover:bg-[#4D18E8] focus:ring-4 focus:ring-[#4D18E8]"
+              className="w-full bg-[#4D18E8] text-white py-3 rounded-[0.8rem] hover:bg-[#4D18E8] focus:ring-4 focus:ring-[#4D18E8]"
               disabled={loading} // Disable the button when loading
             >
               {loading ? (
@@ -262,13 +271,13 @@ const ResetPassword = () => {
               alt="Profile Avatar"
             />
           </div>
-          <div className="w-full max-w-md rounded-lg p-8 shadow-md bg-black">
+          <div className="w-full max-w-md rounded-[0.8rem] p-8 shadow-md bg-black">
             <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
               Invalid or missing reset code.
             </p>
             <button
               type="button"
-              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-[0.8rem] hover:bg-[#6931E0] transition-colors"
               onClick={handleBacktoLoginClick}
             >
               Back to sign in

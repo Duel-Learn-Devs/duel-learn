@@ -1,10 +1,28 @@
 /* custom-scrollbar.css */
 
+/* Width of the scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+/* Track (the area the thumb moves in) */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Thumb (the draggable part) */
 ::-webkit-scrollbar-thumb {
   background-color: #382e53; /* Sets the thumb color */
-  border-radius: "full"; /* Optional: round the thumb edges */
+  border-radius: 10px; /* Round the thumb edges */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #261d3f; /* Optional: change thumb color on hover */
+  background-color: #261d3f; /* Change thumb color on hover */
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #382e53 transparent;
 }

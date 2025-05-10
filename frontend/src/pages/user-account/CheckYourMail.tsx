@@ -1,13 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import EmailSent from "../../assets/General/EmailSent.png"; // Importing the big star image
+import EmailSent from "/General/EmailSent.png"; // Importing the big star image
 import PageTransition from "../../styles/PageTransition"; // Importing the PageTransition component
-import {
-  
-  doc,
-  setDoc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, sendResetEmail, sendEmail } from "../../services/firebase";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
 import { socket } from "../../services/socket";
@@ -26,15 +21,20 @@ export default function CheckYourMail() {
   const currentUser = {
     email: location.state?.email || user?.email,
     firebase_uid: location.state?.firebase_uid || user?.firebase_uid,
-    type: location.state?.type || "verification"
+    type: location.state?.type || "verification",
   };
 
-  const { timeRemaining, isButtonDisabled} = 
-    useEmailTimestamp(currentUser.email || '', currentUser.firebase_uid);
+  const { timeRemaining, isButtonDisabled } = useEmailTimestamp(
+    currentUser.email || "",
+    currentUser.firebase_uid
+  );
 
   useEffect(() => {
     // Check if user is already verified
-    if (auth.currentUser?.emailVerified && currentUser.type === "verification") {
+    if (
+      auth.currentUser?.emailVerified &&
+      currentUser.type === "verification"
+    ) {
       navigate("/email-verified", {
         state: {
           email: currentUser.email,
@@ -49,20 +49,28 @@ export default function CheckYourMail() {
     const handleEmailActionResult = (result: any) => {
       const { mode, firebase_uid, email, oobCode } = result;
       if (mode === "verifyEmail") {
-        navigate("/email-verified", { state: { email, firebase_uid, oobCode } });
+        navigate("/email-verified", {
+          state: { email, firebase_uid, oobCode },
+        });
       } else if (mode === "resetPassword") {
-        navigate(`/reset-password?oobCode=${oobCode}&firebase_uid=${firebase_uid}`);
+        navigate(
+          `/reset-password?oobCode=${oobCode}&firebase_uid=${firebase_uid}`
+        );
       }
     };
 
-    const handleSuccess = (type: 'password' | 'email') => {
+    const handleSuccess = (type: "password" | "email") => {
       localStorage.removeItem("emailTimestamp");
-      navigate(type === 'password' ? "/password-changed-successfully" : "/email-verified");
+      navigate(
+        type === "password"
+          ? "/password-changed-successfully"
+          : "/email-verified"
+      );
     };
 
     socket.on("emailActionResult", handleEmailActionResult);
-    socket.on("passwordResetSuccess", () => handleSuccess('password'));
-    socket.on("emailVerifiedSuccess", () => handleSuccess('email'));
+    socket.on("passwordResetSuccess", () => handleSuccess("password"));
+    socket.on("emailVerifiedSuccess", () => handleSuccess("email"));
 
     return () => {
       socket.off("emailActionResult", handleEmailActionResult);
@@ -73,7 +81,7 @@ export default function CheckYourMail() {
 
   const handleSendEmail = async () => {
     if (!currentUser.email || !currentUser.firebase_uid) return;
-    
+
     setButtonLoading(true);
     try {
       const actionCodeSettings = {
@@ -91,9 +99,13 @@ export default function CheckYourMail() {
 
       // Update timestamp in Firestore
       try {
-        await setDoc(doc(db, "temp_users", currentUser.firebase_uid), {
-          emailTimestamp: serverTimestamp()
-        }, { merge: true });
+        await setDoc(
+          doc(db, "temp_users", currentUser.firebase_uid),
+          {
+            emailTimestamp: serverTimestamp(),
+          },
+          { merge: true }
+        );
       } catch (error) {
         console.error("Error updating Firestore timestamp:", error);
         // Fallback to localStorage

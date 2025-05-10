@@ -1,0 +1,15 @@
+@keyframes errorHighlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(204, 61, 51, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(244, 67, 54, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+  }
+}
+
+.error-highlight-animation {
+  animation: errorHighlight 2s infinite;
+}

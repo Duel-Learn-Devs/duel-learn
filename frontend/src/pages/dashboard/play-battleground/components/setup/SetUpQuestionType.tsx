@@ -2,23 +2,34 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, Snackbar } from "@mui/material"; // Import Snackbar and Alert from MUI
 import "./../../styles/setupques.css";
-import ManaIcon from "../../../../../assets/ManaIcon.png";
+import ManaIcon from "/ManaIcon.png";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import PageTransition from "../../../../../styles/PageTransition";
-import { generateCode } from "../../utils/codeGenerator";
-import axios from "axios";
+import { useUser } from "../../../../../contexts/UserContext";
 import { usePvPLobby } from "../../../../../hooks/usePvPLobby";
+import DocumentHead from "../../../../../components/DocumentHead";
 
 const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material, fromWelcome, lobbyCode, isPvpLobbyCreation, role } = location.state || {};
+  const { user } = useUser();
+  const manaPoints = user?.mana || 0; // Default to 0 if undefined
+  const {
+    selectedTypes: preSelectedTypes,
+    material,
+    mode,
+    lobbyCode,
+    role,
+    isPvpLobbyCreation,
+    friendToInvite,
+    fromWelcome,
+  } = location.state || {};
   const [isComponentReady, setIsComponentReady] = useState(false);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["identification"]);
   const [questionTypes] = useState([
     {
       display: "Identification",
@@ -34,10 +45,16 @@ const SetUpQuestionType: React.FC = () => {
     },
   ]);
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
-  const [manaPoints, _setManaPoints] = useState(10); // State for dynamic mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
   const [isGenerating, setIsGenerating] = useState(false);
-  const { createLobby, loading: lobbyLoading } = usePvPLobby();
+  const [alertMessage, setAlertMessage] = useState<string>(
+    "Please select a question type before proceeding."
+  );
+  const {
+    createLobby,
+    loading: lobbyLoading,
+    error: lobbyError,
+  } = usePvPLobby();
 
   // Signal when component is fully ready
   useEffect(() => {
@@ -63,6 +80,14 @@ const SetUpQuestionType: React.FC = () => {
     }
   }, [fromWelcome, navigate, mode, material]);
 
+  // Add effect to show error if lobby creation fails
+  useEffect(() => {
+    if (lobbyError) {
+      setAlertMessage(lobbyError);
+      setOpenAlert(true);
+    }
+  }, [lobbyError]);
+
   // Show nothing until everything is ready
   if (!isComponentReady || !fromWelcome) {
     return null;
@@ -87,9 +112,40 @@ const SetUpQuestionType: React.FC = () => {
     navigate("/dashboard/home");
   };
 
-  const handleStartLearning = async () => {
+  const handlePvPNavigation = async (navigationState: any) => {
+    if (lobbyLoading) return; // Prevent multiple attempts while loading
+
+    try {
+      // Create lobby with initial settings
+      const result = await createLobby({
+        questionTypes: selectedTypes,
+        studyMaterialId: material?.id || material?.study_material_id,
+        studyMaterialTitle: material?.title,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to create lobby");
+      }
+
+      // Navigate to the PvP lobby with the generated code
+      navigate(`/dashboard/pvp-lobby/${result.lobbyCode}`, {
+        state: {
+          ...navigationState,
+          lobbyCode: result.lobbyCode,
+          fromWelcome: true,
+          friendToInvite: friendToInvite,
+        },
+      });
+    } catch (error) {
+      console.error("Error creating PvP lobby:", error);
+      setOpenAlert(true); // Show error alert to user
+    }
+  };
+
+  const handleStartLearning = () => {
     // If no question type is selected, show the alert
     if (selectedTypes.length === 0) {
+      setAlertMessage("Please select a question type before proceeding.");
       setOpenAlert(true);
       return;
     }
@@ -109,50 +165,18 @@ const SetUpQuestionType: React.FC = () => {
       material,
       selectedTypes,
       lobbyCode,
-      role: role || 'host' // Default to host if not specified
+      role: role || "host", // Default to host if not specified
     };
 
+    console.log("Navigation state being passed:", navigationState);
+    console.log("Mode type:", typeof mode, "Mode value:", mode);
+
     // Check if this is for PvP lobby creation
-    if (isPvpLobbyCreation && !lobbyCode) {
-      try {
-        // Create a lobby with initial settings
-        const result = await createLobby({
-          questionTypes: selectedTypes,
-          studyMaterialId: material?.id,
-          studyMaterialTitle: material?.title
-        });
-        
-        if (result.success) {
-          // Navigate to the PVP lobby with the generated lobby code
-          navigate(`/dashboard/pvp-lobby/${result.lobbyCode}`, {
-            state: { 
-              ...navigationState,
-              lobbyCode: result.lobbyCode,
-              fromWelcome: true
-            }
-          });
-        } else {
-          // Handle error
-          console.error("Failed to create lobby:", result.error);
-          setIsGenerating(false);
-        }
-        return;
-      } catch (error) {
-        console.error("Error creating lobby:", error);
-        setIsGenerating(false);
-        return;
-      }
-    } else if (isPvpLobbyCreation && lobbyCode) {
-      // Navigate directly to the PVP lobby with the selected question types
-      navigate(`/dashboard/pvps-lobby/${lobbyCode}`, {
-        state: { 
-          ...navigationState,
-          fromWelcome: true
-        }
-      });
+    if (isPvpLobbyCreation) {
+      // Use the handlePvPNavigation function to create lobby and navigate
+      handlePvPNavigation(navigationState);
       return;
     }
-
 
     // Navigate based on mode with more flexible mode checks
     if (mode === "Time Pressured" || mode === "Time Pressured Mode") {
@@ -165,43 +189,8 @@ const SetUpQuestionType: React.FC = () => {
         state: { ...navigationState, timeLimit: null },
       });
     } else {
-      // This is for PvP mode without explicit isPvpLobbyCreation flag
-      console.log("Navigating to PVP mode via API");
-      try {
-        // Use the API to create a lobby instead of just generating a code
-        const result = await createLobby({
-          questionTypes: selectedTypes,
-          studyMaterialId: material?.id,
-          studyMaterialTitle: material?.title
-        });
-        
-        if (result.success) {
-          // Navigate with the API-generated lobby code
-          navigate(`/dashboard/pvp-lobby/${result.lobbyCode}`, {
-            state: { 
-              ...navigationState, 
-              lobbyCode: result.lobbyCode,
-              fromWelcome: true
-            }
-          });
-        } else {
-          // Handle error - fall back to local code generation
-          console.error("Failed to create lobby via API, using local fallback:", result.error);
-          const generatedLobbyCode = generateCode();
-          navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
-            state: { ...navigationState, lobbyCode: generatedLobbyCode },
-          });
-        }
-      } catch (error) {
-        // If the API fails, fall back to local code generation
-        console.error("Error creating lobby via API, using local fallback:", error);
-        const generatedLobbyCode = generateCode();
-        navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
-          state: { ...navigationState, lobbyCode: generatedLobbyCode },
-        });
-      } finally {
-        setIsGenerating(false);
-      }
+      console.log("Navigating to PVP mode");
+      handlePvPNavigation(navigationState);
     }
   };
 
@@ -215,6 +204,9 @@ const SetUpQuestionType: React.FC = () => {
 
   return (
     <PageTransition>
+      <DocumentHead title="Set Up Question Type | Duel Learn" />
+
+      {/* Full-Width Background */}
       <div className="relative h-screen text-white px-6 py-8 overflow-hidden overflow-y-hidden">
         {/* Full-Width Fixed Header */}
         <div className="absolute top-0 left-0 w-full sm:px-8 md:px-16 lg:px-32 px-12 mt-5 py-12 flex justify-between items-center">
@@ -246,33 +238,34 @@ const SetUpQuestionType: React.FC = () => {
 
           {/* Right Side: Points + Animated Settings Icon */}
           <div className="flex items-center gap-1 sm:gap-2">
-            <img
-              src={ManaIcon}
-              alt="Mana"
-              className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1"
-            />
-            <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
-              {manaPoints}
-            </span>{" "}
-            {/* Dynamic mana points */}
-            <span className="animate-spin text-[14px] sm:text-[16px] text-purple-400">
-              ⚙️
-            </span>
+            {mode !== "Peaceful Mode" && (
+              <>
+                <img
+                  src={ManaIcon}
+                  alt="Mana"
+                  className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1"
+                />
+                <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
+                  {manaPoints}
+                </span>
+              </>
+            )}
+
           </div>
         </div>
 
         {/* Top Alert (for question type selection) */}
         <Snackbar
-          open={openAlert} // Show the alert if openAlert is true
+          open={openAlert}
           autoHideDuration={6000}
           onClose={handleCloseAlert}
         >
           <Alert
             onClose={handleCloseAlert}
-            severity="warning"
+            severity={lobbyError ? "error" : "warning"}
             sx={{ width: "100%" }}
           >
-            Please select a question type before proceeding.
+            {alertMessage}
           </Alert>
         </Snackbar>
 

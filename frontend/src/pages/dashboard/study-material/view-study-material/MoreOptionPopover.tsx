@@ -10,13 +10,14 @@ import {
   exportToDocx,
   exportToPdf,
 } from "../../../../utils/exportUtils";
-import headerImage from "../../../../assets/General/print-header.png";
-import shareIcon from "../../../../assets/study-material-popover-icons/share-icon.svg";
-import printIcon from "../../../../assets/study-material-popover-icons/print-icon.svg";
-import exportIcon from "../../../../assets/study-material-popover-icons/export-icon.svg";
-import archiveIcon from "../../../../assets/study-material-popover-icons/archive-icon.svg";
-import restoreIcon from "../../../../assets/study-material-popover-icons/restore-icon.svg";
-import deleteIcon from "../../../../assets/study-material-popover-icons/delete-icon.svg";
+import headerImage from "/General/print-header.png";
+import shareIcon from "/study-material-popover-icons/share-icon.svg";
+import printIcon from "/study-material-popover-icons/print-icon.svg";
+import exportIcon from "/study-material-popover-icons/export-icon.svg";
+import archiveIcon from "/study-material-popover-icons/archive-icon.svg";
+import restoreIcon from "/study-material-popover-icons/restore-icon.svg";
+import deleteIcon from "/study-material-popover-icons/delete-icon.svg";
+import { cacheService } from "../../../../services/CacheService";
 
 interface MoreOptionPopoverProps {
   anchorEl: HTMLElement | null;
@@ -163,8 +164,16 @@ export default function MoreOptionPopover({
       if (response.ok) {
         console.log("Study material archived successfully");
         onClose();
-        // Navigate back to the dashboard after archiving
-        navigate(`/dashboard/my-library`);
+
+        // Small delay before navigation to ensure API processing completes
+        setTimeout(() => {
+          navigate(`/dashboard/my-library`, {
+            state: {
+              forceRefresh: true,
+              showArchived: true,
+            },
+          });
+        }, 100);
       } else {
         const errorData = await response.json();
         console.error("Error archiving study material:", errorData);
@@ -193,7 +202,16 @@ export default function MoreOptionPopover({
       if (response.ok) {
         console.log("Study material restored successfully");
         onClose();
-        navigate(`/dashboard/my-library`);
+
+        // Small delay before navigation to ensure API processing completes
+        setTimeout(() => {
+          navigate(`/dashboard/my-library`, {
+            state: {
+              forceRefresh: true,
+              showArchived: false, // Explicitly set to false to show in main list
+            },
+          });
+        }, 100);
       } else {
         const errorData = await response.json();
         console.error("Error restoring study material:", errorData);
@@ -212,7 +230,7 @@ export default function MoreOptionPopover({
           import.meta.env.VITE_BACKEND_URL
         }/api/study-material/delete/${studyMaterialId}`,
         {
-          method: "POST", // Changed from DELETE to POST to match the backend route
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
@@ -222,8 +240,15 @@ export default function MoreOptionPopover({
       if (response.ok) {
         console.log("Study material deleted successfully");
         onClose();
-        // Navigate back to the dashboard after deleting
-        navigate("/dashboard/my-library");
+
+        // Navigate back to the dashboard with force refresh
+        setTimeout(() => {
+          navigate("/dashboard/my-library", {
+            state: {
+              forceRefresh: true,
+            },
+          });
+        }, 100);
       } else {
         const errorData = await response.json();
         console.error("Error deleting study material:", errorData);
@@ -244,6 +269,23 @@ export default function MoreOptionPopover({
             backgroundColor: "#120F1B",
             borderRadius: "0.8rem",
             padding: "1rem",
+
+            border: "2px solid #3B354C", // Border color
+          },
+          "& .MuiMenuItem-root": {
+            borderRadius: "0.8rem",
+            padding: "0.6rem 1rem",
+            transition: "all 0.3s ease-in-out",
+            color: "inherit",
+            fontWeight: 400,
+
+            "&:hover": {
+              transform: "scale(1.05)",
+              backgroundColor: "#3B354C",
+            },
+          },
+          "& .MuiList-root": {
+            padding: "0.3rem",
           },
         }}
         anchorOrigin={{
@@ -265,7 +307,6 @@ export default function MoreOptionPopover({
           Export to PDF
         </MenuItem>
       </Menu>
-
       <Popover
         id={id}
         open={open}
@@ -283,6 +324,7 @@ export default function MoreOptionPopover({
           sx: {
             backgroundColor: "#120F1B", // Dark background
             borderRadius: "0.8rem",
+            border: "2px solid #3B354C", // Border color
             width: "18rem", // Set width of the popover
             padding: 2, // Adjust padding inside the popover
             mt: 1, // Space between the popover and profile button

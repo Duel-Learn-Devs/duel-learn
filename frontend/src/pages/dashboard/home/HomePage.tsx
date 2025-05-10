@@ -4,7 +4,7 @@ import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
 
 import ChooseYourChallenge from "../../../components/ChooseYourChallenge";
-import DiscoverMore from "./DiscoverMore";
+import YourPickedTopics from "./YourPickedTopics";
 import HomeBanner from "./HomeBanner";
 
 const HomePage = ({
@@ -23,13 +23,14 @@ const HomePage = ({
     <PageTransition>
       <Box className="h-full w-auto" sx={{ backgroundColor: "#080511" }}>
         <DocumentHead title="Home | Duel Learn" />
-        <Stack spacing={1} className="px-3 sm:px-5 md:px-8">
+        <Stack spacing={2}>
           <HomeBanner />
-          <Stack spacing={2} className="pb-4 pt-4 sm:pb-6 sm:pt-6">
+
+          <Stack spacing={2} className="pb-4  sm:pt-2">
             <Stack
               direction={"row"}
               spacing={1.5}
-              className="flex items-center justify-start pl-2"
+              className="flex items-center justify-start"
             >
               <img
                 src="/book.png"
@@ -37,7 +38,6 @@ const HomePage = ({
                 alt="icon"
               />
               <Typography
-                variant="h6"
                 sx={{
                   color: "#E2DDF3",
                   fontSize: {
@@ -59,7 +59,7 @@ const HomePage = ({
               <Stack
                 direction={"row"}
                 spacing={1.5}
-                className="flex items-center justify-start pl-2"
+                className="flex items-center justify-start"
               >
                 <img
                   src="/book.png"
@@ -67,7 +67,6 @@ const HomePage = ({
                   alt="icon"
                 />
                 <Typography
-                  variant="h6"
                   sx={{
                     color: "#E2DDF3",
                     fontSize: {
@@ -78,7 +77,7 @@ const HomePage = ({
                     fontWeight: 600,
                   }}
                 >
-                  Discover more materials
+                  Your Picked Topics
                 </Typography>
               </Stack>
               <Box flexGrow={1} />
@@ -97,12 +96,11 @@ const HomePage = ({
                     sm: "0.9rem",
                     md: "1rem",
                   },
-                  color: "#E2DDF3",
+                  color: "#3B354D",
                   transition: "all 0.3s ease",
                   "&:hover": {
-                    color: "#4D18E8",
-                    transform: "scale(1.01)",
-                    backgroundColor: "rgba(77, 24, 232, 0.08)",
+                    color: "#E2DDF3",
+                    backgroundColor: "#3B354D",
                   },
                 }}
               >
@@ -110,7 +108,7 @@ const HomePage = ({
               </Button>
             </Stack>
             <Box className="w-full overflow-hidden">
-              <DiscoverMore />
+              <YourPickedTopics />
             </Box>
           </Stack>
 

@@ -8,6 +8,9 @@ export function SortableItem({
   item,
   deleteItem,
   updateItem,
+  isError, // Keep this prop for general item error
+  isTermError, // Add specific field error props
+  isDefinitionError, // Add specific field error props
 }: SortableItemProps) {
   const {
     attributes,
@@ -38,6 +41,10 @@ export function SortableItem({
         updateItem={updateItem}
         dragHandleProps={dragHandleProps}
         isDragging={isDragging}
+        isError={isError} // Pass the prop directly instead of trying to calculate it here
+        isTermError={isTermError} // Pass the term-specific error state
+        isDefinitionError={isDefinitionError} // Pass the definition-specific error state
+        key={item.id}
       />
     </div>
   );

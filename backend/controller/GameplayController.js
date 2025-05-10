@@ -1,4 +1,7 @@
 import { pool } from '../config/db.js';
+import { OpenAiController } from '../controller/OpenAiController.js';
+import { nanoid } from 'nanoid';
+import { v4 as uuidv4 } from 'uuid';
 
 
 export const endBattle = async (req, res) => {
@@ -11,7 +14,8 @@ export const endBattle = async (req, res) => {
             winner_id,
             battle_end_reason,
             session_id,
-            session_uuid
+            session_uuid,
+            early_leaver_id  // Add this to track who left early
         } = req.body;
 
         console.log("endBattle request:", {
@@ -19,7 +23,8 @@ export const endBattle = async (req, res) => {
             winner_id,
             battle_end_reason,
             session_id,
-            session_uuid
+            session_uuid,
+            early_leaver_id
         });
 
         // Validate required fields
@@ -28,6 +33,51 @@ export const endBattle = async (req, res) => {
                 success: false,
                 message: "Missing required fields: lobby_code and battle_end_reason are required"
             });
+        }
+
+        // Handle early leave tracking if applicable
+        if (battle_end_reason === 'Left The Game' && early_leaver_id) {
+            // Start a transaction for early leave handling
+            await connection.beginTransaction();
+
+            try {
+                // Get current early leaves count
+                const [userInfo] = await connection.query(
+                    'SELECT earlyLeaves FROM user_info WHERE firebase_uid = ?',
+                    [early_leaver_id]
+                );
+
+                if (userInfo.length > 0) {
+                    const currentEarlyLeaves = userInfo[0].earlyLeaves || 0;
+                    const newEarlyLeaves = currentEarlyLeaves + 1;
+
+                    // Check if user should be banned (3 early leaves)
+                    if (newEarlyLeaves >= 3) {
+                        // Set ban until 24 hours from now
+                        const banUntil = new Date();
+                        banUntil.setHours(banUntil.getHours() + 24);
+
+                        // Update user with new early leaves count and ban time
+                        await connection.query(
+                            'UPDATE user_info SET earlyLeaves = ?, banUntil = ? WHERE firebase_uid = ?',
+                            [newEarlyLeaves, banUntil, early_leaver_id]
+                        );
+
+                        console.log(`User ${early_leaver_id} banned until ${banUntil} for excessive early leaves`);
+                    } else {
+                        // Just increment early leaves
+                        await connection.query(
+                            'UPDATE user_info SET earlyLeaves = ? WHERE firebase_uid = ?',
+                            [newEarlyLeaves, early_leaver_id]
+                        );
+
+                        console.log(`Incremented early leaves for user ${early_leaver_id} to ${newEarlyLeaves}`);
+                    }
+                }
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            }
         }
 
         // Determine which identifier to use to find the session
@@ -175,6 +225,11 @@ export const endBattle = async (req, res) => {
             });
         }
 
+        // Commit any pending transactions
+        if (battle_end_reason === 'Left The Game') {
+            await connection.commit();
+        }
+
         // Log the battle end for debugging
         console.log(`Battle ended: Session ${sessionQuery}, Reason: ${battle_end_reason}, Winner: ${winner_id || 'None'}`);
 
@@ -190,6 +245,15 @@ export const endBattle = async (req, res) => {
         });
 
     } catch (error) {
+        // Rollback transaction if there was an error during early leave handling
+        if (connection) {
+            try {
+                await connection.rollback();
+            } catch (rollbackError) {
+                console.error('Error rolling back transaction:', rollbackError);
+            }
+        }
+
         console.error('Error ending battle:', error);
         res.status(500).json({
             success: false,
@@ -200,6 +264,7 @@ export const endBattle = async (req, res) => {
         if (connection) connection.release();
     }
 };
+
 
 export const initializeBattleSession = async (req, res) => {
     let connection;
@@ -867,8 +932,10 @@ export const updateBattleRound = async (req, res) => {
                     initial_damage: 10,  // Initial poison damage
                     damage_per_turn: 5, // Damage each subsequent turn
                     duration: 3,       // Lasts for 3 rounds
-                    turns_remaining: 3, // Track turns remaining
-                    applied_for_turns: [] // Track which turns it's been applied for
+                    turns_remaining: 3, // Track turns remaining (exactly 3 turns)
+                    turn_applied: Date.now(), // Record when it was applied
+                    applied_for_turns: [], // Track which turns it's been applied for
+                    turn_counter: 0 // Starting at 0, will be incremented each turn up to 3
                 };
 
                 // Apply initial poison damage immediately
@@ -880,7 +947,7 @@ export const updateBattleRound = async (req, res) => {
                     [10, session_uuid]
                 );
 
-                console.log(`Card effect: ${player_type} used Poison Type to apply poison damage to ${targetPlayer} for 3 turns`);
+                console.log(`Card effect: ${player_type} used Poison Type to apply poison damage to ${targetPlayer} for exactly 3 turns`);
             }
         }
 
@@ -904,55 +971,53 @@ export const updateBattleRound = async (req, res) => {
             }
 
             // Check if the card_effect columns exist
-            let updateRoundQuery;
-            let updateRoundParams;
 
+            // Check for necessary columns
             const [columns] = await connection.query(`
                 SHOW COLUMNS FROM battle_rounds 
-                WHERE Field IN ('host_card_effect', 'guest_card_effect')
+                WHERE Field IN ('host_card_effect', 'guest_card_effect', 'question_count_total')
             `);
 
-            if (columns.length >= 2) {
-                // Columns exist, include them in the update
-                updateRoundQuery = `
-                    UPDATE battle_rounds 
-                    SET ${updateField} = ?,
-                        ${answerField} = ?,
-                        ${cardEffectField} = ?
-                    WHERE session_uuid = ?
-                `;
-                updateRoundParams = [
-                    finalCardId,
-                    is_correct,
-                    cardEffect ? JSON.stringify(cardEffect) : null,
-                    session_uuid
-                ];
-            } else {
-                // Add the columns first
+            // Add missing columns if needed
+            const existingFields = columns.map(col => col.Field);
+
+            if (!existingFields.includes('host_card_effect') || !existingFields.includes('guest_card_effect')) {
                 console.log("Adding card effect columns to battle_rounds table");
                 await connection.query(`
                     ALTER TABLE battle_rounds 
-                    ADD COLUMN host_card_effect JSON NULL,
-                    ADD COLUMN guest_card_effect JSON NULL
+                    ADD COLUMN IF NOT EXISTS host_card_effect JSON NULL,
+                    ADD COLUMN IF NOT EXISTS guest_card_effect JSON NULL
                 `);
-
-                // Then perform the update
-                updateRoundQuery = `
-                    UPDATE battle_rounds 
-                    SET ${updateField} = ?,
-                        ${answerField} = ?,
-                        ${cardEffectField} = ?
-                    WHERE session_uuid = ?
-                `;
-                updateRoundParams = [
-                    finalCardId,
-                    is_correct,
-                    cardEffect ? JSON.stringify(cardEffect) : null,
-                    session_uuid
-                ];
             }
 
+            if (!existingFields.includes('question_count_total')) {
+                console.log("Adding question_count_total column to battle_rounds table");
+                await connection.query(`
+                    ALTER TABLE battle_rounds 
+                    ADD COLUMN IF NOT EXISTS question_count_total INT DEFAULT 0
+                `);
+            }
+
+            // Prepare update query
+            const updateRoundQuery = `
+                UPDATE battle_rounds 
+                SET ${updateField} = ?,
+                    ${answerField} = ?,
+                    ${cardEffectField} = ?,
+                    question_count_total = COALESCE(question_count_total, 0) + 1
+                WHERE session_uuid = ?
+            `;
+
+            const updateRoundParams = [
+                finalCardId,
+                is_correct,
+                cardEffect ? JSON.stringify(cardEffect) : null,
+                session_uuid
+            ];
+
+            // Execute update
             await connection.query(updateRoundQuery, updateRoundParams);
+
 
             // Update battle_sessions to store active card effects
             // First check if the active_card_effects column exists
@@ -1515,6 +1580,354 @@ export const consumeCardEffect = async (req, res) => {
     }
 };
 
+// Add this new function to check user's ban status
+export const checkUserBanStatus = async (req, res) => {
+    let connection;
+    try {
+        const { firebase_uid } = req.params;
+
+        if (!firebase_uid) {
+            return res.status(400).json({
+                success: false,
+                message: "Firebase UID is required"
+            });
+        }
+
+        connection = await pool.getConnection();
+
+        // Get user's ban status
+        const [userInfo] = await connection.query(
+            'SELECT banUntil, earlyLeaves FROM user_info WHERE firebase_uid = ?',
+            [firebase_uid]
+        );
+
+        if (userInfo.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Check if user is currently banned
+        const banUntil = userInfo[0].banUntil;
+        const earlyLeaves = userInfo[0].earlyLeaves || 0;
+        const now = new Date();
+
+        // If banUntil is in the future, user is banned
+        const isBanned = banUntil && new Date(banUntil) > now;
+
+        // If ban has expired, reset early leaves
+        if (banUntil && new Date(banUntil) <= now) {
+            await connection.query(
+                'UPDATE user_info SET banUntil = NULL, earlyLeaves = 0 WHERE firebase_uid = ?',
+                [firebase_uid]
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                isBanned,
+                banUntil: isBanned ? banUntil : null,
+                earlyLeaves,
+                banExpired: banUntil && new Date(banUntil) <= now
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking ban status:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to check ban status",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+/**
+ * Save PvP battle session report
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const savePvpSessionReport = async (req, res) => {
+    let connection;
+    try {
+        const {
+            session_uuid,
+            start_time,
+            end_time,
+            material_id,
+            host_id,
+            host_health,
+            host_correct_count,
+            host_incorrect_count,
+            host_highest_streak,
+            host_xp_earned,
+            host_coins_earned,
+            guest_id,
+            guest_health,
+            guest_correct_count,
+            guest_incorrect_count,
+            guest_highest_streak,
+            guest_xp_earned,
+            guest_coins_earned,
+            winner_id,
+            defeated_id,
+            battle_duration,
+            early_end
+        } = req.body;
+
+        console.log(host_xp_earned, host_coins_earned, guest_xp_earned, guest_coins_earned);
+
+        // Validate required fields
+        if (!session_uuid || !material_id || !host_id || !guest_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields'
+            });
+        }
+
+        // Get a connection from the pool
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // First check if this session report already exists
+        const checkQuery = `
+            SELECT session_uuid FROM pvp_battle_sessions 
+            WHERE session_uuid = ?
+        `;
+        const [existing] = await connection.execute(checkQuery, [session_uuid]);
+
+        if (existing.length > 0) {
+            await connection.rollback();
+            return res.status(200).json({
+                success: true,
+                message: 'PvP session report already exists',
+                data: {
+                    session_uuid
+                }
+            });
+        }
+
+        // Simple insert query for session report
+        const insertQuery = `
+            INSERT INTO pvp_battle_sessions (
+                session_uuid, start_time, end_time, material_id,
+                host_id, host_health, host_correct_count, host_incorrect_count,
+                host_highest_streak, host_xp_earned, host_coins_earned,
+                guest_id, guest_health, guest_correct_count, guest_incorrect_count,
+                guest_highest_streak, guest_xp_earned, guest_coins_earned,
+                winner_id, defeated_id, battle_duration, early_end
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const values = [
+            session_uuid,
+            start_time,
+            end_time,
+            material_id,
+            host_id,
+            host_health,
+            host_correct_count,
+            host_incorrect_count,
+            host_highest_streak,
+            host_xp_earned,
+            host_coins_earned || 0,
+            guest_id,
+            guest_health,
+            guest_correct_count,
+            guest_incorrect_count,
+            guest_highest_streak,
+            guest_xp_earned,
+            guest_coins_earned || 0,
+            winner_id,
+            defeated_id,
+            battle_duration,
+            early_end
+        ];
+
+        const [result] = await connection.execute(insertQuery, values);
+
+        // Commit the transaction
+        await connection.commit();
+
+        return res.status(200).json({
+            success: true,
+            message: 'PvP session report saved successfully',
+            data: {
+                id: result.insertId
+            }
+        });
+
+    } catch (error) {
+        // Rollback the transaction if there's an error
+        if (connection) {
+            await connection.rollback();
+        }
+
+        console.error('Error saving PvP session report:', error);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                success: false,
+                message: 'Session report already exists',
+                error: error.message
+            });
+        }
+
+        if (error.code === 'ER_BAD_FIELD_ERROR') {
+            return res.status(400).json({
+                success: false,
+                message: 'Database column error',
+                error: error.message
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to save PvP session report',
+            error: error.message
+        });
+    } finally {
+        // Release the connection back to the pool
+        if (connection) {
+            connection.release();
+        }
+    }
+};
+
+/**
+ * Get user's current win streak
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const getWinStreak = async (req, res) => {
+    let connection;
+    try {
+        const { firebase_uid } = req.params;
+
+        if (!firebase_uid) {
+            return res.status(400).json({
+                success: false,
+                message: "Firebase UID is required"
+            });
+        }
+
+        connection = await pool.getConnection();
+
+        // Get win streak from user_info table
+        const [result] = await connection.execute(
+            'SELECT win_streak FROM user_info WHERE firebase_uid = ?',
+            [firebase_uid]
+        );
+
+        if (result.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                win_streak: result[0].win_streak || 0
+            }
+        });
+
+    } catch (error) {
+        console.error('Error getting win streak:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to get win streak",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+/**
+ * Update user's win streak
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const updateWinStreak = async (req, res) => {
+    const { firebase_uid, is_winner, protect_streak } = req.body;
+
+    try {
+        const connection = await pool.getConnection();
+
+        try {
+            await connection.beginTransaction();
+
+            // First, get the current win_streak and longest_win_streak
+            const [userStreak] = await connection.query(
+                "SELECT win_streak, longest_win_streak FROM user_info WHERE firebase_uid = ?",
+                [firebase_uid]
+            );
+
+            if (userStreak.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            const currentStreak = userStreak[0].win_streak || 0;
+            let currentLongestStreak = userStreak[0].longest_win_streak || 0;
+
+            if (is_winner) {
+                // Winner: increment win streak
+                const newStreak = currentStreak + 1;
+
+                // Update longest streak if the new streak is higher
+                if (newStreak > currentLongestStreak) {
+                    currentLongestStreak = newStreak;
+                }
+
+                await connection.query(
+                    "UPDATE user_info SET win_streak = ?, longest_win_streak = ? WHERE firebase_uid = ?",
+                    [newStreak, currentLongestStreak, firebase_uid]
+                );
+            } else if (!protect_streak) {
+                // Loser without Fortune Coin: reset win streak to 0 (longest_win_streak remains unchanged)
+                await connection.query(
+                    "UPDATE user_info SET win_streak = 0 WHERE firebase_uid = ?",
+                    [firebase_uid]
+                );
+            }
+
+            await connection.commit();
+
+            // Get updated win streak and longest streak
+            const [result] = await connection.query(
+                "SELECT win_streak, longest_win_streak FROM user_info WHERE firebase_uid = ?",
+                [firebase_uid]
+            );
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    win_streak: result[0].win_streak || 0,
+                    longest_win_streak: result[0].longest_win_streak || 0
+                },
+                protected: protect_streak && !is_winner
+            });
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error("Error updating win streak:", error);
+        res.status(500).json({ success: false, message: "Error updating win streak" });
+    }
+};
 // Add this new function to check if a player has any card blocking effects
 export const checkCardBlockingEffects = async (req, res) => {
     let connection;
@@ -1586,6 +1999,190 @@ export const checkCardBlockingEffects = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to check card blocking effects",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+
+export const applyPoisonEffects = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, player_type, current_turn_number } = req.body;
+
+        if (!session_uuid || !player_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid and player_type"
+            });
+        }
+
+        console.log(`Applying poison effects for ${player_type} in session ${session_uuid}`);
+
+        // Get the battle session to access active card effects
+        const [sessionResult] = await connection.query(
+            `SELECT active_card_effects FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // Extract active card effects
+        let activeCardEffects = [];
+        let poisonEffects = [];
+        let poisonDamageApplied = 0;
+        let effectsUpdated = false;
+
+        if (sessionResult[0].active_card_effects) {
+            try {
+                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+
+                // Find poison effects targeting this player
+                poisonEffects = activeCardEffects.filter(effect =>
+                    effect.target === player_type &&
+                    effect.effect === "poison" &&
+                    effect.turns_remaining > 0
+                );
+
+                console.log(`Found ${poisonEffects.length} active poison effects for ${player_type}`);
+
+                // Process each poison effect
+                for (let i = 0; i < activeCardEffects.length; i++) {
+                    const effect = activeCardEffects[i];
+
+                    if (effect.target === player_type &&
+                        effect.effect === "poison" &&
+                        effect.turns_remaining > 0) {
+
+                        // Check if we already applied this effect for the current turn
+                        const turnNumber = current_turn_number || Date.now(); // Use timestamp as fallback
+
+                        if (!effect.applied_for_turns || !effect.applied_for_turns.includes(turnNumber)) {
+                            // Apply poison damage
+                            const damage = effect.damage_per_turn || 5;
+                            poisonDamageApplied += damage;
+
+                            // Increment turn counter
+                            if (typeof activeCardEffects[i].turn_counter !== 'number') {
+                                activeCardEffects[i].turn_counter = 0;
+                            }
+                            activeCardEffects[i].turn_counter += 1;
+
+                            // Only decrease turns_remaining if this is a new turn
+                            // This ensures we count exactly 3 turns from when it was applied
+                            if (activeCardEffects[i].turn_counter <= 3) {
+                                console.log(`Poison turn ${activeCardEffects[i].turn_counter} of 3 applied to ${player_type}`);
+
+                                // Only set turns_remaining to 0 after the 3rd application
+                                if (activeCardEffects[i].turn_counter >= 3) {
+                                    activeCardEffects[i].turns_remaining = 0;
+                                    console.log(`Poison effect completed all 3 turns, will be removed for ${player_type}`);
+                                } else {
+                                    // Only decrement if we haven't reached 3 turns yet
+                                    activeCardEffects[i].turns_remaining = 3 - activeCardEffects[i].turn_counter;
+                                }
+                            }
+
+                            // Track that we applied it for this turn
+                            if (!activeCardEffects[i].applied_for_turns) {
+                                activeCardEffects[i].applied_for_turns = [];
+                            }
+
+                            activeCardEffects[i].applied_for_turns.push(turnNumber);
+
+                            console.log(`Applied poison damage: ${damage}, turns remaining: ${activeCardEffects[i].turns_remaining}, turn count: ${activeCardEffects[i].turn_counter}/3`);
+
+                            effectsUpdated = true;
+                        } else {
+                            console.log(`Poison effect already applied for turn ${turnNumber}`);
+                        }
+                    }
+                }
+
+                // Clean up any effects that have expired (turns_remaining <= 0)
+                activeCardEffects = activeCardEffects.filter(effect => {
+                    if (effect.effect === "poison" && effect.turns_remaining <= 0) {
+                        console.log(`Removing expired poison effect targeting ${effect.target}`);
+                        return false;
+                    }
+                    return true;
+                });
+
+                // Apply the accumulated poison damage to the player's health
+                if (poisonDamageApplied > 0) {
+                    const healthField = player_type === 'host' ? 'host_health' : 'guest_health';
+                    await connection.query(
+                        `UPDATE battle_scores 
+                        SET ${healthField} = GREATEST(0, ${healthField} - ?)
+                        WHERE session_uuid = ?`,
+                        [poisonDamageApplied, session_uuid]
+                    );
+
+                    console.log(`Applied total poison damage of ${poisonDamageApplied} to ${player_type}`);
+                }
+
+                // Update the session with the modified effects if needed
+                if (effectsUpdated) {
+                    await connection.query(
+                        `UPDATE battle_sessions 
+                        SET active_card_effects = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE session_uuid = ? AND is_active = 1`,
+                        [JSON.stringify(activeCardEffects), session_uuid]
+                    );
+
+                    console.log(`Updated poison effects in session ${session_uuid}`);
+                }
+
+            } catch (e) {
+                console.error('Error parsing or updating active_card_effects:', e);
+                return res.status(500).json({
+                    success: false,
+                    message: "Error processing poison effects",
+                    error: e.message
+                });
+            }
+        }
+
+        // Get the updated health status
+        const [updatedScores] = await connection.query(
+            `SELECT * FROM battle_scores WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        // Get updated effects to send back to client
+        const updatedPoisonEffects = activeCardEffects.filter(e =>
+            e.target === player_type &&
+            e.effect === "poison" &&
+            e.turns_remaining > 0
+        );
+
+        res.json({
+            success: true,
+            message: poisonDamageApplied > 0 ? `Applied ${poisonDamageApplied} poison damage to ${player_type}` : "No poison damage to apply",
+            data: {
+                poison_damage_applied: poisonDamageApplied,
+                updated_scores: updatedScores[0] || null,
+                active_poison_effects: updatedPoisonEffects,
+                effects: updatedPoisonEffects // For backward compatibility
+            }
+        });
+
+    } catch (error) {
+        console.error('Error applying poison effects:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to apply poison effects",
             error: error.message
         });
     } finally {
@@ -1667,150 +2264,436 @@ export const checkMindControlEffects = async (req, res) => {
     }
 };
 
-// Add this new function to apply poison effects
-export const applyPoisonEffects = async (req, res) => {
-    let connection;
+// Generate questions for battle
+export const generateBattleQuestions = async (req, res) => {
     try {
-        connection = await pool.getConnection();
+        const { session_uuid, study_material_id, difficulty_mode, question_types, player_type } = req.body;
 
-        const { session_uuid, player_type, current_turn_number } = req.body;
-
-        if (!session_uuid || !player_type) {
+        // Validate required fields
+        if (!session_uuid || !study_material_id || !difficulty_mode || !question_types || !player_type) {
             return res.status(400).json({
                 success: false,
-                message: "Missing required fields: session_uuid and player_type"
+                error: "Missing required fields"
             });
         }
 
-        console.log(`Applying poison effects for ${player_type} in session ${session_uuid}`);
-
-        // Get the battle session to access active card effects
-        const [sessionResult] = await connection.query(
-            `SELECT active_card_effects FROM battle_sessions 
-            WHERE session_uuid = ? AND is_active = 1`,
-            [session_uuid]
+        // Get study material content
+        const [studyMaterialContent] = await pool.query(
+            `SELECT * FROM study_material_content WHERE study_material_id = ?`,
+            [study_material_id]
         );
 
-        if (sessionResult.length === 0) {
+        if (!studyMaterialContent || studyMaterialContent.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: "Battle session not found or not active"
+                error: "Study material content not found"
             });
         }
 
-        // Extract active card effects
-        let activeCardEffects = [];
-        let poisonEffects = [];
-        let poisonDamageApplied = 0;
-        let effectsUpdated = false;
+        // Shuffle study material content
+        const shuffledContent = studyMaterialContent.sort(() => Math.random() - 0.5);
 
-        if (sessionResult[0].active_card_effects) {
-            try {
-                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+        // Track used items to ensure unique usage
+        const usedItems = new Set();
+        const questions = [];
 
-                // Find poison effects targeting this player
-                poisonEffects = activeCardEffects.filter(effect =>
-                    effect.target === player_type &&
-                    effect.effect === "poison" &&
-                    effect.turns_remaining > 0
-                );
+        // Calculate number of questions for each type
+        const totalQuestions = Math.min(10, shuffledContent.length);
+        const questionTypeCount = Math.floor(totalQuestions / question_types.length);
+        const remainingQuestions = totalQuestions % question_types.length;
 
-                console.log(`Found ${poisonEffects.length} active poison effects for ${player_type}`);
+        let questionDistribution = question_types.map(type => ({
+            type,
+            count: questionTypeCount
+        }));
 
-                // Process each poison effect
-                for (let i = 0; i < activeCardEffects.length; i++) {
-                    const effect = activeCardEffects[i];
+        // Distribute remaining questions
+        for (let i = 0; i < remainingQuestions; i++) {
+            questionDistribution[i].count++;
+        }
 
-                    if (effect.target === player_type &&
-                        effect.effect === "poison" &&
-                        effect.turns_remaining > 0) {
+        // Generate questions for each type
+        for (const distribution of questionDistribution) {
+            const { type, count } = distribution;
 
-                        // Check if we already applied this effect for the current turn
-                        const turnNumber = current_turn_number || Date.now(); // Use timestamp as fallback
+            for (let i = 0; i < count; i++) {
+                // Find an unused item
+                const unusedItem = shuffledContent.find(item => !usedItems.has(item.item_id));
+                if (!unusedItem) break;
 
-                        if (!effect.applied_for_turns || !effect.applied_for_turns.includes(turnNumber)) {
-                            // Apply poison damage
-                            const damage = effect.damage_per_turn || 5;
-                            poisonDamageApplied += damage;
+                usedItems.add(unusedItem.item_id);
 
-                            // Update the effect to track that we applied it for this turn
-                            activeCardEffects[i].turns_remaining -= 1;
-
-                            if (!activeCardEffects[i].applied_for_turns) {
-                                activeCardEffects[i].applied_for_turns = [];
-                            }
-
-                            activeCardEffects[i].applied_for_turns.push(turnNumber);
-
-                            console.log(`Applied poison damage: ${damage}, turns remaining: ${activeCardEffects[i].turns_remaining}`);
-
-                            effectsUpdated = true;
-                        } else {
-                            console.log(`Poison effect already applied for turn ${turnNumber}`);
+                if (type === 'identification') {
+                    // For identification questions, use definition as question and term as answer
+                    questions.push({
+                        id: nanoid(),
+                        type: 'identification',
+                        question: unusedItem.definition,
+                        correctAnswer: unusedItem.term,
+                        itemInfo: {
+                            term: unusedItem.term,
+                            definition: unusedItem.definition,
+                            itemId: unusedItem.item_id,
+                            itemNumber: unusedItem.item_number
                         }
+                    });
+                } else {
+                    // For other question types, use OpenAI generation
+                    try {
+                        let generatedQuestion;
+                        if (type === 'multiple-choice') {
+                            generatedQuestion = await OpenAiController.generateMultipleChoiceQuestion(
+                                unusedItem.term,
+                                unusedItem.definition,
+                                {
+                                    studyMaterialId: study_material_id,
+                                    itemId: unusedItem.item_id,
+                                    itemNumber: unusedItem.item_number,
+                                    gameMode: 'battle',
+                                    difficultyMode: difficulty_mode
+                                }
+                            );
+                        } else if (type === 'true-false') {
+                            generatedQuestion = await OpenAiController.generateTrueFalseQuestion(
+                                unusedItem.term,
+                                unusedItem.definition,
+                                {
+                                    studyMaterialId: study_material_id,
+                                    itemId: unusedItem.item_id,
+                                    itemNumber: unusedItem.item_number,
+                                    gameMode: 'battle',
+                                    difficultyMode: difficulty_mode
+                                }
+                            );
+                        }
+
+                        if (generatedQuestion && generatedQuestion.success) {
+                            questions.push({
+                                ...generatedQuestion.data,
+                                id: nanoid(),
+                                itemInfo: {
+                                    term: unusedItem.term,
+                                    definition: unusedItem.definition,
+                                    itemId: unusedItem.item_id,
+                                    itemNumber: unusedItem.item_number
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.error("Error generating question:", error);
+                        continue;
                     }
                 }
-
-                // Apply the accumulated poison damage to the player's health
-                if (poisonDamageApplied > 0) {
-                    const healthField = player_type === 'host' ? 'host_health' : 'guest_health';
-                    await connection.query(
-                        `UPDATE battle_scores 
-                        SET ${healthField} = GREATEST(0, ${healthField} - ?)
-                        WHERE session_uuid = ?`,
-                        [poisonDamageApplied, session_uuid]
-                    );
-
-                    console.log(`Applied total poison damage of ${poisonDamageApplied} to ${player_type}`);
-                }
-
-                // Update the session with the modified effects if needed
-                if (effectsUpdated) {
-                    await connection.query(
-                        `UPDATE battle_sessions 
-                        SET active_card_effects = ?,
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE session_uuid = ? AND is_active = 1`,
-                        [JSON.stringify(activeCardEffects), session_uuid]
-                    );
-
-                    console.log(`Updated poison effects in session ${session_uuid}`);
-                }
-
-            } catch (e) {
-                console.error('Error parsing or updating active_card_effects:', e);
-                return res.status(500).json({
-                    success: false,
-                    message: "Error processing poison effects",
-                    error: e.message
-                });
             }
         }
 
-        // Get the updated health status
-        const [updatedScores] = await connection.query(
-            `SELECT * FROM battle_scores WHERE session_uuid = ?`,
-            [session_uuid]
+        // Delete existing questions for this session and player
+        await pool.query(
+            `DELETE FROM generated_material 
+             WHERE study_material_id = ? AND game_mode = 'pvp'`,
+            [study_material_id]
         );
 
-        res.json({
-            success: true,
-            message: poisonDamageApplied > 0 ? `Applied ${poisonDamageApplied} poison damage to ${player_type}` : "No poison damage to apply",
-            data: {
-                poison_damage_applied: poisonDamageApplied,
-                updated_scores: updatedScores[0] || null,
-                active_poison_effects: poisonEffects.filter(e => e.turns_remaining > 0)
+        // Store the generated questions
+        try {
+            for (const question of questions) {
+                const choicesJSON = question.options ? JSON.stringify(question.options) : null;
+                await pool.query(
+                    `REPLACE INTO generated_material 
+                     (study_material_id, question_type, question, answer, choices, game_mode) 
+                     VALUES (?, ?, ?, ?, ?, 'pvp')`,
+                    [
+                        study_material_id,
+                        question.type,
+                        question.question,
+                        question.correctAnswer,
+                        choicesJSON
+                    ]
+                );
             }
-        });
+        } catch (dbError) {
+            console.error("Error storing battle questions:", dbError);
+            return res.status(500).json({
+                success: false,
+                error: "Failed to store battle questions"
+            });
+        }
 
+        return res.json({
+            success: true,
+            data: questions
+        });
     } catch (error) {
-        console.error('Error applying poison effects:', error);
-        res.status(500).json({
+        console.error("Error in generateBattleQuestions:", error);
+        return res.status(500).json({
             success: false,
-            message: "Failed to apply poison effects",
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Claim XP and coins rewards from a PvP battle
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const claimBattleRewards = async (req, res) => {
+    let connection;
+    try {
+        const { firebase_uid, xp_earned, coins_earned, session_uuid } = req.body;
+
+        // Validate required fields
+        if (!firebase_uid || xp_earned === undefined || coins_earned === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: firebase_uid, xp_earned, and coins_earned are required"
+            });
+        }
+
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        try {
+            // First, get the user's current XP and coins
+            const [userInfo] = await connection.query(
+                'SELECT exp, coins FROM user_info WHERE firebase_uid = ?',
+                [firebase_uid]
+            );
+
+            if (userInfo.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            // Calculate new values
+            const currentExp = userInfo[0].exp || 0;
+            const currentCoins = userInfo[0].coins || 0;
+            const newExp = currentExp + xp_earned;
+            const newCoins = currentCoins + coins_earned;
+
+            // Update the user's XP and coins
+            await connection.query(
+                'UPDATE user_info SET exp = ?, coins = ? WHERE firebase_uid = ?',
+                [newExp, newCoins, firebase_uid]
+            );
+
+            // If session_uuid is provided, mark rewards as claimed in the PvP session
+            if (session_uuid) {
+                // Check if we need to update host or guest fields
+                const [sessionInfo] = await connection.query(
+                    'SELECT host_id, guest_id FROM pvp_battle_sessions WHERE session_uuid = ?',
+                    [session_uuid]
+                );
+
+                if (sessionInfo.length > 0) {
+                    const isHost = sessionInfo[0].host_id === firebase_uid;
+                    const isGuest = sessionInfo[0].guest_id === firebase_uid;
+
+                    if (isHost || isGuest) {
+                        const rewardsClaimedField = isHost ? 'host_rewards_claimed' : 'guest_rewards_claimed';
+
+                        await connection.query(
+                            `UPDATE pvp_battle_sessions SET ${rewardsClaimedField} = 1 WHERE session_uuid = ?`,
+                            [session_uuid]
+                        );
+                    }
+                }
+            }
+
+            // Commit the transaction
+            await connection.commit();
+
+            return res.status(200).json({
+                success: true,
+                message: "Battle rewards claimed successfully",
+                data: {
+                    firebase_uid,
+                    xp_earned,
+                    coins_earned,
+                    new_exp: newExp,
+                    new_coins: newCoins
+                }
+            });
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        }
+    } catch (error) {
+        console.error('Error claiming battle rewards:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to claim battle rewards",
             error: error.message
         });
     } finally {
         if (connection) connection.release();
     }
-}; 
+};
+
+export const updateEnemyAnsweringQuestion = async (req, res) => {
+    const { session_uuid, player_type, question_text, is_on_flashcard } = req.body;
+
+    if (!session_uuid || !player_type || is_on_flashcard === undefined) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing required fields: session_uuid, player_type, is_on_flashcard'
+        });
+    }
+
+    try {
+        // Determine which columns to update based on player type
+        const questionColumnToUpdate = player_type === 'host' ? 'host_answering_question_text' : 'guest_answering_question_text';
+        const flashcardColumnToUpdate = player_type === 'host' ? 'host_on_flashcard' : 'guest_on_flashcard';
+
+        const updateQuery = `
+      UPDATE battle_rounds 
+      SET ${questionColumnToUpdate} = ?, ${flashcardColumnToUpdate} = ?
+      WHERE session_uuid = ?
+    `;
+
+        const [result] = await pool.query(updateQuery, [question_text, is_on_flashcard, session_uuid]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Battle round not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `${player_type}'s question status updated successfully`
+        });
+    } catch (error) {
+        console.error('Error updating enemy answering question:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+export const getEnemyAnsweringQuestion = async (req, res) => {
+    const { session_uuid, player_type } = req.params;
+
+    if (!session_uuid || !player_type) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing required parameters: session_uuid, player_type'
+        });
+    }
+
+    try {
+        // Determine which columns to retrieve based on player type
+        // If the player is host, we want to get guest's info and vice versa
+        const questionColumnToRetrieve = player_type === 'host' ? 'guest_answering_question_text' : 'host_answering_question_text';
+        const flashcardColumnToRetrieve = player_type === 'host' ? 'guest_on_flashcard' : 'host_on_flashcard';
+
+        const query = `
+      SELECT 
+        ${questionColumnToRetrieve} AS enemy_question_text,
+        ${flashcardColumnToRetrieve} AS enemy_on_flashcard
+      FROM battle_rounds
+      WHERE session_uuid = ?
+    `;
+
+        const [rows] = await pool.query(query, [session_uuid]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Battle round not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                enemy_question_text: rows[0].enemy_question_text,
+                enemy_on_flashcard: rows[0].enemy_on_flashcard
+            }
+        });
+    } catch (error) {
+        console.error('Error retrieving enemy answering question:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Deduct XP from users who leave the game early
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const deductLeaverXP = async (req, res) => {
+    const { firebase_uid } = req.body;
+    const XP_PENALTY = 100; // Fixed penalty for leaving early
+
+    try {
+        const connection = await pool.getConnection();
+
+        try {
+            await connection.beginTransaction();
+
+            // First, get the current XP
+            const [userInfo] = await connection.query(
+                "SELECT exp FROM user_info WHERE firebase_uid = ?",
+                [firebase_uid]
+            );
+
+            if (userInfo.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            const currentExp = userInfo[0].exp || 0;
+
+            // Ensure XP doesn't go below zero
+            const newExp = Math.max(0, currentExp - XP_PENALTY);
+
+            console.log(`Deducting XP for early leaver ${firebase_uid}: ${currentExp} -> ${newExp} (penalty: ${XP_PENALTY})`);
+
+            // Update the user's XP
+            await connection.query(
+                "UPDATE user_info SET exp = ? WHERE firebase_uid = ?",
+                [newExp, firebase_uid]
+            );
+
+            await connection.commit();
+
+            return res.status(200).json({
+                success: true,
+                message: "XP penalty applied successfully",
+                data: {
+                    firebase_uid,
+                    previous_exp: currentExp,
+                    new_exp: newExp,
+                    penalty: XP_PENALTY
+                }
+            });
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error("Error applying XP penalty:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error applying XP penalty",
+            error: error.message
+        });
+    }
+};
+

@@ -3,4 +3,4 @@ export { default as AuthTokenSynchronizer } from './AuthTokenSynchronizer';
 export { default as GlobalSnackbar } from './GlobalSnackbar';
 export { default as SnackbarConnector } from './SnackbarConnector';
 export { default as AudioStopper } from './AudioStopper';
-export { default as InvitationLobbySnackbar } from './InvitationLobbySnackbar'; 
+export { BattleInvitationCenter } from './battle'; 

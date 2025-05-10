@@ -1,7 +1,7 @@
 import moment from "moment-timezone";
 
-const manilacurrentTimestamp = moment()
-  .tz("Asia/Manila")
-  .format("YYYY-MM-DD HH:mm:ss");
+const getCurrentManilaTimestamp = () => {
+  return moment().tz("Asia/Manila").format("YYYY-MM-DD HH:mm:ss");
+};
 
-export default manilacurrentTimestamp;
+export default getCurrentManilaTimestamp;

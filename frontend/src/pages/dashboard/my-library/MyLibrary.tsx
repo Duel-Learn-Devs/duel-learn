@@ -14,18 +14,23 @@ import MyLibraryCards from "./MyLibraryCards";
 import Filter from "../../../components/Filter";
 import { useUser } from "../../../contexts/UserContext";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
-import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
-import RefreshIcon from "@mui/icons-material/Refresh"; // Add this import
+import NoStudyMaterial from "/images/noStudyMaterial.svg";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import { cacheService } from "../../../services/CacheService";
+import { useLocation } from "react-router-dom";
 
 const MyLibraryPage = () => {
   const { user } = useUser();
+  const location = useLocation();
   const created_by = user?.username;
   const firebase_uid = user?.firebase_uid;
   const [cards, setCards] = useState<StudyMaterial[]>([]);
   const [bookmarkedCards, setBookmarkedCards] = useState<StudyMaterial[]>([]);
   const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
   const [count, setCount] = useState<number>(0);
-  const [filter, setFilter] = useState<string | number>("all");
+  const [filter, setFilter] = useState<string | number>(
+    location.state?.showArchived ? "archive" : "all"
+  );
   const [sort, setSort] = useState<string | number>("most recent");
   const [isLoading, setIsLoading] = useState(true);
   const [previousCardCount, setPreviousCardCount] = useState(3);
@@ -73,25 +78,18 @@ const MyLibraryPage = () => {
     async (force = false) => {
       if (!created_by) return;
 
-      const now = Date.now();
-      // Extend cache time from 9 minutes to 15 minutes to reduce unnecessary calls
-      const needsRefresh =
-        force || now - lastUserMaterialsFetch.current > 900000; // 15 minutes
-
-      if (!needsRefresh && cachedUserMaterials.current.length > 0) {
-        console.log("Using cached user materials");
-        setCards(cachedUserMaterials.current);
-        return cachedUserMaterials.current;
-      }
-
-      // Don't fetch if already in progress (prevent duplicate requests)
-      if (isBackgroundRefreshing && !force) {
-        return cachedUserMaterials.current;
+      const cacheKey = `study_materials_${created_by}`;
+      if (!force) {
+        const cachedData = cacheService.get<StudyMaterial[]>(cacheKey);
+        if (cachedData) {
+          console.log("Using cached user materials");
+          setCards(cachedData);
+          return cachedData;
+        }
       }
 
       try {
-        // Use the timestamp parameter to signal the backend to skip its cache when forced
-        const queryParam = force ? `?timestamp=${now}` : "";
+        const queryParam = force ? `?timestamp=${Date.now()}` : "";
         const response = await fetch(
           `${
             import.meta.env.VITE_BACKEND_URL
@@ -111,22 +109,23 @@ const MyLibraryPage = () => {
         }
 
         const data = await response.json();
-        console.log("Fetched study materials:", data.length);
 
         // Update cache with new data
-        cachedUserMaterials.current = data;
-        lastUserMaterialsFetch.current = now;
+        cacheService.set(cacheKey, data);
 
         // Update state
         setCards(data);
         setLastUpdated(new Date());
+        // Update the lastUserMaterialsFetch timestamp
+        lastUserMaterialsFetch.current = Date.now();
+
         if (!isBackgroundRefreshing) {
           showTemporaryUpdateLabel();
         }
         return data;
       } catch (error) {
         console.error("Error fetching study materials:", error);
-        return cachedUserMaterials.current;
+        return [];
       }
     },
     [created_by, isBackgroundRefreshing, showTemporaryUpdateLabel]
@@ -277,6 +276,23 @@ const MyLibraryPage = () => {
     cards.length,
   ]);
 
+  // Check for navigation state parameters
+  useEffect(() => {
+    if (location.state?.forceRefresh) {
+      // Force refresh the data
+      fetchStudyMaterials(true);
+      fetchBookmarkedStudyMaterials(true);
+
+      // Set filter to archive if requested
+      if (location.state?.showArchived) {
+        setFilter("archive");
+      }
+
+      // Clear the state to prevent repeated refreshes
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, fetchStudyMaterials, fetchBookmarkedStudyMaterials]);
+
   // Handle manual refresh request from child components or refresh button
   const handleRefresh = useCallback(() => {
     console.log("Manual refresh requested");
@@ -288,6 +304,9 @@ const MyLibraryPage = () => {
     ]).finally(() => {
       setIsLoading(false);
       setLastUpdated(new Date());
+      // Make sure both timestamps are updated
+      lastUserMaterialsFetch.current = Date.now();
+      lastBookmarksFetch.current = Date.now();
       showTemporaryUpdateLabel();
     });
   }, [fetchStudyMaterials, fetchBookmarkedStudyMaterials]);
@@ -435,7 +454,7 @@ const MyLibraryPage = () => {
     <PageTransition>
       <Box className="h-full w-full">
         <DocumentHead title="My Library | Duel Learn" />
-        <Stack spacing={2} className="px-3 sm:px-5 md:px-8">
+        <Stack spacing={1}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={{ xs: 1, sm: 1 }}
@@ -496,6 +515,9 @@ const MyLibraryPage = () => {
                         cursor: "pointer",
                         fontSize: { xs: "1rem", sm: "1.2rem" },
                         color: "#6F658D",
+                        "&:hover": {
+                          color: "#E2DDF3",
+                        },
                       }}
                     />
                   </Badge>
@@ -514,7 +536,7 @@ const MyLibraryPage = () => {
                   ]}
                   value={filter}
                   onChange={setFilter}
-                  hoverOpen={false} // Disable hover on mobile
+                  hoverOpen
                 />
                 <Filter
                   menuItems={[
@@ -525,7 +547,7 @@ const MyLibraryPage = () => {
                   ]}
                   value={sort}
                   onChange={setSort}
-                  hoverOpen={false} // Disable hover on mobile
+                  hoverOpen
                 />
               </Stack>
             </Stack>
@@ -537,6 +559,7 @@ const MyLibraryPage = () => {
                 gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
                 gap: 2,
                 width: "100%",
+                mt: 1,
               }}
             >
               {[...Array(previousCardCount)].map((_, index) => (
@@ -560,7 +583,7 @@ const MyLibraryPage = () => {
               minHeight="60vh"
             >
               <img
-                src={noStudyMaterial}
+                src={NoStudyMaterial}
                 alt="No Study Materials"
                 style={{ width: "22rem", height: "auto", opacity: 0.75 }}
               />
@@ -584,7 +607,7 @@ const MyLibraryPage = () => {
                       sx={{
                         width: "100%",
                         mb: { xs: 1, sm: 2 },
-                        mt: { xs: 2, sm: 3 },
+                        mt: { xs: 1, sm: 2 },
                       }}
                     >
                       <Typography

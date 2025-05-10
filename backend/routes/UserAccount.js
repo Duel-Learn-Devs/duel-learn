@@ -1,13 +1,13 @@
 import express from "express";
 import userController from "../controller/User.js"; // Add .js extension
 import asyncValidation from "../middleware/validationMiddleware.js"; // Import the validation middleware
-import emailVerificationMiddleware from "../middleware/EmailVerificationMiddleware.js"; // Import the email verification middleware
+import emailVerificationMiddleware from "../middleware/emailVerificationMiddleware.js"; // Import the email verification middleware
 import storeUserValidation from '../middleware/validationMiddleware.js';
 
 const router = express.Router();
 
 // Route to save user details with validation
-router.post("/sign-up",userController.signUpUser);
+router.post("/sign-up", userController.signUpUser);
 // Route to reset password
 router.post("/reset-password", userController.resetPassword);
 router.get("/info/:firebase_uid", userController.getUserInfo);
@@ -33,6 +33,8 @@ router.put("/:firebase_uid", userController.updateUser);
 // Route for storing user data
 router.post("/store-user/:firebase_uid", storeUserValidation, userController.storeUser);
 router.get("/store-user/:firebase_uid", userController.getStoredUser);
+// Add this route to your user routes
+router.get('/:firebase_uid/stats', userController.getUserStats);
 
 // Export the router as default
 export default router;

@@ -1,4 +1,5 @@
 import { pool } from '../config/db.js';
+import { nanoid } from "nanoid";
 
 export const createBattleInvitation = async (req, res) => {
     try {
@@ -183,50 +184,56 @@ export const updateInvitationStatusByLobbyCode = async (req, res) => {
     }
 };
 
-// Add this function to get invitation details
+// Get invitation details
 export const getInvitationDetails = async (req, res) => {
+    const { lobby_code, sender_id, receiver_id } = req.params;
+
+    // Validate required fields
+    if (!lobby_code || !sender_id || !receiver_id) {
+        return res.status(400).json({
+            success: false,
+            message: "Missing required parameters"
+        });
+    }
+
+    const connection = await pool.getConnection();
+
     try {
-        const { lobby_code, sender_id, receiver_id } = req.params;
+        // Get invitation details
+        const [invitations] = await connection.execute(
+            `SELECT * FROM battle_invitations 
+             WHERE lobby_code = ? AND sender_id = ? AND receiver_id = ?`,
+            [lobby_code, sender_id, receiver_id]
+        );
 
-        const query = `
-            SELECT * FROM battle_invitations 
-            WHERE lobby_code = ? 
-            AND sender_id = ? 
-            AND receiver_id = ?
-            ORDER BY created_at DESC
-            LIMIT 1
-        `;
-
-        const [results] = await pool.query(query, [lobby_code, sender_id, receiver_id]);
-
-        if (results.length === 0) {
+        if (invitations.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: "Invitation not found"
             });
         }
 
-        // Parse the question_types JSON string back to an array
-        const invitation = results[0];
+        const invitation = invitations[0];
+
+        // Parse the question_types JSON string
         try {
-            invitation.question_types = JSON.parse(invitation.question_types || '[]');
+            invitation.question_types = JSON.parse(invitation.question_types);
         } catch (e) {
-            console.error('Error parsing question_types:', e);
             invitation.question_types = [];
         }
 
-        res.json({
+        res.status(200).json({
             success: true,
             data: invitation
         });
-
     } catch (error) {
-        console.error('Error fetching invitation details:', error);
+        console.error("Database Error:", error);
         res.status(500).json({
             success: false,
-            message: "Failed to fetch invitation details",
-            error: error.message
+            message: "Error fetching invitation details"
         });
+    } finally {
+        connection.release();
     }
 };
 
@@ -649,5 +656,219 @@ export const getDifficulty = async (req, res) => {
             message: "Failed to get difficulty",
             error: error.message
         });
+    }
+};
+
+// Create a new battle invitation
+export const createInvitation = async (req, res) => {
+    const {
+        lobby_code,
+        sender_id,
+        sender_username,
+        sender_level,
+        receiver_id,
+        receiver_username,
+        receiver_level,
+        status,
+        question_types,
+        study_material_title,
+        host_ready,
+        guest_ready,
+        battle_started,
+        selected_difficulty
+    } = req.body;
+
+    // Validate required fields
+    if (!lobby_code || !sender_id || !receiver_id || !sender_username || !receiver_username) {
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields"
+        });
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        // Check for existing invitations that are not declined
+        const [existingInvitation] = await connection.execute(
+            `SELECT * FROM battle_invitations 
+             WHERE lobby_code = ? AND sender_id = ? AND receiver_id = ? AND status != 'declined'`,
+            [lobby_code, sender_id, receiver_id]
+        );
+
+        if (existingInvitation.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: "An invitation already exists for this lobby and user"
+            });
+        }
+
+        // Delete any existing declined invitations
+        await connection.execute(
+            `DELETE FROM battle_invitations 
+             WHERE lobby_code = ? AND sender_id = ? AND receiver_id = ? AND status = 'declined'`,
+            [lobby_code, sender_id, receiver_id]
+        );
+
+        // Convert question_types array to JSON string
+        const questionTypesJson = JSON.stringify(question_types || []);
+
+        // Insert the invitation
+        const [result] = await connection.execute(
+            `INSERT INTO battle_invitations (
+                sender_id, sender_username, sender_level, 
+                receiver_id, receiver_username, receiver_level, 
+                lobby_code, status, question_types, 
+                study_material_title, host_ready, guest_ready, 
+                battle_started, selected_difficulty
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                sender_id,
+                sender_username,
+                sender_level || 1,
+                receiver_id,
+                receiver_username,
+                receiver_level || 1,
+                lobby_code,
+                status || "pending",
+                questionTypesJson,
+                study_material_title || null,
+                host_ready !== undefined ? host_ready : 1,
+                guest_ready !== undefined ? guest_ready : 0,
+                battle_started !== undefined ? battle_started : 0,
+                selected_difficulty || null
+            ]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: "Battle invitation created successfully",
+            data: {
+                id: result.insertId,
+                lobby_code,
+                sender_id,
+                receiver_id,
+                status: status || "pending"
+            }
+        });
+    } catch (error) {
+        console.error("Database Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error creating battle invitation"
+        });
+    } finally {
+        connection.release();
+    }
+};
+
+// Update invitation status (accept/decline)
+export const updateInvitationStatus = async (req, res) => {
+    const { lobby_code, sender_id, receiver_id, status } = req.body;
+
+    // Validate required fields
+    if (!lobby_code || !sender_id || !receiver_id || !status) {
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields"
+        });
+    }
+
+    // Validate status
+    if (!['accepted', 'declined', 'pending', 'expired'].includes(status)) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid status value"
+        });
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        // Update the invitation status
+        const [result] = await connection.execute(
+            `UPDATE battle_invitations 
+             SET status = ?
+             ${status === 'accepted' ? ', guest_ready = 1' : ''}
+             WHERE lobby_code = ? AND sender_id = ? AND receiver_id = ?`,
+            [status, lobby_code, sender_id, receiver_id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Invitation not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Battle invitation ${status} successfully`
+        });
+    } catch (error) {
+        console.error("Database Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error updating battle invitation status"
+        });
+    } finally {
+        connection.release();
+    }
+};
+
+// Get all pending invitations for a user
+export const getPendingInvitations = async (req, res) => {
+    const { userId } = req.params;
+
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            message: "User ID is required"
+        });
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        // Get all pending invitations
+        const [invitations] = await connection.execute(
+            `SELECT bi.*, ui.username as sender_username, ui.level as sender_level, ui.display_picture as sender_display_picture
+             FROM battle_invitations bi
+             LEFT JOIN user_info ui ON bi.sender_id = ui.firebase_uid
+             WHERE bi.receiver_id = ? AND bi.status = 'pending'`,
+            [userId]
+        );
+
+        // Format the invitations
+        const formattedInvitations = invitations.map(invitation => {
+            // Parse the question_types JSON string
+            try {
+                invitation.question_types = JSON.parse(invitation.question_types);
+            } catch (e) {
+                invitation.question_types = [];
+            }
+
+            // Add sender info
+            invitation.sender_info = {
+                username: invitation.sender_username,
+                level: invitation.sender_level,
+                display_picture: invitation.sender_display_picture
+            };
+
+            return invitation;
+        });
+
+        res.status(200).json({
+            success: true,
+            data: formattedInvitations
+        });
+    } catch (error) {
+        console.error("Database Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error fetching pending invitations"
+        });
+    } finally {
+        connection.release();
     }
 };

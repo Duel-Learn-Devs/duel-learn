@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import apiClient from "./apiClient";
 
 /**
  * Auth API service - contains methods for authentication-related API operations.
@@ -14,13 +14,13 @@ export const authService = {
     password: string;
     email_verified: boolean;
     isSSO: boolean;
-    account_type: 'free' | 'premium' | 'admin';
+    account_type: "free" | "premium" | "admin";
   }) => {
     try {
-      const response = await apiClient.post('/user/sign-up', userData);
+      const response = await apiClient.post("/user/sign-up", userData);
       return response.data;
     } catch (error) {
-      console.error('Error during sign up:', error);
+      console.error("Error during sign up:", error);
       throw error;
     }
   },
@@ -34,10 +34,13 @@ export const authService = {
     updated_at: string;
   }) => {
     try {
-      const response = await apiClient.post('/user/update-email-verified', data);
+      const response = await apiClient.post(
+        "/user/update-email-verified",
+        data
+      );
       return response.data;
     } catch (error) {
-      console.error('Error updating email verification status:', error);
+      console.error("Error updating email verification status:", error);
       throw error;
     }
   },
@@ -51,13 +54,13 @@ export const authService = {
     updated_at: string;
   }) => {
     try {
-      const response = await apiClient.post('/user/reset-password', data);
+      const response = await apiClient.post("/user/reset-password", data);
       return response.data;
     } catch (error) {
-      console.error('Error resetting password:', error);
+      console.error("Error resetting password:", error);
       throw error;
     }
-  }
+  },
 };
 
-export default authService; 
+export default authService;

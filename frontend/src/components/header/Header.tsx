@@ -18,47 +18,53 @@ export default function Header() {
   };
 
   const isMobile = useMediaQuery("(max-width:1022px)");
+  const isSmallMobile = useMediaQuery("(max-width:640px)");
   const isVerySmall = useMediaQuery("(max-width:460px)");
 
   return (
     <Box
       className={`w-full shadow flex items-center justify-between bg-[#080511] ${
-        isVerySmall ? "h-20 py-2" : "h-28 pt-6"
+        isVerySmall ? "h-20 py-2 " : "h-28 pt-10 "
       }`}
-      sx={{ zIndex: 1 }}
+      sx={{ zIndex: 1, position: "relative" }}
     >
-      {/* Mobile Menu Icon */}
-      {isMobile && (
-        <IconButton
-          edge="start"
-          color="inherit"
-          aria-label="menu"
-          onClick={() => toggleDrawer(true)}
-          className={isVerySmall ? "ml-1" : ""}
-          sx={{
-            display: "block",
-            mr: isVerySmall ? "6px" : "10px",
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-      )}
+      {/* Left side container for Mobile Menu Icon and Search */}
+      <Box className="flex items-center">
+        {/* Mobile Menu Icon */}
+        {isMobile && (
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label="menu"
+            onClick={() => toggleDrawer(true)}
+            className={isVerySmall ? "ml-1" : "ml-1"}
+            sx={{
+              display: "block",
+              mr: isVerySmall ? "6px" : "10px",
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
+        )}
 
-      {/* Search Field */}
-      <Box
-        className={`flex-1 ${
-          isVerySmall ? "px-1" : isMobile ? "sm:pl-2" : "sm:pl-4 lg:pl-16"
-        }`}
-      >
-        <SearchField />
+        {/* Search Field */}
+        <Box
+          className={`${
+            isSmallMobile
+              ? "mx-1"
+              : isVerySmall
+              ? "mx-1"
+              : isMobile
+              ? "sm:pl-1"
+              : "sm:pl-0 lg:pl-11"
+          } ${isSmallMobile ? "" : "flex-1"}`}
+        >
+          <SearchField />
+        </Box>
       </Box>
 
-      {/* Icon Section */}
-      <div
-        className={`flex items-center ${
-          isVerySmall ? "space-x-1 pr-1" : "space-x-2 sm:space-x-6 sm:pr-4"
-        }`}
-      >
+      {/* Icon Section (Right Side) */}
+      <div className="flex items-center">
         <StatsNProfile />
       </div>
 

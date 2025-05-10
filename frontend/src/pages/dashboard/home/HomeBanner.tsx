@@ -1,22 +1,27 @@
 import { Box, useMediaQuery, useTheme } from "@mui/material";
-import homeBanner from "../../../assets/images/homeBanner.svg";
+import homeBanner from "/images/homeBanner.svg";
 import { useNavigate } from "react-router-dom";
 
 const HomeBannerComponent = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobileScreen = useMediaQuery("(max-width:480px)");
 
   return (
     <Box
       className="rounded-[0.8rem] relative overflow-hidden"
       sx={{
         background: "linear-gradient(90deg, #9F87E5 0%, #6F58D9 100%)",
-        height: "auto", // Auto height based on content
-        minHeight: isXsScreen ? "150px" : "240px", // Fixed min height in pixels
-        maxHeight: isXsScreen ? "220px" : "300px", // Fixed max height in pixels
+        height: "auto",
+        minHeight: isMobileScreen ? "140px" : isXsScreen ? "170px" : "240px",
+        maxHeight: isMobileScreen ? "180px" : isXsScreen ? "220px" : "300px",
         width: "100%",
-        marginBottom: isXsScreen ? "1rem" : "1.5rem", // Use rem for margin
+        marginBottom: isMobileScreen
+          ? "0.75rem"
+          : isXsScreen
+          ? "1rem"
+          : "1.5rem",
         borderRadius: "0.8rem",
         position: "relative",
       }}
@@ -50,7 +55,7 @@ const HomeBannerComponent = () => {
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            objectPosition: "center",
+            objectPosition: isMobileScreen ? "65% center" : "center",
           }}
         />
       </Box>
@@ -65,30 +70,48 @@ const HomeBannerComponent = () => {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          width: { xs: "100%", sm: "60%", md: "50%" },
-          padding: isXsScreen ? "1rem 1.25rem" : "1.5rem 2rem", // Responsive padding with rem
+          width: isMobileScreen
+            ? "85%"
+            : isXsScreen
+            ? "80%"
+            : { sm: "60%", md: "50%" },
+          padding: isMobileScreen
+            ? "0.75rem 1rem"
+            : isXsScreen
+            ? "1rem 1.25rem"
+            : "1.5rem 2rem",
           textAlign: "left",
-          zIndex: 2, // Ensure text is above the image and overlay
+          zIndex: 2,
         }}
       >
         <h1
           style={{
             color: "white",
-            fontSize: isXsScreen ? "1rem" : "1.25rem", // Fixed sizes with rem
+            fontSize: isMobileScreen
+              ? "0.875rem"
+              : isXsScreen
+              ? "1rem"
+              : "1.25rem",
             fontWeight: 500,
-            marginBottom: "0.75rem", // Use rem for vertical margin
+            marginBottom: isMobileScreen ? "0.5rem" : "0.75rem",
             letterSpacing: "0.01em",
             lineHeight: 1.2,
           }}
         >
-          Those gaps in your materials? <br /> Let's fill 'em up!
+          {isMobileScreen
+            ? "Fill those gaps in your materials!"
+            : "Those gaps in your materials? \nLet's fill 'em up!"}
         </h1>
         <p
           style={{
             color: "white",
-            fontSize: isXsScreen ? "0.75rem" : "0.875rem", // Fixed sizes with rem
-            marginTop: "0.5rem", // Use rem for vertical margin
-            marginBottom: "1rem", // Use rem for vertical margin
+            fontSize: isMobileScreen
+              ? "0.7rem"
+              : isXsScreen
+              ? "0.75rem"
+              : "0.875rem",
+            marginTop: isMobileScreen ? "0.25rem" : "0.5rem",
+            marginBottom: isMobileScreen ? "0.75rem" : "1rem",
             opacity: 0.8,
           }}
         >
@@ -98,9 +121,17 @@ const HomeBannerComponent = () => {
           className="hover:scale-105 transition-all ease-in-out duration-300"
           onClick={() => navigate("/dashboard/shop")}
           style={{
-            padding: isXsScreen ? "0.5rem 1rem" : "0.75rem 1.5rem", // Use rem for padding
+            padding: isMobileScreen
+              ? "0.4rem 0.875rem"
+              : isXsScreen
+              ? "0.5rem 1rem"
+              : "0.75rem 1.5rem",
             width: "fit-content",
-            fontSize: isXsScreen ? "0.75rem" : "0.875rem", // Fixed sizes with rem
+            fontSize: isMobileScreen
+              ? "0.7rem"
+              : isXsScreen
+              ? "0.75rem"
+              : "0.875rem",
             backgroundColor: "white",
             color: "#9F87E5",
             borderRadius: "2rem",

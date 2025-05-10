@@ -16,15 +16,22 @@ import {
   IconButton,
   CircularProgress,
   LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
+import CloseIcon from "@mui/icons-material/HighlightOffRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { nanoid } from "nanoid";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
 import Filter from "../../../../components/Filter"; // Adjust the
+import CauldronIcon from "/General/Cauldron.gif";
 import "../../../../styles/custom-scrollbar.css"; // Add this import
+import "./errorHighlight.css";
+import SelectStudyMaterialModal from "../../../../components/modals/SelectStudyMaterialModal";
 
 // Add these imports near the top with your other imports
 import {
@@ -43,15 +50,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { SortableItem } from "../types/SortableItem";
-
-// Add this interface for term-definition pairs
-interface TermDefinitionPair {
-  term: string;
-  definition: string;
-}
+import { topics } from "../../../user-onboarding/data/topics";
+import ErrorHighlightAnimation from "../../../../styles/ErrorHighlightAnimation";
 
 // Add constant for maximum tags
 const MAX_TAGS = 5;
+const MAX_CUSTOM_TAGS = 2;
 const MAX_TITLE_LENGTH = 50;
 const MAX_TERM_LENGTH = 50;
 const MAX_DEFINITION_LENGTH = 500;
@@ -92,7 +96,8 @@ interface TermDefinitionPair {
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Add this line
-  const { user } = useUser();
+  const { user, updateUser } = useUser();
+  const isPremium = user?.account_type === "premium";
 
   // Properly type the socket state
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -102,6 +107,10 @@ const CreateStudyMaterial = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [pdfConfirmationOpen, setPdfConfirmationOpen] = useState(false);
+  const [pdfPageCount, setPdfPageCount] = useState(0);
+  const [pendingPdf, setPendingPdf] = useState<File | null>(null);
 
   // Check if we're in edit mode
   const editMode = location.state?.editMode || false;
@@ -123,7 +132,45 @@ const CreateStudyMaterial = () => {
       item_number: number;
     }[]
   >(location.state?.items || []);
-  const [visibility, setVisibility] = useState<string>("0"); // Add this state for visibility
+  const [visibility, setVisibility] = useState<string>(
+    location.state?.visibility !== undefined
+      ? location.state.visibility.toString()
+      : "0"
+  );
+  const [showCustomTagInput, setShowCustomTagInput] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [inputValue, setInputValue] = useState("");
+
+  // Add these state variables near your other state declarations
+  const [titleError, setTitleError] = useState(false);
+  const [tagsError, setTagsError] = useState(false);
+  const [itemsError, setItemsError] = useState(false);
+  const [emptyItemIds, setEmptyItemIds] = useState<number[]>([]);
+  const [emptyTerms, setEmptyTerms] = useState<number[]>([]);
+  const [emptyDefinitions, setEmptyDefinitions] = useState<number[]>([]);
+
+  // Add this state variable near your other state declarations
+  const [originalState, setOriginalState] = useState<{
+    title: string;
+    tags: string[];
+    items: any[];
+    visibility: string;
+  } | null>(null);
+
+  // Add these new state variables near your other state declarations
+  const [selectMaterialModalOpen, setSelectMaterialModalOpen] = useState(false);
+  const [newMaterialId, setNewMaterialId] = useState<string | null>(null);
+  const [selectedMode, setSelectedMode] = useState<string>("Peaceful Mode");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+
+  // Flatten all subjects from topics
+  const allSubjects = topics
+    .flatMap((topic) => topic.subjects.map((subject) => subject.name))
+    .filter((value, index, self) => self.indexOf(value) === index); // Remove duplicates
+
+  const filteredSubjects = allSubjects.filter((subject) =>
+    subject.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -164,25 +211,39 @@ const CreateStudyMaterial = () => {
     }
   }, [editMode, title]);
 
-  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && currentTag.trim()) {
-      e.preventDefault(); // Prevent form submission on Enter
+  // Calculate custom tags count
+  const customTagsCount = tags.filter(
+    (tag) => !allSubjects.includes(tag)
+  ).length;
 
-      // Check if max tags limit is reached
-      if (tags.length >= MAX_TAGS) {
-        handleShowSnackbar(`Maximum ${MAX_TAGS} tags allowed`);
+  const handleAddTag = (newValue: string[]) => {
+    // Filter out empty values and get only the new tag
+    const newTag = newValue.find((tag) => !tags.includes(tag));
+
+    if (!newTag) return;
+
+    // Check total tags limit
+    if (newValue.length > MAX_TAGS) {
+      handleShowSnackbar(`Maximum ${MAX_TAGS} tags allowed`);
+      return;
+    }
+
+    // Check custom tags limit for non-predefined tags
+    if (!allSubjects.includes(newTag)) {
+      if (customTagsCount >= MAX_CUSTOM_TAGS) {
+        handleShowSnackbar(`Maximum ${MAX_CUSTOM_TAGS} custom tags allowed`);
         return;
       }
-
-      if (!tags.includes(currentTag.trim())) {
-        setTags([...tags, currentTag.trim()]);
-      }
-      setCurrentTag("");
     }
+
+    setTags(newValue);
   };
 
   const handleDeleteTag = (tagToDelete: string) => {
-    setTags(tags.filter((tag) => tag !== tagToDelete));
+    setTags((prev) => {
+      const newTags = prev.filter((tag) => tag !== tagToDelete);
+      return newTags;
+    });
   };
 
   // Function to handle adding a new item
@@ -291,20 +352,111 @@ const CreateStudyMaterial = () => {
 
   // Set up socket connection with proper cleanup
   useEffect(() => {
-    // Initialize socket connection
-    const socketInstance = io(import.meta.env.VITE_BACKEND_URL);
+    // Initialize socket connection with proper options
+    const socketInstance = io(import.meta.env.VITE_BACKEND_URL, {
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 10000,
+    });
+
+    socketInstance.on("connect", () => {
+      console.log("Socket connected successfully");
+    });
+
+    socketInstance.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
+    });
+
+    socketInstance.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+
     setSocket(socketInstance);
 
     // Clean up on component unmount
     return () => {
+      console.log("Cleaning up socket connection");
       socketInstance.disconnect();
     };
   }, []);
 
-  // Update the save button handler to preserve item_number values
-  // Update the handleSaveButton function
+  // Modify the existing useEffect that loads study material data
+  useEffect(() => {
+    const fetchStudyMaterial = async () => {
+      if (editMode && studyMaterialId) {
+        try {
+          const response = await fetch(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/study-material/get-by-study-material-id/${studyMaterialId}`
+          );
 
+          if (!response.ok) {
+            throw new Error("Failed to fetch study material");
+          }
+
+          const data = await response.json();
+          setStudyMaterial(data);
+
+          // Store the original state
+          setOriginalState({
+            title: data.title,
+            tags: data.tags,
+            items: data.items.map((item) => ({
+              term: item.term,
+              definition: item.definition,
+              image: item.image,
+              id: Date.now() + Math.random(), // Temporary ID for comparison
+            })),
+            visibility: data.visibility.toString(),
+          });
+
+          // Check if current user is the creator
+          if (user && user.firebase_uid !== data.created_by_id) {
+            handleShowSnackbar(
+              "You don't have permission to edit this study material"
+            );
+            navigate(`/dashboard/study-material/view/${studyMaterialId}`);
+          }
+        } catch (error) {
+          console.error("Error fetching study material:", error);
+          handleShowSnackbar("Error loading study material");
+          navigate(-1);
+        }
+      } else if (editMode && location.state) {
+        // Store original state from location.state if available
+        setOriginalState({
+          title: location.state.title,
+          tags: location.state.tags,
+          items: location.state.items.map((item) => ({
+            term: item.term,
+            definition: item.definition,
+            image: item.image,
+            id: item.id,
+          })),
+          visibility: location.state.visibility.toString(),
+        });
+      }
+    };
+
+    fetchStudyMaterial();
+  }, [editMode, studyMaterialId, user, navigate]);
+
+  // Update the save button handler to highlight specific empty items
   const handleSaveButton = async () => {
+    // Reset all error states first
+    setTitleError(false);
+    setTagsError(false);
+    setItemsError(false);
+    setEmptyItemIds([]);
+    setEmptyTerms([]);
+    setEmptyDefinitions([]);
+
+    // Track if validation passes
+    let isValid = true;
+    let firstErrorElement = null;
+
     if (!user?.username) {
       handleShowSnackbar("User is not authenticated.");
       return;
@@ -315,17 +467,160 @@ const CreateStudyMaterial = () => {
       return;
     }
 
-    if (!title.trim() || items.length === 0) {
-      handleShowSnackbar("Title and at least one item are required.");
-      return;
+    if (!title.trim()) {
+      setTitleError(true);
+      handleShowSnackbar("Title is required.");
+      isValid = false;
+      firstErrorElement = document.getElementById("title");
     }
 
-    if (items.length < MIN_REQUIRED_ITEMS) {
-      handleShowSnackbar(
-        `At least ${MIN_REQUIRED_ITEMS} items are required. You currently have ${items.length} items.`
-      );
-      return;
+    // Check for minimum items requirement AND validate content of each item
+    const validItems = items.filter(
+      (item) => item.term.trim() !== "" && item.definition.trim() !== ""
+    );
+
+    const emptyTermItems = items.filter(
+      (item) => !item.term || item.term.trim() === ""
+    );
+    const emptyDefItems = items.filter(
+      (item) => !item.definition || item.definition.trim() === ""
+    );
+
+    // Get IDs of items with empty fields
+    const termIds = emptyTermItems.map((item) => item.id);
+    const defIds = emptyDefItems.map((item) => item.id);
+    const allEmptyIds = [...new Set([...termIds, ...defIds])];
+
+    setEmptyTerms(termIds);
+    setEmptyDefinitions(defIds);
+    setEmptyItemIds(allEmptyIds);
+
+    if (allEmptyIds.length > 0) {
+      handleShowSnackbar(`All items must have both term and definition.`);
+
+      // Focus the first empty item
+      if (allEmptyIds.length > 0) {
+        const firstEmptyItemElement = document.getElementById(
+          `item-${allEmptyIds[0]}`
+        );
+        if (firstEmptyItemElement) {
+          firstErrorElement = firstEmptyItemElement;
+          setTimeout(() => {
+            firstEmptyItemElement.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            firstEmptyItemElement.focus();
+            firstEmptyItemElement.classList.add("error-highlight-animation");
+            setTimeout(() => {
+              firstEmptyItemElement.classList.remove(
+                "error-highlight-animation"
+              );
+            }, 1500);
+          }, 100);
+        }
+      }
+
+      isValid = false;
     }
+
+    // Create a copy of current tags
+    let finalTags = [...tags];
+
+    // Check if there's text in the input field that hasn't been added as a tag yet
+    if (inputValue.trim()) {
+      // Add the pending tag input if tags array is empty or if it's not already in tags
+      if (finalTags.length === 0 || !finalTags.includes(inputValue.trim())) {
+        // Check against tag limits
+        if (finalTags.length >= MAX_TAGS) {
+          handleShowSnackbar(`Maximum ${MAX_TAGS} tags allowed`);
+        } else {
+          // Check custom tag limit
+          if (!allSubjects.includes(inputValue.trim())) {
+            const currentCustomTagsCount = finalTags.filter(
+              (tag) => !allSubjects.includes(tag)
+            ).length;
+
+            if (currentCustomTagsCount >= MAX_CUSTOM_TAGS) {
+              handleShowSnackbar(
+                `Maximum ${MAX_CUSTOM_TAGS} custom tags allowed`
+              );
+            } else {
+              // Add the pending tag
+              finalTags.push(inputValue.trim());
+            }
+          } else {
+            // Add the pending tag from predefined subjects
+            finalTags.push(inputValue.trim());
+          }
+        }
+      }
+    }
+
+    if (finalTags.length === 0) {
+      setTagsError(true);
+      handleShowSnackbar("At least one tag is required.");
+      isValid = false;
+      // Only set this as first error if no previous errors
+      if (!firstErrorElement) {
+        const tagsInput = document.getElementById("tags");
+        firstErrorElement = tagsInput || null;
+      }
+    }
+
+    // If validation fails, focus on the first error element and return early
+    if (!isValid && firstErrorElement) {
+      // Smooth scroll to the element
+      firstErrorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Add a slight delay before focusing to ensure scrolling completes
+      setTimeout(() => {
+        firstErrorElement.focus();
+
+        // Add a temporary highlight effect
+        firstErrorElement.classList.add("error-highlight-animation");
+        setTimeout(() => {
+          firstErrorElement.classList.remove("error-highlight-animation");
+        }, 1500);
+      }, 500);
+
+      return; // Don't proceed with saving if validation fails
+    }
+
+    // Check if we're in edit mode and if anything has changed
+    if (editMode && originalState && isValid) {
+      const hasNoChanges =
+        title === originalState.title &&
+        JSON.stringify(tags.sort()) ===
+          JSON.stringify(originalState.tags.sort()) &&
+        visibility === originalState.visibility &&
+        items.length === originalState.items.length &&
+        items.every((item, index) => {
+          // Find corresponding item in original state
+          const originalItem = originalState.items.find((oi) => {
+            // For original items from API, compare term and definition
+            return oi.term === item.term && oi.definition === item.definition;
+          });
+
+          if (!originalItem) return false;
+
+          // Compare content (ignore ID and item_number which may change)
+          return (
+            item.term.trim() === originalItem.term.trim() &&
+            item.definition.trim() === originalItem.definition.trim()
+          );
+        });
+
+      if (hasNoChanges) {
+        console.log("No changes detected, skipping save operation");
+        // If nothing has changed, just redirect
+        navigate(`/dashboard/study-material/view/${studyMaterialId}`);
+        return;
+      }
+    }
+
+    // Only set isSaving to true if we've passed all validation and changes are detected
+    setIsSaving(true);
 
     // Define summary variable outside try block so it's accessible in the main scope
     let summary = "";
@@ -333,7 +628,7 @@ const CreateStudyMaterial = () => {
     try {
       // Generate summary using OpenAI
       const summaryPayload = {
-        tags,
+        tags: finalTags,
         items: items.map((item) => ({
           term: item.term,
           definition: item.definition,
@@ -370,8 +665,6 @@ const CreateStudyMaterial = () => {
         );
       }
 
-      // Continue with saving the study material using the summary (or fallback)
-
       // Check total payload size before sending
       let totalImageSize = 0;
       items.forEach((item) => {
@@ -391,31 +684,39 @@ const CreateStudyMaterial = () => {
 
       try {
         // Transform items to include base64 images and preserve item_number
-        const transformedItems = items.map((item) => ({
-          term: item.term,
-          definition: item.definition,
-          image: item.image || null,
-          item_number: item.item_number, // Preserve the item number
+        // But ONLY include valid items
+        const transformedItems = items.map((item, index) => ({
+          ...item,
+          tags: tags, // Add tags to each item
         }));
 
         const studyMaterial = {
           studyMaterialId: editMode ? studyMaterialId : nanoid(),
           title,
-          tags,
+          tags: finalTags,
           summary, // Use the generated or fallback summary
-          totalItems: items.length,
-          visibility: parseInt(visibility), // Use the visibility state here
+          totalItems: validItems.length, // Use validItems.length instead of items.length
+          visibility: parseInt(visibility),
           createdBy: user.username,
           createdById: user.firebase_uid,
-          items: transformedItems, // Now includes item_number
+          items: transformedItems, // Only include valid items in the payload
         };
 
+        // Check socket but don't block saving if not connected
+        if (!socket || !socket.connected) {
+          console.warn(
+            "Socket connection is not established - will continue without real-time updates"
+          );
+        }
+
         // Determine the endpoint based on whether we're creating or updating
-        const endpoint = editMode
+        const apiUrl = editMode
           ? `${import.meta.env.VITE_BACKEND_URL}/api/study-material/update`
           : `${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`;
 
-        const response = await fetch(endpoint, {
+        console.log("Saving with payload:", studyMaterial);
+
+        const response = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(studyMaterial),
@@ -424,7 +725,9 @@ const CreateStudyMaterial = () => {
         if (!response.ok) {
           const errorData = await response.json().catch(() => null);
           throw new Error(
-            errorData?.message || `Server error: ${response.status}`
+            errorData?.message ||
+              errorData?.error ||
+              `Server error: ${response.status}`
           );
         }
 
@@ -439,7 +742,7 @@ const CreateStudyMaterial = () => {
           study_material_id:
             savedData.studyMaterialId || studyMaterial.studyMaterialId,
           title: savedData.title || title,
-          tags: savedData.tags || tags,
+          tags: savedData.tags || finalTags,
           summary: savedData.summary || summary,
           total_items: savedData.totalItems || items.length,
           created_by: savedData.createdBy || user.username,
@@ -451,14 +754,24 @@ const CreateStudyMaterial = () => {
 
         // Emit the transformed data (now with null check for socket)
         console.log("Emitting new study material event:", broadcastData);
-        if (socket) {
+        if (socket && socket.connected) {
           socket.emit("newStudyMaterial", broadcastData);
         }
 
-        // Navigate to preview page
+        // Store the new material ID in state (but don't open modal)
+        setNewMaterialId(broadcastData.study_material_id);
+
+        // Show success toast/notification
+        handleShowSnackbar("Study material saved successfully!");
+
         navigate(
           `/dashboard/study-material/view/${broadcastData.study_material_id}`
         );
+
+        // Reset the edit mode if needed
+        if (editMode) {
+          editMode(false);
+        }
       } catch (error) {
         console.error(
           editMode
@@ -475,43 +788,11 @@ const CreateStudyMaterial = () => {
     } catch (error) {
       console.error("Error in handleSaveButton:", error);
       handleShowSnackbar("An unexpected error occurred. Please try again.");
+    } finally {
+      // Make sure isSaving is set to false regardless of success or failure
+      setIsSaving(false);
     }
   };
-
-  useEffect(() => {
-    const fetchStudyMaterial = async () => {
-      if (editMode && studyMaterialId) {
-        try {
-          const response = await fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/study-material/get-by-study-material-id/${studyMaterialId}`
-          );
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch study material");
-          }
-
-          const data = await response.json();
-          setStudyMaterial(data);
-
-          // Check if current user is the creator
-          if (user && user.firebase_uid !== data.created_by_id) {
-            handleShowSnackbar(
-              "You don't have permission to edit this study material"
-            );
-            navigate(`/dashboard/study-material/view/${studyMaterialId}`);
-          }
-        } catch (error) {
-          console.error("Error fetching study material:", error);
-          handleShowSnackbar("Error loading study material");
-          navigate(-1);
-        }
-      }
-    };
-
-    fetchStudyMaterial();
-  }, [editMode, studyMaterialId, user]);
 
   const handleDiscard = () => {
     if (editMode && studyMaterialId) {
@@ -525,6 +806,14 @@ const CreateStudyMaterial = () => {
 
   // Function to handle opening the scan notes modal
   const handleOpenScanModal = () => {
+    // Check if user is premium or has tech passes before allowing them to process
+    if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
+      handleShowSnackbar(
+        "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop or upgrade to Premium."
+      );
+      return;
+    }
+
     setScanModalOpen(true);
   };
 
@@ -541,6 +830,18 @@ const CreateStudyMaterial = () => {
   ) => {
     event.preventDefault();
 
+    // Add strict validation at the beginning
+    if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
+      handleShowSnackbar(
+        "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop or upgrade to Premium."
+      );
+      // Reset input if using file input
+      if ("target" in event && (event.target as HTMLInputElement).files) {
+        (event.target as HTMLInputElement).value = "";
+      }
+      return;
+    }
+
     // Handle both drag and drop events and file input events
     let newFiles: File[] = [];
 
@@ -549,12 +850,51 @@ const CreateStudyMaterial = () => {
       if (event.dataTransfer.files.length > 0) {
         newFiles = Array.from(event.dataTransfer.files);
       }
-    } else if (event.target.files && event.target.files.length > 0) {
+    } else if (
+      event.target instanceof HTMLInputElement &&
+      event.target.files &&
+      event.target.files.length > 0
+    ) {
       // This is a file input event
       newFiles = Array.from(event.target.files);
     }
 
     if (newFiles.length > 0) {
+      // Check if we're mixing PDFs with images
+      const hasPDF = newFiles.some((file) => file.type === "application/pdf");
+      const hasImages = newFiles.some(
+        (file) =>
+          file.type === "image/jpeg" ||
+          file.type === "image/jpg" ||
+          file.type === "image/png"
+      );
+
+      if (hasPDF && hasImages) {
+        handleShowSnackbar(
+          "Cannot mix PDF and image files. Please upload either PDFs or images only."
+        );
+        return;
+      }
+
+      // Check if we already have files and their types
+      const existingHasPDF = uploadedFiles.some(
+        (file) => file.type === "application/pdf"
+      );
+      const existingHasImages = uploadedFiles.some(
+        (file) =>
+          file.type === "image/jpeg" ||
+          file.type === "image/jpg" ||
+          file.type === "image/png"
+      );
+
+      // Check if we're trying to mix with existing files
+      if ((hasPDF && existingHasImages) || (hasImages && existingHasPDF)) {
+        handleShowSnackbar(
+          "Cannot mix PDF and image files. Please upload either PDFs or images only."
+        );
+        return;
+      }
+
       // Check file types and sizes
       const validFiles = newFiles.filter((file) => {
         // Check if file exists and is valid
@@ -591,6 +931,40 @@ const CreateStudyMaterial = () => {
         return true;
       });
 
+      // Count existing files by type
+      const existingPDFCount = uploadedFiles.filter(
+        (file) => file.type === "application/pdf"
+      ).length;
+      const existingImageCount = uploadedFiles.filter(
+        (file) =>
+          file.type === "image/jpeg" ||
+          file.type === "image/jpg" ||
+          file.type === "image/png"
+      ).length;
+
+      // Count new files by type
+      const newPDFCount = validFiles.filter(
+        (file) => file.type === "application/pdf"
+      ).length;
+      const newImageCount = validFiles.filter(
+        (file) =>
+          file.type === "image/jpeg" ||
+          file.type === "image/jpg" ||
+          file.type === "image/png"
+      ).length;
+
+      // Check PDF limit
+      if (existingPDFCount + newPDFCount > 1) {
+        handleShowSnackbar("Maximum 1 PDF file allowed");
+        return;
+      }
+
+      // Check image limit
+      if (existingImageCount + newImageCount > 5) {
+        handleShowSnackbar("Maximum 5 image files allowed");
+        return;
+      }
+
       // Log validation results
       if (validFiles.length < newFiles.length) {
         console.log(
@@ -598,21 +972,8 @@ const CreateStudyMaterial = () => {
         );
       }
 
-      // Check if adding these files would exceed the limit
-      if (uploadedFiles.length + validFiles.length > 5) {
-        handleShowSnackbar("Maximum 5 files can be uploaded at once");
-        // Only add files up to the limit
-        const spaceLeft = 5 - uploadedFiles.length;
-        if (spaceLeft > 0) {
-          setUploadedFiles([
-            ...uploadedFiles,
-            ...validFiles.slice(0, spaceLeft),
-          ]);
-        }
-      } else {
-        // Add all valid files
-        setUploadedFiles([...uploadedFiles, ...validFiles]);
-      }
+      // Add all valid files
+      setUploadedFiles([...uploadedFiles, ...validFiles]);
     }
   };
 
@@ -622,100 +983,120 @@ const CreateStudyMaterial = () => {
       return;
     }
 
+    // Add strict validation at the beginning
+    if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
+      handleShowSnackbar(
+        "You need a Tech Pass to process files. Purchase Tech Passes from the shop or upgrade to Premium."
+      );
+      handleCloseScanModal(); // Close the modal immediately
+      return;
+    }
+
     try {
       setIsProcessing(true);
       setUploadProgress(0);
+      let allPairs = [];
 
-      // Create a FormData object to send the files
-      const formData = new FormData();
-      uploadedFiles.forEach((file) => {
+      // Process each file one by one
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const file = uploadedFiles[i];
+        const progressPerFile = 90 / uploadedFiles.length;
+        const startProgress = i * progressPerFile + 10;
+
+        // Update progress and status
+        handleShowSnackbar(
+          `Processing file ${i + 1} of ${uploadedFiles.length}...`
+        );
+        setUploadProgress(startProgress);
+
+        // Create FormData for single file
+        const formData = new FormData();
         formData.append("files", file);
-      });
 
-      // Step 1: Show loading state
-      handleShowSnackbar(
-        `Processing ${uploadedFiles.length} ${
-          uploadedFiles.length === 1 ? "file" : "files"
-        }...`
-      );
-      setUploadProgress(10);
-
-      // Step 2: Extract text with OCR
-      console.log(
-        "Sending OCR request to:",
-        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-multiple`
-      );
-
-      const ocrResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-multiple`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      if (!ocrResponse.ok) {
-        const errorData = await ocrResponse.json().catch(() => ({}));
-        console.error("OCR error response:", errorData);
-        throw new Error(
-          errorData.details || `OCR service error: ${ocrResponse.status}`
+        // Step 1: Extract text with OCR
+        const ocrResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-multiple`,
+          {
+            method: "POST",
+            body: formData,
+          }
         );
-      }
 
-      const ocrData = await ocrResponse.json();
-      console.log("Extracted text:", ocrData.text);
-      setUploadProgress(50);
-
-      if (!ocrData.text || ocrData.text.trim() === "") {
-        handleShowSnackbar("No text could be extracted from the files");
-        setIsProcessing(false);
-        return;
-      }
-
-      // Step 3: Process text into term-definition pairs with AI
-      handleShowSnackbar("Identifying terms and definitions...");
-      setUploadProgress(70);
-
-      console.log(
-        "Sending AI request to:",
-        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`
-      );
-
-      const aiResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: ocrData.text }),
+        if (!ocrResponse.ok) {
+          const errorData = await ocrResponse.json().catch(() => ({}));
+          console.error("OCR error response:", errorData);
+          throw new Error(
+            errorData.details || `OCR service error: ${ocrResponse.status}`
+          );
         }
-      );
 
-      setUploadProgress(80);
+        const ocrData = await ocrResponse.json();
+        setUploadProgress(startProgress + progressPerFile * 0.4);
 
-      if (!aiResponse.ok) {
-        const errorData = await aiResponse.json().catch(() => ({}));
-        console.error("AI error response:", errorData);
-        throw new Error(
-          errorData.details || `AI service error: ${aiResponse.status}`
+        // Check if this is a PDF with more than 5 pages
+        if (file.type === "application/pdf" && ocrData.totalPdfPages > 5) {
+          setPdfPageCount(ocrData.totalPdfPages);
+
+          // For premium users, continue processing without confirmation
+          if (isPremium) {
+            console.log(
+              "Premium user - processing large PDF without confirmation"
+            );
+            // Continue with processing - no dialog or early return
+          } else {
+            // Non-premium users still need to show dialog and wait for confirmation
+            setPendingPdf(file);
+            setPdfConfirmationOpen(true);
+            setIsProcessing(false);
+            return; // Only return early for non-premium users
+          }
+        }
+
+        if (!ocrData.text || ocrData.text.trim() === "") {
+          console.log(`No text could be extracted from file ${i + 1}`);
+          continue;
+        }
+
+        // Step 2: Process text into term-definition pairs with AI
+        const aiResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: ocrData.text }),
+          }
         );
+
+        setUploadProgress(startProgress + progressPerFile * 0.8);
+
+        if (!aiResponse.ok) {
+          const errorData = await aiResponse.json().catch(() => ({}));
+          console.error("AI error response:", errorData);
+          throw new Error(
+            errorData.details || `AI service error: ${aiResponse.status}`
+          );
+        }
+
+        const aiData = await aiResponse.json();
+        if (aiData.pairs && aiData.pairs.length > 0) {
+          allPairs = [...allPairs, ...aiData.pairs];
+        }
+
+        setUploadProgress(startProgress + progressPerFile);
       }
 
-      const aiData = await aiResponse.json();
-      console.log("Term-definition pairs:", aiData.pairs);
-      setUploadProgress(90);
+      // Final processing
+      setUploadProgress(95);
 
-      // Step 4: Create study material items from the pairs
-      if (aiData.pairs && aiData.pairs.length > 0) {
+      if (allPairs.length > 0) {
         // Create the new items with temporary item numbers
-        const newItems = aiData.pairs.map(
-          (pair: TermDefinitionPair, index: number) => ({
-            id: Date.now() + index,
-            term: pair.term || "",
-            definition: pair.definition || "",
-            image: null,
-            item_number: items.length + index + 1, // This will be recalculated
-          })
-        );
+        const newItems = allPairs.map((pair, index) => ({
+          id: Date.now() + index,
+          term: pair.term || "",
+          definition: pair.definition || "",
+          image: null,
+          item_number: items.length + index + 1,
+        }));
 
         // Combine existing and new items, then recalculate all item numbers
         const combinedItems = [...items, ...newItems];
@@ -728,6 +1109,60 @@ const CreateStudyMaterial = () => {
           `Added ${newItems.length} new terms and definitions!`
         );
 
+        // Deduct tech passes based on PDF pages
+        const techPassesToDeduct = Math.ceil(pdfPageCount / 5);
+        try {
+          if (user?.firebase_uid && !isPremium && user?.tech_pass > 0) {
+            if (user.tech_pass < techPassesToDeduct) {
+              handleShowSnackbar(
+                `You need ${techPassesToDeduct} Tech Passes but only have ${user.tech_pass}!`
+              );
+              return;
+            }
+
+            const techPassResponse = await fetch(
+              `${import.meta.env.VITE_BACKEND_URL}/api/shop/use-tech-pass/${
+                user.firebase_uid
+              }/${techPassesToDeduct}`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (techPassResponse.ok) {
+              const responseData = await techPassResponse.json();
+              console.log("PDF tech pass deduction response:", responseData);
+
+              // Update the user context with server-provided count instead of manual calculation
+              updateUser({
+                ...user,
+                tech_pass: responseData.updatedTechPassCount,
+              });
+            } else {
+              // Try to parse error message from response
+              try {
+                const errorData = await techPassResponse.json();
+                console.error("Failed to deduct tech passes:", errorData);
+                handleShowSnackbar(
+                  errorData.message || "Failed to deduct tech passes"
+                );
+              } catch (e) {
+                console.error(
+                  "Failed to deduct tech passes, but feature was used"
+                );
+                handleShowSnackbar(
+                  "Failed to deduct tech passes, but feature was used"
+                );
+              }
+            }
+          }
+        } catch (passError) {
+          console.error("Error deducting tech passes:", passError);
+        }
+
         // Close the modal after processing
         handleCloseScanModal();
         setUploadProgress(100);
@@ -739,19 +1174,187 @@ const CreateStudyMaterial = () => {
             textarea.style.height = "auto";
             textarea.style.height = textarea.scrollHeight + "px";
           });
-        }, 300); // Small delay to ensure components are rendered
+        }, 300);
       } else {
         handleShowSnackbar("No term-definition pairs could be identified");
       }
     } catch (error) {
       console.error("Error processing document:", error);
-      // Show the actual error message from the backend if available
       const errorMessage =
         error instanceof Error ? error.message : "Failed to process the files";
       handleShowSnackbar(errorMessage);
       setUploadProgress(0);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handlePdfConfirmation = async (confirmed: boolean) => {
+    setPdfConfirmationOpen(false);
+    if (confirmed && pendingPdf) {
+      try {
+        setIsProcessing(true);
+        setUploadProgress(10);
+
+        // Create FormData for the PDF
+        const formData = new FormData();
+        formData.append("files", pendingPdf);
+
+        // Step 1: Extract text with OCR
+        const ocrResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-multiple`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (!ocrResponse.ok) {
+          const errorData = await ocrResponse.json().catch(() => ({}));
+          console.error("OCR error response:", errorData);
+          throw new Error(
+            errorData.details || `OCR service error: ${ocrResponse.status}`
+          );
+        }
+
+        const ocrData = await ocrResponse.json();
+        setUploadProgress(40);
+
+        if (!ocrData.text || ocrData.text.trim() === "") {
+          handleShowSnackbar("No text could be extracted from the PDF");
+          return;
+        }
+
+        // Step 2: Process text into term-definition pairs with AI
+        const aiResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: ocrData.text }),
+          }
+        );
+
+        setUploadProgress(80);
+
+        if (!aiResponse.ok) {
+          const errorData = await aiResponse.json().catch(() => ({}));
+          console.error("AI error response:", errorData);
+          throw new Error(
+            errorData.details || `AI service error: ${aiResponse.status}`
+          );
+        }
+
+        const aiData = await aiResponse.json();
+        setUploadProgress(95);
+
+        if (aiData.pairs && aiData.pairs.length > 0) {
+          // Create the new items with temporary item numbers
+          const newItems = aiData.pairs.map((pair, index) => ({
+            id: Date.now() + index,
+            term: pair.term || "",
+            definition: pair.definition || "",
+            image: null,
+            item_number: items.length + index + 1,
+          }));
+
+          // Combine existing and new items, then recalculate all item numbers
+          const combinedItems = [...items, ...newItems];
+          const numberedItems = recalculateItemNumbers(combinedItems);
+
+          // Update state with properly numbered items
+          setItems(numberedItems);
+
+          handleShowSnackbar(
+            `Added ${newItems.length} new terms and definitions!`
+          );
+
+          // Deduct tech passes based on PDF pages
+          const techPassesToDeduct = Math.ceil(pdfPageCount / 5);
+          try {
+            if (user?.firebase_uid && !isPremium && user?.tech_pass > 0) {
+              if (user.tech_pass < techPassesToDeduct) {
+                handleShowSnackbar(
+                  `You need ${techPassesToDeduct} Tech Passes but only have ${user.tech_pass}!`
+                );
+                return;
+              }
+
+              const techPassResponse = await fetch(
+                `${import.meta.env.VITE_BACKEND_URL}/api/shop/use-tech-pass/${
+                  user.firebase_uid
+                }/${techPassesToDeduct}`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+
+              if (techPassResponse.ok) {
+                const responseData = await techPassResponse.json();
+                console.log("PDF tech pass deduction response:", responseData);
+
+                // Update the user context with server-provided count instead of manual calculation
+                updateUser({
+                  ...user,
+                  tech_pass: responseData.updatedTechPassCount,
+                });
+              } else {
+                // Try to parse error message from response
+                try {
+                  const errorData = await techPassResponse.json();
+                  console.error("Failed to deduct tech passes:", errorData);
+                  handleShowSnackbar(
+                    errorData.message || "Failed to deduct tech passes"
+                  );
+                } catch (e) {
+                  console.error(
+                    "Failed to deduct tech passes, but feature was used"
+                  );
+                  handleShowSnackbar(
+                    "Failed to deduct tech passes, but feature was used"
+                  );
+                }
+              }
+            }
+          } catch (passError) {
+            console.error("Error deducting tech passes:", passError);
+          }
+
+          // Close the modal after processing
+          handleCloseScanModal();
+          setUploadProgress(100);
+
+          // Resize textareas after new items are added
+          setTimeout(() => {
+            const textareas = document.querySelectorAll("textarea");
+            textareas.forEach((textarea) => {
+              textarea.style.height = "auto";
+              textarea.style.height = textarea.scrollHeight + "px";
+            });
+          }, 300);
+        } else {
+          handleShowSnackbar("No term-definition pairs could be identified");
+        }
+      } catch (error) {
+        console.error("Error processing PDF:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to process the PDF";
+        handleShowSnackbar(errorMessage);
+        setUploadProgress(0);
+      } finally {
+        setIsProcessing(false);
+        setPendingPdf(null);
+        setPdfPageCount(0);
+      }
+    } else {
+      // Remove the PDF from the list
+      const newFiles = uploadedFiles.filter((file) => file !== pendingPdf);
+      setUploadedFiles(newFiles);
+      setPendingPdf(null);
+      setPdfPageCount(0);
     }
   };
 
@@ -776,6 +1379,25 @@ const CreateStudyMaterial = () => {
   const handleVisibilityChange = (value: string | number) => {
     setVisibility(value.toString());
   };
+
+  // Add effect to clear error states when user fixes the issues
+  useEffect(() => {
+    if (title.trim()) {
+      setTitleError(false);
+    }
+  }, [title]);
+
+  useEffect(() => {
+    if (tags.length > 0) {
+      setTagsError(false);
+    }
+  }, [tags]);
+
+  useEffect(() => {
+    if (items.length >= MIN_REQUIRED_ITEMS) {
+      setItemsError(false);
+    }
+  }, [items]);
 
   // Add this useEffect after your existing useEffect hooks
 
@@ -813,20 +1435,53 @@ const CreateStudyMaterial = () => {
     }
   }, [title, editMode]);
 
+  // Add these handler functions for the modal
+  const handleMaterialSelect = (material: any) => {
+    // Handle material selection (navigate to game mode, etc.)
+    navigate("/dashboard/welcome-game-mode", {
+      state: {
+        mode: selectedMode,
+        material,
+      },
+    });
+  };
+
+  const handleModeSelect = (mode: string) => {
+    setSelectedMode(mode);
+  };
+
+  const handleCloseModal = () => {
+    setSelectMaterialModalOpen(false);
+    // Reset the newMaterialId when the modal is closed
+    // This ensures it only highlights once per new material
+    setNewMaterialId(null);
+  };
+
   return (
     <>
+      <ErrorHighlightAnimation />
       <PageTransition>
-        <Box className="h-full w-full px-2 sm:px-4 md:px-8">
+        <Box className="h-full w-full ">
           <DocumentHead
             title={
               editMode
-                ? `Editing ${title || "Study Material"}`
+                ? `Editing ${title || "Study Material"} | Duel Learn`
                 : title || "Create Study Material"
             }
           />
           <Stack spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
             {/* Title Input */}
-            <Box className="sticky top-4">
+            <Box
+              className="z-10"
+              sx={{
+                position: "sticky",
+                top: 0,
+                backgroundColor: "#080511", // Match app background color
+                paddingTop: "1rem",
+                width: "100%",
+                borderBottom: "0.8rem",
+              }}
+            >
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={{ xs: 1, sm: 2 }}
@@ -838,6 +1493,7 @@ const CreateStudyMaterial = () => {
                     label={title ? "" : "Enter your title here..."}
                     variant="standard"
                     value={title}
+                    error={titleError}
                     onChange={(e) => {
                       // Limit title to MAX_TITLE_LENGTH characters
                       if (e.target.value.length <= MAX_TITLE_LENGTH) {
@@ -856,13 +1512,13 @@ const CreateStudyMaterial = () => {
                       minWidth: { xs: "100%", sm: "20rem", md: "32rem" },
                       maxWidth: "100%",
                       "& .MuiInputLabel-root": {
-                        color: "#3B354D",
+                        color: titleError ? "#f44336" : "#3B354D",
                         transform: title
                           ? "translate(0, -1.5px) scale(0.75)"
                           : "translate(0, 20px) scale(1)",
                       },
                       "& .MuiInputLabel-root.Mui-focused": {
-                        color: "#A38CE6",
+                        color: titleError ? "#f44336" : "#A38CE6",
                         transform: "translate(0, -1.5px) scale(0.75)",
                       },
                       "& .MuiInput-root": {
@@ -871,13 +1527,13 @@ const CreateStudyMaterial = () => {
                         fontSize: { xs: "1.1rem", sm: "1.2rem", md: "1.3rem" },
                       },
                       "& .MuiInput-underline:before": {
-                        borderBottomColor: "#3B354D",
+                        borderBottomColor: titleError ? "#f44336" : "#3B354D",
                       },
                       "& .MuiInput-underline:hover:not(.Mui-disabled):before": {
-                        borderBottomColor: "#A38CE6",
+                        borderBottomColor: titleError ? "#f44336" : "#A38CE6",
                       },
                       "& .MuiInput-underline:after": {
-                        borderBottomColor: "#A38CE6",
+                        borderBottomColor: titleError ? "#f44336" : "#A38CE6",
                       },
                       "& .MuiInputBase-input::placeholder": {
                         color: "#9F9BAE",
@@ -941,6 +1597,7 @@ const CreateStudyMaterial = () => {
                   </Button>
                   <Button
                     variant="contained"
+                    disabled={isSaving}
                     sx={{
                       borderRadius: "0.8rem",
                       display: "flex",
@@ -955,44 +1612,75 @@ const CreateStudyMaterial = () => {
                       "&:hover": {
                         transform: "scale(1.05)",
                       },
+                      "&.Mui-disabled": {
+                        backgroundColor: "#4D18E8",
+                        color: "#E2DDF3",
+                        opacity: 0.7,
+                      },
                     }}
                     onClick={handleSaveButton}
                   >
-                    {editMode ? "Update" : "Save"}
+                    {isSaving ? (
+                      <CircularProgress size={20} sx={{ color: "#E2DDF3" }} />
+                    ) : editMode ? (
+                      "Update"
+                    ) : (
+                      "Save"
+                    )}
                   </Button>
                 </Stack>
               </Stack>
             </Box>
 
             {/* Tags Input */}
-            <Box className="flex items-center">
-              <Stack spacing={1} sx={{ width: "100%" }}>
-                <Typography variant="subtitle1" className="text-[#3B354D]">
-                  Tags:
-                </Typography>
+            <Box className="flex">
+              <Stack
+                spacing={1}
+                sx={{ display: "inline-flex", maxWidth: "100%" }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="subtitle1" className="text-[#3B354D]">
+                    Tags:
+                  </Typography>
+                  <Typography variant="caption" className="text-[#9F9BAE]">
+                    (Type a custom tag or select from predefined subjects, then
+                    press Enter)
+                  </Typography>
+                </Stack>
                 <Box
                   sx={{
                     display: "inline-flex",
                     alignItems: "center",
+                    alignSelf: "flex-start",
                     flexWrap: "wrap",
                     gap: 0.5,
-                    padding: { xs: "0.5rem", sm: "0.8rem" },
-                    width: { xs: "100%", sm: "fit-content" }, // Full width on mobile
-                    maxWidth: "100%", // Prevent overflow
-                    border: "1px solid #3B354D",
+                    padding: { xs: "0.5rem", sm: "0.6rem" },
+                    width: "auto",
+                    minWidth: "14ch",
+                    maxWidth: "fit-content",
+                    border: `1px solid ${tagsError ? "#f44336" : "#3B354D"}`,
                     borderRadius: "0.8rem",
-                    backgroundColor: "#3B354D",
+                    backgroundColor: tagsError
+                      ? "rgba(244, 67, 54, 0.08)"
+                      : "#3B354D",
                     transition: "all 0.3s ease-in-out",
                     "&:hover": {
-                      backgroundColor: "#4A435C",
-                      borderColor: "#A38CE6",
+                      backgroundColor: tagsError
+                        ? "rgba(244, 67, 54, 0.12)"
+                        : "#4A435C",
+                      borderColor: tagsError ? "#f44336" : "#A38CE6",
                     },
                     "&:active": {
-                      backgroundColor: "#2F283A",
-                      borderColor: "#9B85E1",
+                      backgroundColor: tagsError
+                        ? "rgba(244, 67, 54, 0.2)"
+                        : "#2F283A",
+                      borderColor: tagsError ? "#f44336" : "#9B85E1",
+                    },
+                    "& > *": {
+                      // Apply to all direct children
+                      margin: tags.length === 0 ? "0" : "0.15rem",
                     },
                   }}
-                  onClick={() => document.getElementById("tags")?.focus()}
                 >
                   {tags.map((tag, index) => (
                     <Chip
@@ -1000,7 +1688,9 @@ const CreateStudyMaterial = () => {
                       label={tag}
                       onDelete={() => handleDeleteTag(tag)}
                       sx={{
-                        backgroundColor: "#4D18E8 !important",
+                        backgroundColor: allSubjects.includes(tag)
+                          ? "#4D18E8 !important"
+                          : "#2A2636 !important",
                         color: "#E2DDF3",
                         width: "fit-content",
                         height: "fit-content",
@@ -1013,57 +1703,153 @@ const CreateStudyMaterial = () => {
                   ))}
 
                   {tags.length < MAX_TAGS && (
-                    <input
-                      id="tags"
-                      type="text"
-                      value={currentTag}
-                      onChange={(e) => setCurrentTag(e.target.value)}
-                      onKeyDown={handleAddTag}
-                      placeholder="Press enter"
-                      onInput={(e) => {
-                        const target = e.target as HTMLInputElement;
-                        const contentLength = target.value.length;
-                        const placeholderLength = target.placeholder.length;
-                        const textWidth = Math.max(
-                          contentLength,
-                          placeholderLength
-                        );
-                        target.style.width = `${Math.max(
-                          textWidth * 0.9,
-                          10
-                        )}ch`;
+                    <Box
+                      sx={{
+                        position: "relative",
+                        display: "inline-flex",
+                        alignItems: "center",
                       }}
-                      style={{
-                        border: "none",
-                        outline: "none",
-                        background: "transparent",
-                        width: "10ch",
-                        flex: "0 0 auto",
-                        color: "#E2DDF3",
-                        fontSize: "1rem",
-                        paddingLeft: 6,
-                        textAlign: "left",
-                        cursor: "text",
-                        overflow: "hidden",
-                      }}
-                      className="tag-input-placeholder"
-                    />
+                    >
+                      <input
+                        id="tags"
+                        type="text"
+                        value={inputValue}
+                        onChange={(e) => {
+                          setInputValue(e.target.value);
+                          setSearchQuery(e.target.value);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && inputValue.trim()) {
+                            e.preventDefault();
+                            if (!tags.includes(inputValue.trim())) {
+                              handleAddTag([...tags, inputValue.trim()]);
+                            }
+                            setInputValue("");
+                            setSearchQuery("");
+                          }
+                        }}
+                        placeholder={tags.length > 0 ? "" : "Add a tag here..."}
+                        style={{
+                          border: "none",
+                          outline: "none",
+                          background: "transparent",
+                          width: inputValue
+                            ? `${inputValue.length * 8 + 8}px`
+                            : tags.length > 0
+                            ? "ch"
+                            : "14ch",
+                          color: "#E2DDF3",
+                          fontSize: "1rem",
+                          padding: "4px",
+                          margin: 0,
+                          textAlign: "left",
+                          cursor: "text",
+                          caretColor: "#E2DDF3",
+                        }}
+                        className="tag-input-placeholder"
+                      />
+                      {inputValue && filteredSubjects.length > 0 && (
+                        <Paper
+                          sx={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            width: "200px", // Set fixed width
+                            mt: 1,
+                            maxHeight: "200px",
+                            overflow: "auto",
+                            backgroundColor: "#2A2636",
+                            color: "#E2DDF3",
+                            border: "1px solid #3B354D",
+                            borderRadius: "0.8rem",
+                            zIndex: 1000,
+                            "&::-webkit-scrollbar": {
+                              width: "8px",
+                            },
+                            "&::-webkit-scrollbar-track": {
+                              background: "transparent",
+                            },
+                            "&::-webkit-scrollbar-thumb": {
+                              backgroundColor: "#382e53",
+                              borderRadius: "4px",
+                            },
+                            "&::-webkit-scrollbar-thumb:hover": {
+                              backgroundColor: "#261d3f",
+                            },
+                          }}
+                        >
+                          {filteredSubjects.map((subject, index) => (
+                            <Box
+                              key={index}
+                              onClick={() => {
+                                if (!tags.includes(subject)) {
+                                  handleAddTag([...tags, subject]);
+                                }
+                                setInputValue("");
+                                setSearchQuery("");
+                              }}
+                              sx={{
+                                padding: "8px 16px",
+                                cursor: "pointer",
+                                width: "auto",
+                                "&:hover": {
+                                  backgroundColor: "#3B354D",
+                                },
+                                borderBottom:
+                                  index < filteredSubjects.length - 1
+                                    ? "1px solid #3B354D"
+                                    : "none",
+                              }}
+                            >
+                              <Typography variant="body2">{subject}</Typography>
+                            </Box>
+                          ))}
+                        </Paper>
+                      )}
+                    </Box>
                   )}
                 </Box>
-                {/* Tag counter */}
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
-                    transition: "color 0.3s ease-in-out",
-                    marginTop: "0.2rem",
-                    fontSize: "0.75rem",
-                    textAlign: "left",
-                    maxWidth: "100%", // Changed from specific percentages
-                  }}
-                >
-                  {tags.length}/{MAX_TAGS} tags used
-                </Typography>
+                {/* Tag counters */}
+
+                {tags.length > 0 && (
+                  <Box
+                    sx={{
+                      position: "relative",
+                      zIndex: 0,
+                      marginTop: "0.5rem",
+                      clear: "both",
+                    }}
+                  >
+                    <Stack direction="row" spacing={2}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color:
+                            tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
+                          transition: "color 0.3s ease-in-out",
+                          fontSize: "0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        {tags.length}/{MAX_TAGS} total tags
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color:
+                            customTagsCount >= MAX_CUSTOM_TAGS
+                              ? "#E57373"
+                              : "#6F658D",
+                          transition: "color 0.3s ease-in-out",
+                          fontSize: "0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        {customTagsCount}/{MAX_CUSTOM_TAGS} custom tags
+                      </Typography>
+                    </Stack>
+                  </Box>
+                )}
               </Stack>
             </Box>
 
@@ -1105,7 +1891,7 @@ const CreateStudyMaterial = () => {
                       color: "#E2DDF3",
                     },
                   }}
-                  onClick={handleUploadFile}
+                  onClick={handleOpenScanModal}
                 >
                   Scan Notes
                 </Button>
@@ -1120,15 +1906,22 @@ const CreateStudyMaterial = () => {
                     ]}
                     value={visibility}
                     onChange={handleVisibilityChange}
-                    hoverOpen
+                    hoverOpen={true}
                   />
                 </Box>
               </Stack>
             </Box>
 
             {/* Items */}
-            <Box className="pb-6">
-              <Stack spacing={2}>
+            <Box>
+              <Stack
+                spacing={2}
+                sx={{
+                  border: "none",
+                  borderRadius: "0.8rem",
+                  backgroundColor: "transparent",
+                }}
+              >
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -1154,6 +1947,12 @@ const CreateStudyMaterial = () => {
                             updateItem={(field, value) =>
                               handleUpdateItem(item.id, field, value)
                             }
+                            isError={emptyItemIds.includes(item.id)}
+                            isTermError={emptyTerms.includes(item.id)}
+                            isDefinitionError={emptyDefinitions.includes(
+                              item.id
+                            )}
+                            key={item.id}
                           />
                         </motion.div>
                       ))}
@@ -1162,6 +1961,7 @@ const CreateStudyMaterial = () => {
                 </DndContext>
 
                 <Button
+                  id="add-new-item-button"
                   variant="outlined"
                   sx={{
                     borderRadius: "0.8rem",
@@ -1170,19 +1970,23 @@ const CreateStudyMaterial = () => {
                     width: "100%",
                     fontSize: { xs: "0.9rem", sm: "1rem" },
                     justifyContent: "center",
-                    color: "#3B354D",
-                    border: "2px solid #3B354D",
+                    color: itemsError ? "#f44336" : "#3B354D",
+                    border: `2px solid ${itemsError ? "#f44336" : "#3B354D"}`,
+                    backgroundColor: itemsError
+                      ? "rgba(244, 67, 54, 0.08)"
+                      : "transparent",
                     textTransform: "none",
                     bottom: 0,
                     transform: "scale(1)",
                     transition: "all 0.3s ease-in-out",
                     "&:hover": {
                       transform: "scale(1.005)",
-                      borderColor: "#9F9BAE",
-                      color: "#E2DDF3",
+                      borderColor: itemsError ? "#f44336" : "#9F9BAE",
+                      color: itemsError ? "#f44336" : "#E2DDF3",
                     },
                   }}
                   onClick={handleAddItem}
+                  className={itemsError ? "error-highlight-animation" : ""}
                 >
                   Add New Item
                 </Button>
@@ -1191,7 +1995,6 @@ const CreateStudyMaterial = () => {
           </Stack>
         </Box>
       </PageTransition>
-
       {/* Scan Notes Modal */}
       <Modal
         open={scanModalOpen}
@@ -1434,9 +2237,7 @@ const CreateStudyMaterial = () => {
                               alignItems: "center",
                               fontWeight: "medium",
                             }}
-                          >
-                            [IMG]
-                          </Box>
+                          ></Box>
                         )}
                         <Typography
                           variant="body2"
@@ -1518,17 +2319,42 @@ const CreateStudyMaterial = () => {
           <Button
             variant="contained"
             fullWidth
-            disabled={uploadedFiles.length === 0 || isProcessing}
-            onClick={handleProcessFile}
+            disabled={
+              uploadedFiles.length === 0 ||
+              isProcessing ||
+              (!isPremium && (!user?.tech_pass || user.tech_pass <= 0))
+            }
+            onClick={() => {
+              // Double-check tech pass availability right before processing
+              if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
+                handleShowSnackbar(
+                  "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop or upgrade to Premium."
+                );
+                return;
+              }
+              handleProcessFile();
+            }}
             sx={{
-              backgroundColor: "#4D18E8",
-              color: "#E2DDF3",
+              backgroundColor:
+                isPremium || (user?.tech_pass && user.tech_pass > 0)
+                  ? "#4D18E8"
+                  : "#3B354D",
+              color:
+                isPremium || (user?.tech_pass && user.tech_pass > 0)
+                  ? "#E2DDF3"
+                  : "#9F9BAE",
               borderRadius: "0.8rem",
               padding: "0.8rem",
               transition: "all 0.3s ease",
               "&:hover": {
-                backgroundColor: "#6939FF",
-                transform: "scale(1.02)",
+                backgroundColor:
+                  isPremium || (user?.tech_pass && user.tech_pass > 0)
+                    ? "#6939FF"
+                    : "#3B354D",
+                transform:
+                  isPremium || (user?.tech_pass && user.tech_pass > 0)
+                    ? "scale(1.02)"
+                    : "scale(1)",
               },
               "&.Mui-disabled": {
                 backgroundColor: "#3B354D",
@@ -1541,19 +2367,141 @@ const CreateStudyMaterial = () => {
                 <CircularProgress size={24} sx={{ color: "#E2DDF3", mr: 1 }} />
                 Processing...
               </>
+            ) : isPremium || (user?.tech_pass && user.tech_pass > 0) ? (
+              <>
+                Generate cards from{" "}
+                {uploadedFiles.length > 0 ? uploadedFiles.length : ""}
+                {uploadedFiles.length === 1 ? " File" : " Files"}
+                {!isPremium && (
+                  <span className="ml-2 text-[#A38CE6] font-medium">
+                    (Uses 1 Tech Pass)
+                  </span>
+                )}
+              </>
             ) : (
-              `Generate cards from ${
-                uploadedFiles.length > 0 ? uploadedFiles.length : ""
-              } ${uploadedFiles.length === 1 ? "File" : "Files"}`
+              <>
+                Generate cards
+                <span className="ml-2 text-[#8b6d8d] font-medium">
+                  (No Tech Pass Available)
+                </span>
+              </>
             )}
           </Button>
         </Paper>
       </Modal>
-
       <AutoHideSnackbar
         message={snackbarMessage}
         open={snackbarOpen}
         onClose={handleCloseSnackbar}
+      />
+      {/* Saving overlay */}
+      <Modal
+        open={isSaving}
+        aria-labelledby="saving-modal"
+        aria-describedby="modal-showing-saving-progress"
+        disableAutoFocus
+        disableEnforceFocus
+        disableEscapeKeyDown
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "#120F1B",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: "0.8rem",
+            outline: "none",
+            textAlign: "center",
+            alignItems: "center",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            gap: 2,
+          }}
+        >
+          <img src={CauldronIcon} alt="" className="w-32 h-auto" />
+          <Typography variant="h6" sx={{ color: "#E2DDF3", mb: 1 }}>
+            {editMode ? "Updating" : "Saving"} Your Study Material
+          </Typography>
+        </Box>
+      </Modal>
+      {/* PDF Confirmation Dialog */}
+      <Dialog
+        open={pdfConfirmationOpen && !isPremium} // Only show for non-premium users
+        onClose={() => handlePdfConfirmation(false)}
+        PaperProps={{
+          sx: {
+            backgroundColor: "#120F1B",
+            borderRadius: "0.8rem",
+            border: "2px solid #3B354D",
+            maxWidth: "500px",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{ color: "#E2DDF3", borderBottom: "1px solid #3B354D" }}
+        >
+          PDF Processing Notice
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body1" sx={{ color: "#E2DDF3", mb: 2 }}>
+            The PDF you uploaded has {pdfPageCount} pages. Since it has more
+            than 5 pages, it will require additional Tech Passes to process.
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#9F9BAE" }}>
+            Tech Passes required: {Math.ceil(pdfPageCount / 5)} (1 Tech Pass per
+            5 pages)
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#E57373", mt: 1 }}>
+            You currently have {user?.tech_pass || 0} Tech Passes available.
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#A38CE6", mt: 1 }}>
+            Note: Premium users can process PDFs of any size without using Tech
+            Passes.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: "1px solid #3B354D" }}>
+          <Button
+            onClick={() => handlePdfConfirmation(false)}
+            sx={{
+              color: "#E2DDF3",
+              "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handlePdfConfirmation(true)}
+            disabled={user?.tech_pass < Math.ceil(pdfPageCount / 5)}
+            sx={{
+              backgroundColor: "#4D18E8",
+              color: "#E2DDF3",
+              borderRadius: "0.8rem",
+              "&:hover": { backgroundColor: "#6939FF" },
+              "&.Mui-disabled": {
+                backgroundColor: "#3B354D",
+                color: "#9F9BAE",
+              },
+            }}
+          >
+            Process PDF
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Add the modal component at the bottom of your JSX, before the closing tag */}
+      <SelectStudyMaterialModal
+        open={selectMaterialModalOpen}
+        handleClose={handleCloseModal}
+        mode={selectedMode}
+        isLobby={false}
+        onMaterialSelect={handleMaterialSelect}
+        onModeSelect={handleModeSelect}
+        selectedTypes={selectedTypes}
+        newMaterialId={newMaterialId}
       />
     </>
   );

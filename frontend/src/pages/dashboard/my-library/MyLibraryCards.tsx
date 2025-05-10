@@ -59,7 +59,7 @@ const MyLibraryCards = ({ cards, onRefreshNeeded }: MyLibraryCardsProps) => {
       sx={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
-        gap: 2,
+        gap: 1.5,
         width: "100%",
       }}
     >

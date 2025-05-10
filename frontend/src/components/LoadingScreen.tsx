@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from "react";
-import cauldronGif from "../assets/General/Cauldron.gif";
+import cauldronGif from "/General/Cauldron.gif";
 import PageTransition from "../styles/PageTransition";
+import DocumentHead from "./DocumentHead";
 
 interface LoadingScreenProps {
   text?: string;
+  mode?: string;
   isLoading?: boolean;
 }
 
-export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({ text, isLoading = true }) => {
+export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({
+  text,
+  mode,
+  isLoading = true,
+}) => {
   const loadingLines = [
     "For relaxed practice and review. The best way to retain those lessons in your head, Magician.",
     "A true Magician never stops learning. Prepare your spells of knowledge!",
@@ -27,8 +33,9 @@ export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({ text, isLoa
 
   // Effect to change loading lines periodically
   useEffect(() => {
-    const getRandomLine = () => loadingLines[Math.floor(Math.random() * loadingLines.length)];
-    
+    const getRandomLine = () =>
+      loadingLines[Math.floor(Math.random() * loadingLines.length)];
+
     setCurrentLine(getRandomLine());
     const interval = setInterval(() => {
       setCurrentLine(getRandomLine());
@@ -38,41 +45,46 @@ export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({ text, isLoa
   }, []);
 
   const changeLine = () => {
-    setCurrentLine(loadingLines[Math.floor(Math.random() * loadingLines.length)]);
+    setCurrentLine(
+      loadingLines[Math.floor(Math.random() * loadingLines.length)]
+    );
   };
 
   if (!isLoading) return null;
 
   return (
-    <PageTransition>
-      <main
-        className="flex overflow-hidden flex-col justify-center items-center min-h-screen px-10 py-28 max-md:px-2 max-md:py-12"
-        onClick={changeLine}
-      >
-        <section className="flex flex-col items-center max-w-full w-[406px]">
-          <img
-            loading="lazy"
-            src={cauldronGif}
-            className="object-contain max-w-full aspect-square w-[225px]"
-            alt="Loading animation"
-          />
-          <h1
-            className="mt-8 text-2xl font-extrabold text-white max-md:mt-5"
-            style={{ fontFamily: "Nunito" }}
-          >
-            {statusText || "LOADING"} <span className="dot-1">.</span>
-            <span className="dot-2">.</span>
-            <span className="dot-3">.</span>
-          </h1>
-          <p
-            className="self-stretch mt-7 text-xl font-medium text-center text-zinc-400 max-md:mt-5 max-md:max-w-full"
-            style={{ fontFamily: "Nunito" }}
-          >
-            <span className="font-normal text-[#9F9BAE]">{currentLine}</span>
-          </p>
-        </section>
-      </main>
-    </PageTransition>
+    <>
+      <DocumentHead title={mode ? `${mode} | Duel Learn` : "Duel Learn"} />
+      <PageTransition>
+        <main
+          className="flex overflow-hidden flex-col justify-center items-center min-h-screen px-10 py-28 max-md:px-2 max-md:py-12"
+          onClick={changeLine}
+        >
+          <section className="flex flex-col items-center max-w-full w-[406px]">
+            <img
+              loading="lazy"
+              src={cauldronGif}
+              className="object-contain max-w-full aspect-square w-[225px]"
+              alt="Loading animation"
+            />
+            <h1
+              className="mt-8 text-2xl font-extrabold text-white max-md:mt-5"
+              style={{ fontFamily: "Nunito" }}
+            >
+              {statusText || "LOADING"} <span className="dot-1">.</span>
+              <span className="dot-2">.</span>
+              <span className="dot-3">.</span>
+            </h1>
+            <p
+              className="self-stretch mt-7 text-xl font-medium text-center text-zinc-400 max-md:mt-5 max-md:max-w-full"
+              style={{ fontFamily: "Nunito" }}
+            >
+              <span className="font-normal text-[#9F9BAE]">{currentLine}</span>
+            </p>
+          </section>
+        </main>
+      </PageTransition>
+    </>
   );
 };
 

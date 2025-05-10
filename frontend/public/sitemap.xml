@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Home page -->
+  <url>
+    <loc>https://duel-learn.vercel.app/</loc>
+    <lastmod>2025-04-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+  <loc>https://duel-learn.vercel.app/login</loc>
+    <lastmod>2025-04-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://duel-learn.vercel.app/dashboard/home</loc>
+    <lastmod>2025-04-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+    <loc>https://duel-learn.vercel.app/dashboard/explore</loc>
+    <lastmod>2025-04-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+    <loc>https://duel-learn.vercel.app/dashboard/my-library</loc>
+    <lastmod>2025-04-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+<url>
+    <loc>https://duel-learn.vercel.app/dashboard/profile</loc>
+    <lastmod>2025-04-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+    <url>
+        <loc>https://duel-learn.vercel.app/dashboard/shop</loc>
+        <lastmod>2025-04-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <url>
+        <loc>https://duel-learn.vercel.app/dashboard/study-material/create</loc>
+        <lastmod>2025-04-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+     <url>
+        <loc>https://duel-learn.vercel.app/dashboard/study-material/view/</loc>
+        <lastmod>2025-04-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <url>
+        <loc>https://duel-learn.vercel.app/dashboard/study-material/edit</loc>
+        <lastmod>2025-04-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>1.0</priority>
+    </url>
+    
+    <url>
+        <loc>https://duel-learn.vercel.app/dashboard/study/peaceful-mode</loc>
+        <lastmod>2025-04-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+     <url>
+        <loc>https://duel-learn.vercel.app/dashboard/study/time-pressured-mode</loc>
+        <lastmod>2025-04-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <url>
+        <loc>https://duel-learn.vercel.app/dashboard/pvp-lobby/</loc>
+        <lastmod>2025-04-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <url>
+        <loc>https://duel-learn.vercel.app/dashboard/pvp-battle/</loc>
+        <lastmod>2025-04-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>1.0</priority>
+    </url>
+</urlset>

@@ -3,12 +3,16 @@ import Typewriter from "typewriter-effect";
 import useWandCursor from "./data/useWandCursor";
 import { useNavigate } from "react-router-dom";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import CharacterTalking from "../../assets/UserOnboarding/NoddingBunny.gif";
+import CharacterTalking from "/UserOnboarding/NoddingBunny.gif";
 import PageTransition from "../../styles/PageTransition";
+import { useAudio } from "../../contexts/AudioContext";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 
 export default function TutorialThree() {
   useWandCursor();
   const navigate = useNavigate();
+  const { isMuted, toggleMute } = useAudio();
   const [animate, setAnimate] = React.useState<boolean>(false);
   const [clickCount, setClickCount] = React.useState(0);
 
@@ -22,7 +26,12 @@ export default function TutorialThree() {
     navigate("/dashboard/tutorial/last-step");
   };
 
-  const handleScreenClick = () => {
+  const handleScreenClick = (e: React.MouseEvent) => {
+    // Check if the click was on the sound button
+    if ((e.target as HTMLElement).closest("button")) {
+      return;
+    }
+
     setClickCount((prev) => prev + 1);
 
     if (clickCount === 0) {
@@ -40,6 +49,22 @@ export default function TutorialThree() {
         role="main"
         onClick={handleScreenClick}
       >
+        <div className="absolute top-4 right-4 z-50 pointer-events-none">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMute();
+            }}
+            className="text-white hover:text-gray-300 transition-colors pointer-events-auto"
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? (
+              <VolumeOffIcon style={{ height: 23, width: 23 }} />
+            ) : (
+              <VolumeUpIcon style={{ height: 23, width: 23 }} />
+            )}
+          </button>
+        </div>
         {/* Magic Wand Cursor */}
         <div className="wand-cursor"></div>
 
@@ -58,7 +83,14 @@ export default function TutorialThree() {
 
         {/* Video Section */}
         <div className="flex justify-center items-center w-full mt-10 md:mt-16 z-10">
-          <div className="w-full max-w-[801px] h-[297px] bg-zinc-300 rounded-xl"></div>
+          <video
+            src="/UserOnboarding/useronboarding_steptwo.mp4"
+            className="w-full max-w-[50vw] h-[40vh] rounded-[0.8rem] border-2 border-white"
+            autoPlay
+            loop
+            muted
+            playsInline
+          />
         </div>
 
         {/* Dialogue Box */}

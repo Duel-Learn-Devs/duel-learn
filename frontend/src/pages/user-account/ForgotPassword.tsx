@@ -4,7 +4,7 @@ import { CircularProgress, Modal } from "@mui/material";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import PageTransition from "../../styles/PageTransition";
-import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
+import sampleAvatar2 from "/images/sampleAvatar2.png";
 import useFirebaseError from "../../hooks/validation.hooks/useFirebaseError";
 import * as Yup from "yup";
 import { useAuth } from "../../contexts/AuthContext";
@@ -68,7 +68,9 @@ const ForgotPassword = () => {
                 },
               });
             } catch (error: any) {
-              setSubmitError(error.message || "Failed to send password reset email");
+              setSubmitError(
+                error.message || "Failed to send password reset email"
+              );
             }
           }
         }
@@ -107,15 +109,15 @@ const ForgotPassword = () => {
         </header>
 
         <div className="w-full max-w-md rounded-lg p-8 shadow-md">
-          <h1 className="text-3xl font-bold text-center text-white mb-2">
+          <h1 className="text-2xl font-bold text-center text-white mb-2">
             Forgot Password
           </h1>
-          <p className="text-lg text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
+          <p className="text-md text-center text-[#9F9BAE] mb-8  mx-auto break-words">
             Please enter your email to search for your account.
           </p>
 
           {submitError && (
-            <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
+            <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-[0.8rem] border border-red-300">
               {submitError}
             </div>
           )}
@@ -130,16 +132,16 @@ const ForgotPassword = () => {
                 autoComplete="off"
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  error ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  error
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
                 }`}
               />
-              {error && (
-                <p className="text-red-500 mt-1 text-sm">{error}</p>
-              )}
+              {error && <p className="text-red-500 mt-1 text-sm">{error}</p>}
             </div>
             <button
               type="submit"
-              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-[0.8rem] hover:bg-[#6931E0] transition-colors"
               disabled={loading}
             >
               {loading ? (
@@ -150,7 +152,7 @@ const ForgotPassword = () => {
             </button>
             <button
               type="button"
-              className="w-full mt-2 text-[#3B354D] py-3 rounded-lg  justify-center "
+              className="w-full mt-2 text-[#3B354D] py-3 rounded-[0.8rem]  justify-center "
               onClick={handleExitClick}
             >
               <p className="hover:text-white transition-colors">Back</p>

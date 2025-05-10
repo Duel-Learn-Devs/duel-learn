@@ -72,6 +72,34 @@ export default {
           '50%': { transform: 'translateY(-5px)' },
           '100%': { transform: 'translateY(0)' },
         },
+        'twinkle': {
+          '0%, 100%': {
+            opacity: '0.3',
+            transform: 'scale(0.8)'
+          },
+          '50%': {
+            opacity: '1',
+            transform: 'scale(1.2)'
+          }
+        },
+        'float': {
+          '0%': {
+            transform: 'translateY(0) rotate(45deg)',
+            opacity: '0.5'
+          },
+          '50%': {
+            transform: 'translateY(-15px) rotate(45deg)',
+            opacity: '0.8'
+          },
+          '100%': {
+            transform: 'translateY(0) rotate(45deg)',
+            opacity: '0.5'
+          }
+        },
+        'spin-slow': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' }
+        }
       },
       animation: {
         'heartbeat-3': 'heartbeat-3 0.6s infinite',
@@ -83,14 +111,16 @@ export default {
         'blur-in-out': 'blur-in-out 4s ease-in-out infinite',
         'health-glitch': 'health-glitch 0.3s ease-in-out infinite',
         'waving-flag': 'waving-flag 1s infinite',
+        'twinkle': 'twinkle 4s ease-in-out infinite',
+        'float': 'float 8s ease-in-out infinite',
+        'pulse-slow': 'pulse 3s ease-in-out infinite',
+        'spin-slow': 'spin-slow 8s linear infinite'
       }
     },
   },
   plugins: [
     require('tailwind-scrollbar'),
   ],
-
-
 }
 
 
